@@ -149,23 +149,104 @@ async function loadHomeData() {
     if (scoreEl && d.score !== undefined) scoreEl.textContent = d.score;
     if (descEl && d.desc) descEl.textContent = d.desc;
   }
+  loadTodos();
 }
 
-// ============ 待办事项 ============
-function toggleTodo(el) {
+// ============ 待办事项（be-4） ============
+async function loadTodos() {
+  const list = document.getElementById('todoList');
+  if (!list) return;
+  const res = await fetchAPI('/todos');
+  if (!res.success || !res.data) return;
+  if (!res.data.length) {
+    list.innerHTML = '<div class="todo-empty">今天还没有待办，点下方“+ 添加待办”创建</div>';
+    return;
+  }
+  list.innerHTML = res.data.map(t => `
+    <div class="todo-item" data-id="${t.id}">
+      <div class="check${t.done ? ' done' : ''}" onclick="toggleTodo(this)">${t.done ? '\u2713' : ''}</div>
+      <div class="text${t.done ? ' done' : ''}">${escapeHtml(t.text)}</div>
+      <span class="todo-del" onclick="deleteTodo(this)" title="删除">&times;</span>
+      <div class="time">${escapeHtml(t.time || '')}</div>
+    </div>`).join('');
+}
+
+async function toggleTodo(el) {
+  const item = el.closest('.todo-item');
+  const id = item && item.dataset.id;
+  if (!id) return;
+  const res = await fetchAPI('/todos/' + id + '/toggle', { method: 'POST' });
+  if (!res.success) {
+    alert(res.message || '操作失败，请重试');
+    loadTodos();
+    return;
+  }
   el.classList.toggle('done');
   el.textContent = el.classList.contains('done') ? '\u2713' : '';
   const text = el.parentElement.querySelector('.text');
   if (text) text.classList.toggle('done');
 }
 
-function markAllDone() {
-  document.querySelectorAll('#todoList .check').forEach(c => {
-    c.classList.add('done');
-    c.textContent = '\u2713';
-    const text = c.parentElement.querySelector('.text');
-    if (text) text.classList.add('done');
+async function deleteTodo(el) {
+  const item = el.closest('.todo-item');
+  const id = item && item.dataset.id;
+  if (!id) return;
+  const text = item.querySelector('.text');
+  if (!confirm('删除待办「' + (text ? text.textContent : '') + '」？')) return;
+  const res = await fetchAPI('/todos/' + id, { method: 'DELETE' });
+  if (!res.success) {
+    alert(res.message || '删除失败，请重试');
+    return;
+  }
+  loadTodos();
+}
+
+async function markAllDone() {
+  const res = await fetchAPI('/todos/toggle-all', {
+    method: 'POST',
+    body: JSON.stringify({ done: true }),
   });
+  if (!res.success) {
+    alert(res.message || '操作失败，请重试');
+    return;
+  }
+  loadTodos();
+}
+
+function showAddTodo() {
+  const row = document.getElementById('todoAddRow');
+  if (!row) return;
+  row.style.display = 'flex';
+  const input = document.getElementById('todoNewText');
+  if (input) input.focus();
+}
+
+function hideAddTodo() {
+  const row = document.getElementById('todoAddRow');
+  if (row) row.style.display = 'none';
+  ['todoNewText', 'todoNewTime'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+}
+
+async function confirmAddTodo() {
+  const content = (document.getElementById('todoNewText').value || '').trim();
+  if (!content) {
+    alert('请输入待办内容');
+    return;
+  }
+  const time = (document.getElementById('todoNewTime').value || '').trim();
+  const res = await fetchAPI('/todos', {
+    method: 'POST',
+    body: JSON.stringify({ content, time }),
+  });
+  if (!res.success) {
+    alert(res.message || '添加失败，请重试');
+    return;
+  }
+  hideAddTodo();
+  loadTodos();
 }
 
 // ============ 居家保健 ============
