@@ -62,6 +62,7 @@ function showPage(name) {
   if (name === 'clothing') loadClothing();
   if (name === 'chat') scrollChatToBottom();
   if (name === 'record') loadSymptomRecords();
+  if (name === 'profile') loadProfile();
 }
 
 // ============ 登录 ============
@@ -240,6 +241,74 @@ async function loadDietData() {
       el.querySelector('div[style*="font-size:18px"]').textContent = res.data.principle;
     }
   }
+}
+
+// ============ 个人中心（健康档案，be-3） ============
+let profileCache = null;
+
+async function loadProfile() {
+  const res = await fetchAPI('/profile');
+  if (!res.success || !res.data) return;
+  const p = res.data;
+  profileCache = p;
+  const set = (id, text) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  };
+  set('pfNick', p.name || '小松');
+  set('pfLevelTag', p.level || '未测评');
+  set('pfName', p.name || '小松');
+  set('pfAllergy', p.allergy || '无');
+  set('pfConstitution', p.constitution || '未测评');
+  set('pfScore', (p.score === null || p.score === undefined ? '—' : p.score) + ' / ' + (p.level || '未测评'));
+  set('pfUpdated', p.updatedAt ? String(p.updatedAt).slice(0, 10) : '—');
+  set('pfDiet', p.dietPref || '未设置');
+  set('pfExercise', p.exercisePref || '未设置');
+  set('pfSleep', p.sleepPref || '未设置');
+  set('pfBody', p.bodySense || '未设置');
+}
+
+// 卡片内编辑：点“编辑”把字段变为输入框，点“保存”提交 PUT /profile
+async function toggleProfileEdit(btn, fields) {
+  if (btn.dataset.editing !== '1') {
+    if (!profileCache) await loadProfile();
+    fields.forEach((f) => {
+      const el = document.getElementById(f.id);
+      if (!el) return;
+      el.textContent = '';
+      const input = document.createElement('input');
+      input.id = f.id + 'Input';
+      input.className = 'profile-input';
+      const v = profileCache ? profileCache[f.key] : '';
+      input.value = v === null || v === undefined ? '' : v;
+      el.appendChild(input);
+    });
+    btn.textContent = '保存';
+    btn.dataset.editing = '1';
+    return;
+  }
+  const payload = {};
+  for (const f of fields) {
+    const input = document.getElementById(f.id + 'Input');
+    if (!input) return;
+    payload[f.key] = input.value.trim();
+  }
+  if (payload.score !== undefined) {
+    const s = Number(payload.score);
+    if (!Number.isInteger(s) || s < 0 || s > 100) {
+      alert('肝郁指数须为 0-100 的整数');
+      return;
+    }
+    payload.score = s;
+  }
+  const res = await fetchAPI('/profile', { method: 'PUT', body: JSON.stringify(payload) });
+  if (!res.success) {
+    alert(res.message || '保存失败，请稍后重试');
+    return;
+  }
+  btn.textContent = '编辑';
+  btn.dataset.editing = '0';
+  await loadProfile();
 }
 
 // ============ 穿衣建议 ============

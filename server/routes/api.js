@@ -311,6 +311,89 @@ router.get('/practice/moves', wrap(async (req, res) => {
   res.json({ success: true, data: rows });
 }));
 
+// ============ 健康档案（be-3） ============
+
+// 查询档案：用户基础信息（含肝郁指数）+ 健康档案，无档案时自动补空行
+router.get('/profile', wrap(async (req, res) => {
+  const userId = getUserId(req);
+  const profileSql = `
+    SELECT constitution, allergy, diet_pref, exercise_pref, sleep_pref, body_sense, updated_at
+      FROM health_profiles WHERE user_id = ?`;
+  const [users] = await pool.query('SELECT name, score, level FROM users WHERE id = ?', [userId]);
+  let [rows] = await pool.query(profileSql, [userId]);
+  if (!rows[0]) {
+    await pool.query('INSERT IGNORE INTO health_profiles (user_id) VALUES (?)', [userId]);
+    [rows] = await pool.query(profileSql, [userId]);
+  }
+  const u = users[0] || {};
+  const p = rows[0] || {};
+  res.json({
+    success: true,
+    data: {
+      name: u.name, score: u.score, level: u.level,
+      constitution: p.constitution, allergy: p.allergy,
+      dietPref: p.diet_pref, exercisePref: p.exercise_pref,
+      sleepPref: p.sleep_pref, bodySense: p.body_sense,
+      updatedAt: p.updated_at,
+    },
+  });
+}));
+
+// 更新档案：支持只提交部分字段；肝郁指数单独写入 users 表
+router.put('/profile', wrap(async (req, res) => {
+  const userId = getUserId(req);
+  const body = req.body || {};
+  // 前端字段名 → 数据库列名（值长度上限）
+  const fieldMap = {
+    constitution: ['constitution', 50],
+    allergy: ['allergy', 255],
+    dietPref: ['diet_pref', 50],
+    exercisePref: ['exercise_pref', 50],
+    sleepPref: ['sleep_pref', 50],
+    bodySense: ['body_sense', 50],
+  };
+
+  // 与现有档案合并：未提交的字段保持原值
+  const [rows] = await pool.query('SELECT * FROM health_profiles WHERE user_id = ?', [userId]);
+  const cur = rows[0] || {};
+  const merged = {};
+  for (const [jsKey, [col, max]] of Object.entries(fieldMap)) {
+    if (body[jsKey] !== undefined) {
+      const v = body[jsKey];
+      if (v !== null && typeof v !== 'string') {
+        return res.status(400).json({ success: false, message: jsKey + ' 须为字符串' });
+      }
+      merged[col] = v === null ? null : (v.trim().slice(0, max) || null);
+    } else {
+      merged[col] = cur[col] !== undefined ? cur[col] : null;
+    }
+  }
+
+  // 肝郁指数：可选；未显式给 level 时按分数推导
+  if (body.score !== undefined) {
+    const s = Number(body.score);
+    if (!Number.isInteger(s) || s < 0 || s > 100) {
+      return res.status(400).json({ success: false, message: '肝郁指数须为 0-100 的整数' });
+    }
+    const level = typeof body.level === 'string' && body.level.trim()
+      ? body.level.trim().slice(0, 20)
+      : s >= 80 ? '重度肝郁' : s >= 50 ? '轻度肝郁' : s >= 30 ? '轻微肝郁' : '气机平和';
+    await pool.query('UPDATE users SET score = ?, level = ? WHERE id = ?', [s, level, userId]);
+  }
+
+  await pool.query(
+    `INSERT INTO health_profiles (user_id, constitution, allergy, diet_pref, exercise_pref, sleep_pref, body_sense)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE
+       constitution = VALUES(constitution), allergy = VALUES(allergy),
+       diet_pref = VALUES(diet_pref), exercise_pref = VALUES(exercise_pref),
+       sleep_pref = VALUES(sleep_pref), body_sense = VALUES(body_sense)`,
+    [userId, merged.constitution, merged.allergy, merged.diet_pref,
+      merged.exercise_pref, merged.sleep_pref, merged.body_sense],
+  );
+  res.json({ success: true, message: '健康档案已保存' });
+}));
+
 // 统一错误处理（异步路由抛错时返回 JSON 而非 HTML 错误页）
 router.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
   console.error('[api] 接口错误:', err.message);
