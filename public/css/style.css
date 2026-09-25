@@ -280,6 +280,8 @@ img { max-width: 100%; display: block; }
 .info-row:last-child { border:none; }
 .info-row .ir-label { color: var(--text-mid); }
 .info-row .ir-value { font-weight:500; }
+.profile-input { width:160px; padding:4px 8px; border:1px solid var(--border); border-radius:6px; font-size:14px; font-family:inherit; text-align:right; }
+.profile-input:focus-visible { outline:2px solid var(--primary); outline-offset:1px; }
 
 /* ===================== 移动端抽屉导航 ===================== */
 .nav-toggle { display:none; font-size:22px; color:var(--text-mid); line-height:1; padding:4px; }

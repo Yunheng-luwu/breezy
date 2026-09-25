@@ -725,8 +725,8 @@
         <div class="card">
           <div class="user-info">
             <div class="avatar">松</div>
-            <div class="nick">小松</div>
-            <span class="tag tag-primary">肝郁体质：轻度</span>
+            <div class="nick" id="pfNick">小松</div>
+            <span class="tag tag-primary" id="pfLevelTag">—</span>
           </div>
           <div class="menu-list">
             <div class="mi active">我的健康档案 <span class="arrow">&rarr;</span></div>
@@ -741,25 +741,27 @@
       <div class="profile-content">
         <div class="card" style="margin-bottom:20px;">
           <h3 style="margin-bottom:12px;">基本信息</h3>
-          <div class="info-row"><span class="ir-label">姓名</span><span class="ir-value">小松</span></div>
+          <div class="info-row"><span class="ir-label">姓名</span><span class="ir-value" id="pfName">—</span></div>
           <div class="info-row"><span class="ir-label">年龄</span><span class="ir-value">26岁</span></div>
           <div class="info-row"><span class="ir-label">性别</span><span class="ir-value">女</span></div>
-          <div class="info-row"><span class="ir-label">过敏史</span><span class="ir-value">无</span></div>
-          <button class="btn btn-outline btn-sm" style="margin-top:12px;">编辑</button>
+          <div class="info-row"><span class="ir-label">过敏史</span><span class="ir-value" id="pfAllergy">—</span></div>
+          <button class="btn btn-outline btn-sm" style="margin-top:12px;" onclick="toggleProfileEdit(this, [{id:'pfAllergy',key:'allergy'}])">编辑</button>
         </div>
         <div class="card" style="margin-bottom:20px;">
           <h3 style="margin-bottom:12px;">体质测评</h3>
-          <div class="info-row"><span class="ir-label">最近测评</span><span class="ir-value">2026-09-10</span></div>
-          <div class="info-row"><span class="ir-label">肝郁指数</span><span class="ir-value" style="color:var(--primary);">62 / 轻度肝郁</span></div>
-          <div class="info-row"><span class="ir-label">上次测评</span><span class="ir-value">2026-08-28 / 68分</span></div>
-          <button class="btn btn-primary btn-sm" style="margin-top:12px;">重新测评</button>
+          <div class="info-row"><span class="ir-label">中医体质</span><span class="ir-value" id="pfConstitution">—</span></div>
+          <div class="info-row"><span class="ir-label">肝郁指数</span><span class="ir-value" id="pfScore" style="color:var(--primary);">—</span></div>
+          <div class="info-row"><span class="ir-label">更新时间</span><span class="ir-value" id="pfUpdated">—</span></div>
+          <button class="btn btn-outline btn-sm" style="margin-top:12px;" onclick="toggleProfileEdit(this, [{id:'pfConstitution',key:'constitution'},{id:'pfScore',key:'score'}])">编辑</button>
+          <button class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="alert('测评问卷功能即将上线，敬请期待')">重新测评</button>
         </div>
         <div class="card" style="margin-bottom:20px;">
           <h3 style="margin-bottom:12px;">健康偏好</h3>
-          <div class="info-row"><span class="ir-label">饮食偏好</span><span class="ir-value">清淡 · 少辣</span></div>
-          <div class="info-row"><span class="ir-label">运动习惯</span><span class="ir-value">轻度 · 每日15分钟</span></div>
-          <div class="info-row"><span class="ir-label">作息规律</span><span class="ir-value">偏晚 · 23:30入睡</span></div>
-          <div class="info-row"><span class="ir-label">体感敏感度</span><span class="ir-value">怕冷</span></div>
+          <div class="info-row"><span class="ir-label">饮食偏好</span><span class="ir-value" id="pfDiet">—</span></div>
+          <div class="info-row"><span class="ir-label">运动习惯</span><span class="ir-value" id="pfExercise">—</span></div>
+          <div class="info-row"><span class="ir-label">作息规律</span><span class="ir-value" id="pfSleep">—</span></div>
+          <div class="info-row"><span class="ir-label">体感敏感度</span><span class="ir-value" id="pfBody">—</span></div>
+          <button class="btn btn-outline btn-sm" style="margin-top:12px;" onclick="toggleProfileEdit(this, [{id:'pfDiet',key:'dietPref'},{id:'pfExercise',key:'exercisePref'},{id:'pfSleep',key:'sleepPref'},{id:'pfBody',key:'bodySense'}])">编辑</button>
         </div>
         <div class="card">
           <h3 style="margin-bottom:12px;">数据总览</h3>

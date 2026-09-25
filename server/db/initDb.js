@@ -24,9 +24,38 @@ async function main() {
 
   try {
     await conn.query(sql);
+    await migrateHealthProfiles(conn);
     console.log('[initDb] 业务数据库 songxu 初始化完成');
   } finally {
     await conn.end();
+  }
+}
+
+// 迁移早期版本 health_profiles：补结构化偏好字段，移除通用 preference 字段
+async function migrateHealthProfiles(conn) {
+  const newCols = [
+    ['diet_pref', "VARCHAR(50) NULL COMMENT '饮食偏好' AFTER allergy"],
+    ['exercise_pref', "VARCHAR(50) NULL COMMENT '运动习惯' AFTER diet_pref"],
+    ['sleep_pref', "VARCHAR(50) NULL COMMENT '作息规律' AFTER exercise_pref"],
+    ['body_sense', "VARCHAR(50) NULL COMMENT '体感敏感度' AFTER sleep_pref"],
+  ];
+  const hasColumn = async (name) => {
+    const [rows] = await conn.query(
+      `SELECT 1 FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = 'songxu' AND TABLE_NAME = 'health_profiles' AND COLUMN_NAME = ?`,
+      [name],
+    );
+    return rows.length > 0;
+  };
+  for (const [name, ddl] of newCols) {
+    if (!(await hasColumn(name))) {
+      await conn.query(`ALTER TABLE health_profiles ADD COLUMN ${name} ${ddl}`);
+      console.log(`[initDb] health_profiles 新增字段 ${name}`);
+    }
+  }
+  if (await hasColumn('preference')) {
+    await conn.query('ALTER TABLE health_profiles DROP COLUMN preference');
+    console.log('[initDb] health_profiles 移除旧字段 preference');
   }
 }
 
