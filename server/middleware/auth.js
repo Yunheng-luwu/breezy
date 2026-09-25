@@ -1,18 +1,32 @@
 /**
  * 认证中间件
  * - JWT 签发与校验
+ * - 密码哈希（scrypt）
  * - optionalAuth：有 token 就解析，无 token 放行（演示数据用默认用户）
  * - requireAuth：无有效 token 返回 401
  */
 
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const config = require('../config');
 
-// 开发期固定验证码；接入短信服务后替换为动态验证码
-const DEV_CODE = '1234';
-
 function signToken(userId) {
   return jwt.sign({ uid: userId }, config.jwt.secret, { expiresIn: config.jwt.expires });
+}
+
+// 密码哈希：scrypt:salt:hash（无第三方依赖）
+function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(password, salt, 32).toString('hex');
+  return salt + ':' + hash;
+}
+
+function verifyPassword(password, stored) {
+  if (typeof stored !== 'string' || !stored.includes(':')) return false;
+  const [salt, hash] = stored.split(':');
+  const expected = Buffer.from(hash, 'hex');
+  const candidate = crypto.scryptSync(password, salt, 32);
+  return expected.length === candidate.length && crypto.timingSafeEqual(expected, candidate);
 }
 
 // 从请求头解析 Bearer token，成功则挂载 req.userId
@@ -39,4 +53,4 @@ function requireAuth(req, res, next) {
   next();
 }
 
-module.exports = { signToken, optionalAuth, requireAuth, DEV_CODE };
+module.exports = { signToken, optionalAuth, requireAuth, hashPassword, verifyPassword };

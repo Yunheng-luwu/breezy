@@ -25,9 +25,60 @@ async function main() {
   try {
     await conn.query(sql);
     await migrateHealthProfiles(conn);
+    await migrateUsers(conn);
     console.log('[initDb] 业务数据库 songxu 初始化完成');
   } finally {
     await conn.end();
+  }
+}
+
+// 迁移用户表：手机号登录 → 账号密码登录（补列、放开 phone 非空约束、补唯一索引）
+async function migrateUsers(conn) {
+  const colExists = async (name) => {
+    const [rows] = await conn.query(
+      `SELECT 1 FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = 'songxu' AND TABLE_NAME = 'users' AND COLUMN_NAME = ?`,
+      [name],
+    );
+    return rows.length > 0;
+  };
+  const indexExists = async (name) => {
+    const [rows] = await conn.query(
+      `SELECT 1 FROM information_schema.STATISTICS
+        WHERE TABLE_SCHEMA = 'songxu' AND TABLE_NAME = 'users' AND INDEX_NAME = ?`,
+      [name],
+    );
+    return rows.length > 0;
+  };
+
+  const newCols = [
+    ['username', "VARCHAR(50) NULL AFTER id"],
+    ['email', "VARCHAR(100) NULL AFTER username"],
+    ['password_hash', "VARCHAR(120) NULL COMMENT 'scrypt:salt:hash' AFTER email"],
+  ];
+  for (const [name, ddl] of newCols) {
+    if (!(await colExists(name))) {
+      await conn.query(`ALTER TABLE users ADD COLUMN ${name} ${ddl}`);
+      console.log(`[initDb] users 新增字段 ${name}`);
+    }
+  }
+
+  // phone 改为可空（新用户不再依赖手机号）
+  const [phoneRows] = await conn.query(
+    `SELECT IS_NULLABLE FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = 'songxu' AND TABLE_NAME = 'users' AND COLUMN_NAME = 'phone'`,
+  );
+  if (phoneRows[0] && phoneRows[0].IS_NULLABLE === 'NO') {
+    await conn.query("ALTER TABLE users MODIFY phone VARCHAR(20) NULL");
+    console.log('[initDb] users.phone 已改为可空');
+  }
+
+  for (const idx of ['uk_username', 'uk_email']) {
+    if (!(await indexExists(idx))) {
+      const col = idx === 'uk_username' ? 'username' : 'email';
+      await conn.query(`ALTER TABLE users ADD UNIQUE KEY ${idx} (${col})`);
+      console.log(`[initDb] users 新增唯一索引 ${idx}`);
+    }
   }
 }
 

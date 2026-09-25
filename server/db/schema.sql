@@ -12,16 +12,21 @@ USE songxu;
 
 -- ============ 用户与档案 ============
 
--- 用户表（含内嵌 AI 兼容字段 name）
+-- 用户表（账号密码注册；含内嵌 AI 兼容字段 name；phone 保留给演示用户）
 CREATE TABLE IF NOT EXISTS users (
-  id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  phone       VARCHAR(20) NOT NULL,
-  name        VARCHAR(50) NOT NULL DEFAULT '小松',
-  score       TINYINT UNSIGNED NOT NULL DEFAULT 62 COMMENT '肝郁指数 0-100',
-  level       VARCHAR(20) NOT NULL DEFAULT '轻度肝郁',
-  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  username      VARCHAR(50) NULL,
+  email         VARCHAR(100) NULL,
+  password_hash VARCHAR(120) NULL COMMENT 'scrypt:salt:hash',
+  phone         VARCHAR(20) NULL,
+  name          VARCHAR(50) NOT NULL DEFAULT '小松',
+  score         TINYINT UNSIGNED NOT NULL DEFAULT 62 COMMENT '肝郁指数 0-100',
+  level         VARCHAR(20) NOT NULL DEFAULT '轻度肝郁',
+  created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
-  UNIQUE KEY uk_phone (phone)
+  UNIQUE KEY uk_phone (phone),
+  UNIQUE KEY uk_username (username),
+  UNIQUE KEY uk_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 健康档案表

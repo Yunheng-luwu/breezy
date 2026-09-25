@@ -1,46 +1,41 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>松序 - 顺气舒心，慢养日常</title>
 <link rel="stylesheet" href="css/style.css">
+
 </head>
 <body>
 
-<!-- ============ 导航栏 ============ -->
+<!-- 导航栏 -->
 <nav class="navbar" id="navbar" style="display:none;">
   <div class="nav-inner">
-    <div class="nav-brand">
-      <div class="logo">松</div>
-      <span>松序</span>
-    </div>
+    <div class="nav-brand"><div class="logo">松</div><span>松序</span></div>
     <div class="nav-menu" id="navMenu">
-      <a data-page="home" class="active">首页</a>
+      <a data-page="chat" class="active">AI对话</a>
+      <a data-page="home">首页</a>
       <a data-page="care">居家保健</a>
       <a data-page="diet">饮食调理</a>
       <a data-page="clothing">穿衣建议</a>
       <a data-page="rhythm">生活节律</a>
       <a data-page="practice">功法带练</a>
-      <a data-page="chat">AI对话</a>
       <a data-page="record">健康记录</a>
       <a data-page="profile">我的</a>
     </div>
     <div class="nav-right">
       <div class="icon-btn">&#128276;<span class="dot"></span></div>
       <div class="avatar">松</div>
+      <div class="nav-toggle" id="navToggle" role="button" aria-label="打开导航菜单">&#9776;</div>
     </div>
-    <div class="nav-toggle" id="navToggle" role="button" aria-label="打开导航菜单">&#9776;</div>
   </div>
 </nav>
 
 <!-- 移动端抽屉导航 -->
 <div class="drawer-mask" id="drawerMask"></div>
 <div class="mobile-drawer" id="mobileDrawer">
-  <div class="drawer-brand">
-    <div class="logo">松</div>
-    <span>松序</span>
-  </div>
+  <div class="drawer-brand"><div class="logo">松</div><span>松序</span></div>
   <a data-page="home">首页</a>
   <a data-page="care">居家保健</a>
   <a data-page="diet">饮食调理</a>
@@ -52,261 +47,349 @@
   <a data-page="profile">我的</a>
 </div>
 
-<!-- ============ 1. 登录页 ============ -->
+<!-- ============ 1. 注册页 ============ -->
 <div class="page active" id="page-login">
-  <div class="login-left">
-    <div class="cloud">&#9729;</div>
-    <div class="cloud">&#9729;</div>
-    <div class="brand-area">
-      <div class="brand-logo float-anim">松</div>
-      <div class="brand-name">松序</div>
-      <div class="slogan">顺气舒心，慢养日常</div>
-      <div class="sub-slogan">专为年轻人打造的疏肝解郁轻养生指南</div>
-    </div>
-    <div class="tips-area" id="loginTips">&#128161; 按揉太冲穴5分钟可疏解生气后的胸闷感</div>
+  <div class="reg-left-text">
+    <div class="art-col col-1">顺应四时</div>
+    <div class="art-col col-2">调养身心</div>
   </div>
-  <div class="login-right">
-    <div class="login-card">
-      <h2>欢迎回来</h2>
-      <div class="welcome-sub">开启今天的舒心调理</div>
-      <div class="login-form">
-        <div class="field">
-          <input type="tel" id="loginPhone" placeholder="手机号" value="13800006688">
+  <div class="reg-card">
+    <span class="corner tl"><span class="dot"></span><span class="scroll">❧</span></span>
+    <span class="corner tr"><span class="dot"></span><span class="scroll">❧</span></span>
+    <span class="corner bl"><span class="dot"></span><span class="scroll">❧</span></span>
+    <span class="corner br"><span class="dot"></span><span class="scroll">❧</span></span>
+    <span class="side-pattern side-left">◈◈◈◈◈◈◈◈◈◈</span>
+    <span class="side-pattern side-right">◈◈◈◈◈◈◈◈◈◈</span>
+    <span class="bottom-pattern">◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈</span>
+    <h2 id="authTitle">欢迎回来</h2>
+    <div class="reg-sub" id="authSub">登录账号 · 开启今天的舒心调理</div>
+    <!-- 登录表单 -->
+    <div class="reg-form" id="loginForm">
+      <div class="form-row">
+        <label>账号</label>
+        <input type="text" id="loginAccount" placeholder="用户名或邮箱" autocomplete="username">
+      </div>
+      <div class="form-row">
+        <label>密码</label>
+        <input type="password" id="loginPassword" placeholder="请输入密码" autocomplete="current-password">
+      </div>
+    </div>
+    <!-- 注册表单 -->
+    <div class="reg-form" id="regForm" style="display:none;">
+      <div class="form-row">
+        <label>账号</label>
+        <input type="text" id="regUsername" placeholder="3-20位字母、数字或下划线" autocomplete="username">
+      </div>
+      <div class="form-row">
+        <label>昵称</label>
+        <input type="text" id="regNickname" placeholder="请输入昵称（默认：小松）">
+      </div>
+      <div class="form-row">
+        <label>邮箱</label>
+        <input type="email" id="regEmail" placeholder="请输入邮箱地址">
+      </div>
+      <div class="form-row">
+        <label>设置密码</label>
+        <input type="password" id="regPassword" placeholder="6-16位字母或数字" autocomplete="new-password">
+      </div>
+      <div class="form-row">
+        <label>确认密码</label>
+        <input type="password" id="regConfirm" placeholder="请再次输入密码" autocomplete="new-password">
+      </div>
+    </div>
+    <div class="reg-agree" id="regAgree" style="display:none;">
+      <input type="checkbox" id="agree">
+      <label for="agree">我已阅读<a>《用户协议》</a><a>《隐私政策》</a></label>
+    </div>
+    <button class="reg-btn" id="authSubmitBtn" onclick="submitAuth()">登 录</button>
+    <div class="reg-footer" id="authSwitch"><a onclick="switchAuthMode()">没有账号？免费注册</a></div>
+    <div class="reg-tip">养生建议仅供日常参考，不能替代医师诊疗</div>
+  </div>
+</div>
+
+<!-- ============ 2. AI对话页 ============ -->
+<div class="page" id="page-chat">
+  <div class="container">
+    <div class="page-banner">
+      <img class="banner-img" src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Traditional%20Chinese%20medicine%20herbal%20tea%20brewing%20in%20a%20clay%20teapot%20with%20dried%20herbs%20scattered%20around%2C%20warm%20cozy%20atmosphere%2C%20soft%20lighting%2C%20wellness%20photography&image_size=landscape_16_9" alt="AI对话">
+      <div class="banner-content"><h2>AI疏肝对话</h2><p>述说你的状态 · 智能辨证调理</p></div>
+    </div>
+    <div class="page-header"><div><h1>AI疏肝对话</h1><div class="sub">说说你的状态，我来帮你疏解</div></div></div>
+    <div class="chat-page">
+      <div class="chat-main">
+        <div class="chat-messages" id="chatMessages">
+          <div class="chat-msg ai"><div class="avatar">&#127807;</div><div class="bubble">你好呀，我是小松 &#127807; 今天感觉怎么样？有什么不舒服可以跟我说~</div></div>
         </div>
-        <div class="field">
-          <div class="code-row">
-            <input type="text" id="loginCode" placeholder="验证码" value="1234">
-            <button onclick="sendCode(this)">获取验证码</button>
+        <div class="chat-input-bar">
+          <div class="mic-btn">&#127908;</div>
+          <input type="text" id="chatInput" placeholder="说说你的状态或问题…" onkeydown="if(event.key==='Enter') sendMessage()">
+          <div class="send-btn" onclick="sendMessage()">&#10148;</div>
+        </div>
+      </div>
+      <div class="chat-side">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <h3>今日疏肝处方</h3>
+            <button class="btn btn-primary btn-sm" onclick="generatePrescription()">一键生成</button>
+          </div>
+          <div id="prescriptionArea"></div>
+        </div>
+        <div class="card">
+          <h3 style="margin-bottom:12px;">常用问题</h3>
+          <div class="quick-tags">
+            <div class="qt" onclick="quickAsk('睡不着怎么办')">睡不着怎么办</div>
+            <div class="qt" onclick="quickAsk('生气了怎么疏解')">生气了怎么疏解</div>
+            <div class="qt" onclick="quickAsk('肩颈疼按哪')">肩颈疼按哪</div>
+            <div class="qt" onclick="quickAsk('今天吃什么好')">今天吃什么好</div>
           </div>
         </div>
-        <button class="wechat-btn">&#129309; 微信一键登录</button>
+        <div class="card">
+          <h3 style="margin-bottom:12px;">今日健康概览</h3>
+          <div style="display:flex;justify-content:space-around;text-align:center;">
+            <div><div style="font-size:24px;font-weight:600;color:var(--accent);" id="chScore">—</div><div style="font-size:12px;color:var(--text-light);">肝郁指数</div></div>
+            <div><div style="font-size:24px;font-weight:600;color:var(--success);" id="chTodos">—</div><div style="font-size:12px;color:var(--text-light);">已完成待办</div></div>
+            <div><div style="font-size:24px;font-weight:600;color:var(--warn);">8min</div><div style="font-size:12px;color:var(--text-light);">运动时长</div></div>
+          </div>
+        </div>
       </div>
-      <div class="login-eval">
-        <div class="eval-text">首次使用？1分钟测测你的肝郁指数</div>
-        <div class="eval-btn" onclick="loginSuccess()">去测评 &rarr;</div>
-      </div>
-      <div class="copyright">松序 SongXu &copy; 2026 关注肝脏健康</div>
     </div>
   </div>
 </div>
 
-<!-- ============ 2. 首页 ============ -->
+<!-- ============ 3. 首页 ============ -->
 <div class="page" id="page-home">
   <div class="container">
+    <!-- 首页hero横幅 -->
+    <div class="home-hero">
+      <img class="hero-img" src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Beautiful%20arrangement%20of%20traditional%20Chinese%20herbal%20medicine%20ingredients%2C%20goji%20berries%2C%20red%20dates%2C%20dried%20roses%2C%20chrysanthemum%2C%20angelica%20root%20on%20rustic%20wooden%20table%20with%20warm%20sunlight%2C%20professional%20food%20photography&image_size=landscape_16_9" alt="中药养生">
+      <div class="hero-content">
+        <span class="badge">白露时节 · 养生正当时</span>
+        <h2>顺气舒心 · 慢养日常</h2>
+        <p>基于中医疏肝解郁理论，为你定制每日调理方案<br>茶饮 · 穴位 · 功法 · 作息，四位一体轻养生</p>
+      </div>
+      <div class="hero-seal">松序</div>
+    </div>
     <div class="page-header">
       <div><h1>每日健康仪表盘</h1><div class="sub">今日肝郁指数与调理建议</div></div>
-      <button class="btn btn-primary">AI定制</button>
+      <button class="btn btn-primary" onclick="showPage('chat')">AI定制</button>
     </div>
 
-    <!-- 今日状态总览 -->
-    <div class="card today-status" style="margin-bottom:20px;">
-      <div class="ts-left">
+    <div class="card today-status" style="margin-bottom:20px; position:relative; overflow:hidden;">
+      <div style="position:absolute;right:0;top:0;bottom:0;width:200px;opacity:0.12;background:url('https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Dried%20chrysanthemum%20flowers%20and%20goji%20berries%20scattered%20on%20a%20light%20surface%2C%20soft%20natural%20light%2C%20traditional%20Chinese%20medicine&image_size=landscape_4_3') center/cover;"></div>
+      <div class="ts-left" style="position:relative;z-index:1;">
         <div class="label">今日肝郁指数</div>
-        <div class="score">62</div>
-        <div class="desc">气机略滞，适合按揉太冲穴疏解</div>
+        <div class="score" id="homeScore">—</div>
+        <div class="desc" id="homeDesc">正在获取今日状态…</div>
       </div>
-      <div class="ts-mid">
-        <div class="ring"><span>轻度肝郁</span></div>
-      </div>
-      <div class="ts-right">
-        <div class="info-item">&#127782; 阴 18°C</div>
-        <div class="info-item">&#128205; 杭州</div>
-        <div class="view-btn">查看详细建议 &rarr;</div>
+      <div class="ts-mid" style="position:relative;z-index:1;"><div class="ring"><span id="homeLevel">—</span></div></div>
+      <div class="ts-right" style="position:relative;z-index:1;">
+        <div class="info-item" id="homeWeather">&#127782; -- °C</div>
+        <div class="info-item" id="homeCity">&#128205; --</div>
+        <div class="view-btn" onclick="showPage('record')">查看详细建议 &rarr;</div>
       </div>
     </div>
 
-    <!-- 快捷功能宫格 -->
+    <!-- 中药文化展示 -->
+    <div class="herb-showcase">
+      <div class="herb-show-card">
+        <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Close-up%20photography%20of%20dried%20rose%20buds%20and%20goji%20berries%20on%20a%20white%20ceramic%20plate%2C%20soft%20natural%20light%2C%20traditional%20Chinese%20medicine%20herbs&image_size=landscape_4_3" alt="玫瑰花茶">
+        <div class="body"><h4>疏肝理气</h4><div class="desc">玫瑰花茶 · 枸杞 · 菊花</div></div>
+      </div>
+      <div class="herb-show-card">
+        <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Traditional%20Chinese%20medicine%20acupoint%20massage%20illustration%2C%20hands%20pressing%20foot%20acupoint%2C%20warm%20lighting%2C%20wellness%20photography&image_size=landscape_4_3" alt="穴位疏通">
+        <div class="body"><h4>穴位疏通</h4><div class="desc">太冲穴 · 期门穴 · 合谷穴</div></div>
+      </div>
+      <div class="herb-show-card">
+        <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Eight%20Brocades%20Qigong%20practice%20in%20a%20serene%20park%20at%20sunrise%2C%20silhouette%20of%20a%20person%20doing%20stretching%20exercise%2C%20warm%20morning%20light&image_size=landscape_4_3" alt="八段锦">
+        <div class="body"><h4>功法带练</h4><div class="desc">八段锦 · 疏肝拉伸操</div></div>
+      </div>
+    </div>
+
+    <!-- 中药图鉴 -->
+    <div class="card" style="margin-bottom:24px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h3>中药图鉴 · 疏肝养身</h3>
+        <span class="tag tag-primary">本周推荐</span>
+      </div>
+      <div class="herb-atlas">
+        <div class="herb-atlas-item">
+          <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Dried%20chrysanthemum%20flowers%20in%20a%20white%20ceramic%20bowl%20on%20wooden%20table%2C%20soft%20natural%20light%2C%20traditional%20Chinese%20medicine%20herb%20photography&image_size=square" alt="菊花">
+          <div class="ha-body"><h5>菊花</h5><div class="ha-tag">清肝明目 · 泡茶</div></div>
+        </div>
+        <div class="herb-atlas-item">
+          <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Goji%20berries%20in%20a%20small%20bamboo%20basket%2C%20bright%20red%20dried%20fruits%2C%20warm%20lighting%2C%20traditional%20Chinese%20medicine&image_size=square" alt="枸杞">
+          <div class="ha-body"><h5>枸杞</h5><div class="ha-tag">滋补肝肾 · 日常</div></div>
+        </div>
+        <div class="herb-atlas-item">
+          <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Dried%20red%20dates%20jujube%20in%20a%20ceramic%20dish%2C%20warm%20lighting%2C%20traditional%20Chinese%20medicine%20herb%20photography&image_size=square" alt="红枣">
+          <div class="ha-body"><h5>红枣</h5><div class="ha-tag">补中益气 · 食疗</div></div>
+        </div>
+        <div class="herb-atlas-item">
+          <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Dried%20tangerine%20peel%20chenpi%20in%20a%20ceramic%20bowl%2C%20warm%20amber%20lighting%2C%20traditional%20Chinese%20medicine%20herb%20photography&image_size=square" alt="陈皮">
+          <div class="ha-body"><h5>陈皮</h5><div class="ha-tag">理气健脾 · 泡茶</div></div>
+        </div>
+        <div class="herb-atlas-item">
+          <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Dried%20rose%20buds%20in%20a%20white%20porcelain%20dish%2C%20soft%20pink%20color%2C%20delicate%20lighting%2C%20traditional%20Chinese%20medicine&image_size=square" alt="玫瑰花">
+          <div class="ha-body"><h5>玫瑰花</h5><div class="ha-tag">疏肝解郁 · 茶饮</div></div>
+        </div>
+        <div class="herb-atlas-item">
+          <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Ginseng%20roots%20displayed%20on%20a%20linen%20cloth%2C%20traditional%20Chinese%20medicine%2C%20warm%20natural%20lighting%2C%20professional%20herb%20photography&image_size=square" alt="黄芪">
+          <div class="ha-body"><h5>黄芪</h5><div class="ha-tag">补气固表 · 炖汤</div></div>
+        </div>
+        <div class="herb-atlas-item">
+          <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Dried%20angelica%20sinensis%20dong%20quai%20slices%20in%20a%20wooden%20bowl%2C%20traditional%20Chinese%20medicine%2C%20warm%20lighting&image_size=square" alt="当归">
+          <div class="ha-body"><h5>当归</h5><div class="ha-tag">补血活血 · 调经</div></div>
+        </div>
+        <div class="herb-atlas-item">
+          <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Dried%20honeysuckle%20flowers%20in%20a%20glass%20jar%2C%20traditional%20Chinese%20medicine%2C%20soft%20natural%20light%2C%20herb%20photography&image_size=square" alt="金银花">
+          <div class="ha-body"><h5>金银花</h5><div class="ha-tag">清热解毒 · 冲泡</div></div>
+        </div>
+      </div>
+    </div>
+
     <div class="quick-grid" style="margin-bottom:32px;">
       <div class="qg-item" onclick="showPage('care')"><div class="icon">&#128694;</div><div class="name">居家保健</div><div class="desc">穴位·泡脚</div></div>
       <div class="qg-item" onclick="showPage('diet')"><div class="icon">&#127813;</div><div class="name">饮食调理</div><div class="desc">红黑榜·食谱</div></div>
       <div class="qg-item" onclick="showPage('clothing')"><div class="icon">&#128084;</div><div class="name">穿衣建议</div><div class="desc">天气·保暖</div></div>
-      <div class="qg-item" onclick="showPage('practice')"><div class="icon">&#129496;</div><div class="name">功法带练</div><div class="desc">八段锦</div></div>
+      <div class="qg-item" onclick="showPage('practice')"><div class="icon">&#129492;</div><div class="name">功法带练</div><div class="desc">八段锦</div></div>
       <div class="qg-item" onclick="showPage('chat')"><div class="icon">&#128172;</div><div class="name">AI对话</div><div class="desc">智能疏肝</div></div>
       <div class="qg-item" onclick="showPage('record')"><div class="icon">&#128221;</div><div class="name">健康记录</div><div class="desc">症状·用药</div></div>
     </div>
 
-    <!-- 双栏内容区 -->
     <div class="row">
       <div class="col-8">
         <div class="card" style="margin-bottom:20px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
             <h3>今日调理待办</h3>
-            <button class="btn-sm" style="color:var(--primary);" onclick="markAllDone()">全部标记完成</button>
+            <button class="btn-sm" style="color:var(--accent);" onclick="markAllDone()">全部标记完成</button>
           </div>
           <div class="todo-list" id="todoList">
-            <div class="todo-empty">今天还没有待办，点下方“+ 添加待办”创建</div>
+            <div class="todo-empty">正在加载今日待办…</div>
           </div>
           <div class="todo-add-row" id="todoAddRow" style="display:none;">
             <input type="text" id="todoNewText" maxlength="50" placeholder="要做什么？如：泡脚20分钟">
             <input type="time" id="todoNewTime">
-            <button class="btn-sm" style="color:var(--primary);" onclick="confirmAddTodo()">添加</button>
+            <button class="btn-sm" style="color:var(--accent);" onclick="confirmAddTodo()">添加</button>
             <button class="btn-sm" onclick="hideAddTodo()">取消</button>
           </div>
-          <button class="btn-sm" style="color:var(--primary);margin-top:12px;" onclick="showAddTodo()">+ 添加待办</button>
+          <button class="btn-sm" style="color:var(--accent);margin-top:12px;" onclick="showAddTodo()">+ 添加待办</button>
         </div>
       </div>
       <div class="col-4">
         <div class="card acu-card">
           <h3 style="text-align:center;">每日一穴</h3>
-          <div class="acu-img">&#129462;</div>
-          <div class="acu-name">太冲穴</div>
-          <div class="acu-desc">生气后按5分钟，疏肝理气解胸闷</div>
-          <button class="btn btn-outline btn-sm btn-block" style="margin-top:12px;">查看详情 &rarr;</button>
+          <div class="acu-img">&#129474;</div>
+          <div class="acu-name" id="acuOfDayName">太冲穴</div>
+          <div class="acu-desc" id="acuOfDayDesc">生气后按5分钟，疏肝理气解胸闷</div>
+          <button class="btn btn-outline btn-sm btn-block" style="margin-top:12px;" onclick="openAcuDetail(1)">查看详情 &rarr;</button>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ============ 3. 居家保健页 ============ -->
+<!-- ============ 4. 居家保健页 ============ -->
 <div class="page" id="page-care">
   <div class="container">
+    <div class="page-banner">
+      <img class="banner-img" src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Traditional%20Chinese%20medicine%20herbs%20and%20stone%20mortar%20pestle%20on%20wooden%20table%20with%20warm%20lighting%2C%20dried%20herbs%20in%20ceramic%20bowls%2C%20wellness%20photography%2C%20mugwort%20and%20rose%20buds&image_size=landscape_16_9" alt="居家保健">
+      <div class="banner-content"><h2>居家保健</h2><p>穴位疏通 · 泡脚助眠 · 草本调理</p></div>
+    </div>
     <div class="page-header"><div><h1>居家保健</h1><div class="sub">穴位疏通与泡脚助眠</div></div></div>
     <div class="tab-bar">
       <div class="tab active" onclick="switchCareTab('acupoint', event)">穴位疏通</div>
       <div class="tab" onclick="switchCareTab('footbath', event)">泡脚助眠</div>
     </div>
-
-    <!-- Tab1: 穴位疏通 -->
     <div id="careTab1">
       <div class="tag-row">
-        <div class="tag-chip active">压力爆表疏肝组</div>
-        <div class="tag-chip">久坐肩颈放松组</div>
-        <div class="tag-chip">熬夜失眠安神组</div>
-        <div class="tag-chip">办公摸鱼随手按</div>
+        <div class="tag-chip active" onclick="loadAcupoints('stress', this)">压力爆表疏肝组</div>
+        <div class="tag-chip" onclick="loadAcupoints('neck', this)">久坐肩颈放松组</div>
+        <div class="tag-chip" onclick="loadAcupoints('sleep', this)">熬夜失眠安神组</div>
+        <div class="tag-chip" onclick="loadAcupoints('office', this)">办公摸鱼随手按</div>
       </div>
-      <div class="card-grid-3">
-        <div class="acu-card-grid" onclick="openAcuDetail(1)">
-          <div class="img-area">&#129462;</div>
-          <div class="card-body"><h4>太冲穴</h4><span class="tag tag-primary">疏肝理气</span><div class="effect">生气后按5分钟，疏解胸闷</div><button class="btn btn-sm btn-outline btn-block">开始按揉</button></div>
-        </div>
-        <div class="acu-card-grid" onclick="openAcuDetail(2)">
-          <div class="img-area">&#128156;</div>
-          <div class="card-body"><h4>期门穴</h4><span class="tag tag-primary">肝经募穴</span><div class="effect">胸胁胀痛时按揉3分钟</div><button class="btn btn-sm btn-outline btn-block">开始按揉</button></div>
-        </div>
-        <div class="acu-card-grid" onclick="openAcuDetail(3)">
-          <div class="img-area">&#127805;</div>
-          <div class="card-body"><h4>阳陵泉</h4><span class="tag tag-primary">胆经合穴</span><div class="effect">口苦烦躁时按压5分钟</div><button class="btn btn-sm btn-outline btn-block">开始按揉</button></div>
-        </div>
-        <div class="acu-card-grid" onclick="openAcuDetail(4)">
-          <div class="img-area">&#127793;</div>
-          <div class="card-body"><h4>行间穴</h4><span class="tag tag-primary">清肝泻火</span><div class="effect">急躁易怒时掐按3分钟</div><button class="btn btn-sm btn-outline btn-block">开始按揉</button></div>
-        </div>
-        <div class="acu-card-grid" onclick="openAcuDetail(5)">
-          <div class="img-area">&#129460;</div>
-          <div class="card-body"><h4>膻中穴</h4><span class="tag tag-primary">宽胸理气</span><div class="effect">胸闷时掌根揉2分钟</div><button class="btn btn-sm btn-outline btn-block">开始按揉</button></div>
-        </div>
-        <div class="acu-card-grid" onclick="openAcuDetail(6)">
-          <div class="img-area">&#9994;</div>
-          <div class="card-body"><h4>合谷穴</h4><span class="tag tag-primary">通经活络</span><div class="effect">头痛牙痛时按压3分钟</div><button class="btn btn-sm btn-outline btn-block">开始按揉</button></div>
-        </div>
+      <div class="card-grid-3" id="acuGrid">
+        <div class="acu-card-grid" onclick="openAcuDetail(1)"><div class="img-area">&#129474;</div><div class="card-body"><h4>太冲穴</h4><span class="tag tag-primary">疏肝理气</span><div class="effect">生气后按5分钟，疏解胸闷</div><button class="btn btn-sm btn-outline btn-block">开始按揉</button></div></div>
+        <div class="acu-card-grid" onclick="openAcuDetail(2)"><div class="img-area">&#128156;</div><div class="card-body"><h4>期门穴</h4><span class="tag tag-primary">肝经募穴</span><div class="effect">胸胁胀痛时按揉3分钟</div><button class="btn btn-sm btn-outline btn-block">开始按揉</button></div></div>
+        <div class="acu-card-grid" onclick="openAcuDetail(3)"><div class="img-area">&#127805;</div><div class="card-body"><h4>阳陵泉</h4><span class="tag tag-primary">胆经合穴</span><div class="effect">口苦烦躁时按压5分钟</div><button class="btn btn-sm btn-outline btn-block">开始按揉</button></div></div>
+        <div class="acu-card-grid" onclick="openAcuDetail(4)"><div class="img-area">&#127793;</div><div class="card-body"><h4>行间穴</h4><span class="tag tag-primary">清肝泻火</span><div class="effect">急躁易怒时掐按3分钟</div><button class="btn btn-sm btn-outline btn-block">开始按揉</button></div></div>
+        <div class="acu-card-grid" onclick="openAcuDetail(5)"><div class="img-area">&#129460;</div><div class="card-body"><h4>膻中穴</h4><span class="tag tag-primary">宽胸理气</span><div class="effect">胸闷时掌根揉2分钟</div><button class="btn btn-sm btn-outline btn-block">开始按揉</button></div></div>
+        <div class="acu-card-grid" onclick="openAcuDetail(6)"><div class="img-area">&#9994;</div><div class="card-body"><h4>合谷穴</h4><span class="tag tag-primary">通经活络</span><div class="effect">头痛牙痛时按压3分钟</div><button class="btn btn-sm btn-outline btn-block">开始按揉</button></div></div>
       </div>
     </div>
-
-    <!-- Tab2: 泡脚助眠 -->
     <div id="careTab2" style="display:none;">
       <div class="card" style="margin-bottom:20px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
           <div>输入今天的状态，AI为你定制泡脚方</div>
-          <div class="footbath-input">
-            <input id="footbathInput" type="text" placeholder="如：失眠多梦、手脚冰凉">
-            <button class="btn btn-primary btn-sm" onclick="generateRecipe()">生成配方</button>
-          </div>
+          <div class="footbath-input"><input type="text" id="footbathInput" placeholder="如：失眠多梦、手脚冰凉"><button class="btn btn-primary btn-sm" onclick="generateRecipe()">生成配方</button></div>
         </div>
+        <div id="footbathResult" style="display:none;margin-top:14px;padding-top:14px;border-top:1px dashed var(--border);"></div>
       </div>
       <div class="card-grid-3">
-        <div class="acu-card-grid">
-          <div class="card-body">
-            <h4>玫瑰疏肝方</h4><span class="tag tag-primary">疏肝解郁</span>
-            <div style="font-size:13px;color:var(--text-mid);margin:8px 0;">玫瑰花10g + 柴胡6g + 薄荷5g</div>
-            <div style="font-size:12px;color:var(--text-light);">水温40-42°C / 20分钟</div>
-            <button class="btn btn-sm btn-outline btn-block" style="margin-top:8px;" onclick="startTimer(this)">开始泡脚</button>
-          </div>
+        <div class="herb-recipe-card">
+          <img class="hr-img" src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Dried%20rose%20buds%20and%20herbs%20for%20foot%20bath%20in%20a%20wooden%20bowl%2C%20warm%20lighting%2C%20wellness%20photography%2C%20traditional%20Chinese%20medicine&image_size=square" alt="玫瑰疏肝方">
+          <div class="hr-body"><h4>玫瑰疏肝方</h4><span class="tag tag-primary">疏肝解郁</span><div style="font-size:13px;color:var(--text-mid);margin:8px 0;">玫瑰花10g + 柴胡6g + 薄荷5g</div><div style="font-size:12px;color:var(--text-light);">水温40-42°C / 20分钟</div><button class="btn btn-sm btn-outline btn-block" style="margin-top:8px;">开始泡脚</button></div>
         </div>
-        <div class="acu-card-grid">
-          <div class="card-body">
-            <h4>艾草温通方</h4><span class="tag tag-warn">温经散寒</span>
-            <div style="font-size:13px;color:var(--text-mid);margin:8px 0;">艾叶15g + 生姜3片 + 红花5g</div>
-            <div style="font-size:12px;color:var(--text-light);">水温38-40°C / 15分钟</div>
-            <button class="btn btn-sm btn-outline btn-block" style="margin-top:8px;" onclick="startTimer(this)">开始泡脚</button>
-          </div>
+        <div class="herb-recipe-card">
+          <img class="hr-img" src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Dried%20mugwort%20artemisia%20leaves%20and%20ginger%20slices%20for%20foot%20bath%2C%20traditional%20Chinese%20medicine%2C%20warm%20natural%20lighting&image_size=square" alt="艾草温通方">
+          <div class="hr-body"><h4>艾草温通方</h4><span class="tag tag-warn">温经散寒</span><div style="font-size:13px;color:var(--text-mid);margin:8px 0;">艾叶15g + 生姜3片 + 红花5g</div><div style="font-size:12px;color:var(--text-light);">水温38-40°C / 15分钟</div><button class="btn btn-sm btn-outline btn-block" style="margin-top:8px;">开始泡脚</button></div>
         </div>
-        <div class="acu-card-grid">
-          <div class="card-body">
-            <h4>合欢安神方</h4><span class="tag tag-success">安神助眠</span>
-            <div style="font-size:13px;color:var(--text-mid);margin:8px 0;">合欢皮10g + 夜交藤15g + 柏子仁5g</div>
-            <div style="font-size:12px;color:var(--text-light);">水温40°C / 20分钟</div>
-            <button class="btn btn-sm btn-outline btn-block" style="margin-top:8px;" onclick="startTimer(this)">开始泡脚</button>
-          </div>
+        <div class="herb-recipe-card">
+          <img class="hr-img" src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Dried%20he%20huan%20pi%20albizia%20bark%20and%20night%20jasmine%20vines%20for%20herbal%20foot%20soak%2C%20traditional%20Chinese%20medicine%2C%20warm%20lighting&image_size=square" alt="合欢安神方">
+          <div class="hr-body"><h4>合欢安神方</h4><span class="tag tag-success">安神助眠</span><div style="font-size:13px;color:var(--text-mid);margin:8px 0;">合欢皮10g + 夜交藤15g + 柏子仁5g</div><div style="font-size:12px;color:var(--text-light);">水温40°C / 20分钟</div><button class="btn btn-sm btn-outline btn-block" style="margin-top:8px;">开始泡脚</button></div>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ============ 4. 饮食调理页 ============ -->
+<!-- ============ 5. 饮食调理页 ============ -->
 <div class="page" id="page-diet">
   <div class="container">
+    <div class="page-banner">
+      <img class="banner-img" src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Fresh%20Chinese%20medicinal%20herbs%20and%20healthy%20ingredients%20in%20small%20ceramic%20bowls%20on%20marble%20surface%2C%20bright%20natural%20light%2C%20tea%20leaves%20dried%20fruits%20goji%20berries%2C%20overhead%20view&image_size=landscape_16_9" alt="饮食调理">
+      <div class="banner-content"><h2>饮食调理</h2><p>药食同源 · 顺时而食 · 疏肝养胃</p></div>
+    </div>
     <div class="page-header"><div><h1>饮食调理</h1><div class="sub">疏肝食材红黑榜与每日食谱</div></div></div>
-
-    <!-- AI推荐 -->
     <div class="card diet-recommend" style="margin-bottom:20px;">
       <div class="dr-left">
         <span class="tag tag-primary">今日饮食原则</span>
-        <div style="font-size:18px;margin:8px 0;">今日阴雨湿重，宜喝陈皮红枣茶，忌冰饮</div>
-        <div style="font-size:13px;color:var(--text-light);">基于肝郁指数62 + 今日天气生成</div>
+        <div style="font-size:18px;margin:8px 0;" id="dietPrinciple">今日阴雨湿重，宜喝陈皮红枣茶，忌冰饮</div>
+        <div style="font-size:13px;color:var(--text-light);">基于肝郁指数与今日天气生成</div>
       </div>
-      <div class="dr-right">
-        <div style="font-size:48px;">&#127861;</div>
-        <button class="btn-sm" style="color:var(--primary);">换一批</button>
-      </div>
+      <div class="dr-right"><div style="font-size:48px;">&#127861;</div><button class="btn-sm" style="color:var(--accent);" onclick="loadDietData()">换一批</button></div>
     </div>
-
-    <!-- 红黑榜 -->
     <div class="red-black-grid" style="margin-bottom:20px;">
       <div class="card">
         <h3 style="margin-bottom:12px;">疏肝推荐 &#9989;</h3>
         <div style="margin-bottom:8px;font-weight:500;">茶饮</div>
-        <div><span class="food-tag good">&#127801; 玫瑰花茶</span><span class="food-tag good">&#127810; 陈皮茶</span><span class="food-tag good">&#127800; 菊花茶</span><span class="food-tag good">&#128308; 枸杞茶</span></div>
+        <div id="dfTea"></div>
         <div style="margin:8px 0;font-weight:500;">主食</div>
-        <div><span class="food-tag good">&#129358; 山药粥</span><span class="food-tag good">&#127834; 小米粥</span><span class="food-tag good">&#127837; 红枣饭</span></div>
+        <div id="dfStaple"></div>
         <div style="margin:8px 0;font-weight:500;">蔬菜</div>
-        <div><span class="food-tag good">&#127813; 菠菜</span><span class="food-tag good">&#129362; 芹菜</span><span class="food-tag good">&#129382; 西兰花</span></div>
+        <div id="dfVegetable"></div>
         <div style="margin:8px 0;font-weight:500;">水果</div>
-        <div><span class="food-tag good">&#127822; 苹果</span><span class="food-tag good">&#127818; 橙子</span><span class="food-tag good">&#127815; 葡萄</span></div>
+        <div id="dfFruit"></div>
       </div>
       <div class="card">
         <h3 style="margin-bottom:12px;">肝郁避雷 &#10060;</h3>
         <div style="margin-bottom:8px;font-weight:500;">生冷冰饮</div>
-        <div><span class="food-tag bad">&#10052; 冰饮</span><span class="food-tag bad">&#127848; 冰淇淋</span><span class="food-tag bad">&#127843; 生鱼片</span><span style="font-size:12px;color:var(--text-light);">冰饮伤脾，加重肝郁</span></div>
+        <div id="dbCold"></div>
         <div style="margin:8px 0;font-weight:500;">辛辣油炸</div>
-        <div><span class="food-tag bad">&#127798; 辣椒</span><span class="food-tag bad">&#127837; 炸鸡</span><span class="food-tag bad">&#128293; 烧烤</span><span style="font-size:12px;color:var(--text-light);">辛热助火，耗伤肝阴</span></div>
+        <div id="dbSpicy"></div>
         <div style="margin:8px 0;font-weight:500;">过酸食物</div>
-        <div><span class="food-tag bad">&#127819; 柠檬</span><span class="food-tag bad">&#129360; 酸梅</span><span style="font-size:12px;color:var(--text-light);">过酸入肝，不利疏泄</span></div>
+        <div id="dbSour"></div>
       </div>
     </div>
-
-    <!-- 每日食谱 -->
-    <div class="recipe-grid" style="margin-bottom:20px;">
-      <div class="recipe-card">
-        <div class="time-tag">早餐</div>
-        <div class="recipe-body"><h4>红枣山药粥</h4><div class="ingr">山药100g, 红枣5颗, 大米50g</div><div class="footer"><span>&#128293; 收藏</span><span>购物清单</span></div></div>
-      </div>
-      <div class="recipe-card">
-        <div class="time-tag">午餐</div>
-        <div class="recipe-body"><h4>芹菜炒香干</h4><div class="ingr">芹菜200g, 香干100g, 木耳</div><div class="footer"><span>&#128293; 收藏</span><span>购物清单</span></div></div>
-      </div>
-      <div class="recipe-card">
-        <div class="time-tag">晚餐</div>
-        <div class="recipe-body"><h4>菠菜猪肝汤</h4><div class="ingr">菠菜150g, 猪肝100g, 姜片</div><div class="footer"><span>&#128293; 收藏</span><span>购物清单</span></div></div>
-      </div>
-      <div class="recipe-card">
-        <div class="time-tag">加餐</div>
-        <div class="recipe-body"><h4>玫瑰花茶</h4><div class="ingr">玫瑰花5朵, 枸杞10粒, 蜂蜜</div><div class="footer"><span>&#128293; 收藏</span><span>购物清单</span></div></div>
-      </div>
+    <div class="recipe-grid" style="margin-bottom:20px;" id="recipeGrid">
+      <div class="recipe-card"><div class="time-tag">早餐</div><img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Red%20date%20and%20yam%20porridge%20in%20a%20white%20ceramic%20bowl%2C%20healthy%20Chinese%20breakfast%2C%20warm%20lighting%2C%20food%20photography&image_size=square" style="width:100%;height:110px;object-fit:cover;" alt="红枣山药粥"><div class="recipe-body"><h4>红枣山药粥</h4><div class="ingr">山药100g, 红枣5颗, 大米50g</div><div class="footer"><span>&#128293; 收藏</span><span>购物清单</span></div></div></div>
+      <div class="recipe-card"><div class="time-tag">午餐</div><img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Stir%20fried%20celery%20with%20dried%20tofu%2C%20Chinese%20home%20cooking%2C%20overhead%20shot%2C%20warm%20lighting&image_size=square" style="width:100%;height:110px;object-fit:cover;" alt="芹菜炒香干"><div class="recipe-body"><h4>芹菜炒香干</h4><div class="ingr">芹菜200g, 香干100g, 木耳</div><div class="footer"><span>&#128293; 收藏</span><span>购物清单</span></div></div></div>
+      <div class="recipe-card"><div class="time-tag">晚餐</div><img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Spinach%20pork%20liver%20soup%20in%20a%20ceramic%20bowl%2C%20Chinese%20healthy%20dinner%2C%20warm%20lighting%2C%20food%20photography&image_size=square" style="width:100%;height:110px;object-fit:cover;" alt="菠菜猪肝汤"><div class="recipe-body"><h4>菠菜猪肝汤</h4><div class="ingr">菠菜150g, 猪肝100g, 姜片</div><div class="footer"><span>&#128293; 收藏</span><span>购物清单</span></div></div></div>
+      <div class="recipe-card"><div class="time-tag">加餐</div><img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Rose%20petal%20tea%20with%20goji%20berries%20in%20a%20glass%20cup%2C%20herbal%20tea%20photography%2C%20warm%20afternoon%20light&image_size=square" style="width:100%;height:110px;object-fit:cover;" alt="玫瑰花茶"><div class="recipe-body"><h4>玫瑰花茶</h4><div class="ingr">玫瑰花5朵, 枸杞10粒, 蜂蜜</div><div class="footer"><span>&#128293; 收藏</span><span>购物清单</span></div></div></div>
     </div>
-
-    <!-- 节气食方 -->
+    <div class="season-banner">
+      <img class="sb-img" src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=White%20dew%20season%20autumn%20morning%20with%20chrysanthemum%20and%20lily%20bulbs%2C%20traditional%20Chinese%20seasonal%20food%20ingredients%2C%20warm%20soft%20lighting&image_size=landscape_16_9" alt="白露节气">
+      <div class="sb-content"><div class="season">二十四节气 · 白露</div><h3>润肺养阴 · 白露时令食方</h3><p>秋意渐浓，宜食百合、银耳、莲藕以润燥养阴</p></div>
+    </div>
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <h3>本期节气食方</h3><span class="tag tag-primary">白露</span>
@@ -320,34 +403,30 @@
   </div>
 </div>
 
-<!-- ============ 5. 穿衣建议页 ============ -->
+<!-- ============ 6. 穿衣建议页 ============ -->
 <div class="page" id="page-clothing">
   <div class="container">
+    <div class="page-banner">
+      <img class="banner-img" src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Autumn%20wardrobe%20with%20warm%20scarf%20and%20traditional%20Chinese%20herbal%20tea%20on%20a%20wooden%20dresser%2C%20soft%20morning%20light%2C%20cozy%20autumn%20atmosphere&image_size=landscape_16_9" alt="穿衣建议">
+      <div class="banner-content"><h2>穿衣建议</h2><p>因时穿衣 · 护好颈背 · 寒不伤肝</p></div>
+    </div>
     <div class="page-header"><div><h1>穿衣建议</h1><div class="sub">基于天气与体质的穿衣指导</div></div></div>
-
     <div class="row" style="margin-bottom:20px;">
       <div class="col-8">
-        <!-- 天气总览 -->
-        <div class="card weather-card" id="weatherCard" style="margin-bottom:20px;">
-          <div class="wc-left">
-            <div style="display:flex;align-items:center;gap:12px;">
-              <div style="font-size:48px;" id="wcEmoji">&#127782;</div>
-              <div><div class="temp" id="wcTemp">18°C</div><div class="city" id="wcCity">杭州 · 阴转小雨</div></div>
-            </div>
-          </div>
+        <div class="card weather-card" style="margin-bottom:20px;">
+          <div class="wc-left"><div style="display:flex;align-items:center;gap:12px;"><div style="font-size:48px;" id="wcEmoji">&#127782;</div><div><div class="temp" id="wcTemp">--°C</div><div class="city" id="wcCity">正在获取天气…</div></div></div></div>
           <div class="wc-right">
-            <div class="item" id="wcHighLow">&#127777; 最高22°C / 最低14°C</div>
-            <div class="item" id="wcDiff">&#128207; 温差8°C</div>
-            <div class="item" id="wcWind">&#127786; 北风3级</div>
-            <div class="item" id="wcHumidity">&#128167; 湿度65%</div>
+            <div class="item" id="wcHighLow">&#127777; 最高--°C / 最低--°C</div>
+            <div class="item" id="wcDiff">&#128207; 温差--°C</div>
+            <div class="item" id="wcWind">&#127786; --</div>
+            <div class="item" id="wcHumidity">&#128167; 湿度--%</div>
           </div>
         </div>
-        <!-- 穿搭建议 -->
-        <div class="card" id="clothingAdviceCard">
-          <div style="font-size:18px;margin-bottom:12px;" id="caPrinciple">今日降温大风，重点护住颈肩脚踝</div>
-          <div class="clothing-row"><div class="label">内搭</div><div class="content" id="caInner">薄长袖纯棉打底，透气吸汗 <span class="tag tag-gray">上课</span></div></div>
-          <div class="clothing-row"><div class="label">外套</div><div class="content" id="caOuter">薄羽绒或风衣，防风为主 <span class="tag tag-gray">通勤</span></div></div>
-          <div class="clothing-row"><div class="label">鞋子</div><div class="content" id="caShoes">运动鞋或短靴，不露脚踝</div></div>
+        <div class="card">
+          <div style="font-size:18px;margin-bottom:12px;" id="caPrinciple">正在获取今日穿衣建议…</div>
+          <div class="clothing-row"><div class="label">内搭</div><div class="content" id="caInner">--</div></div>
+          <div class="clothing-row"><div class="label">外套</div><div class="content" id="caOuter">--</div></div>
+          <div class="clothing-row"><div class="label">鞋子</div><div class="content" id="caShoes">--</div></div>
         </div>
       </div>
       <div class="col-4">
@@ -365,37 +444,31 @@
         </div>
       </div>
     </div>
-
-    <!-- 穿衣预警 -->
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;">
         <div>降温/大风天气自动提醒</div>
         <div style="display:flex;align-items:center;gap:16px;">
-          <div style="width:44px;height:24px;border-radius:12px;background:var(--primary);position:relative;cursor:pointer;">
-            <div style="width:20px;height:20px;border-radius:50%;background:#fff;position:absolute;top:2px;right:2px;"></div>
-          </div>
-          <div style="display:flex;gap:8px;">
-            <span class="tag tag-gray">怕冷</span>
-            <span class="tag tag-primary">正常</span>
-            <span class="tag tag-gray">怕热</span>
-          </div>
+          <div style="width:44px;height:24px;border-radius:12px;background:var(--primary);position:relative;cursor:pointer;"><div style="width:20px;height:20px;border-radius:50%;background:#fff;position:absolute;top:2px;right:2px;"></div></div>
+          <div style="display:flex;gap:8px;"><span class="tag tag-gray">怕冷</span><span class="tag tag-primary">正常</span><span class="tag tag-gray">怕热</span></div>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ============ 6. 生活节律页 ============ -->
+<!-- ============ 7. 生活节律页 ============ -->
 <div class="page" id="page-rhythm">
   <div class="container">
+    <div class="page-banner">
+      <img class="banner-img" src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Peaceful%20Chinese%20garden%20at%20dawn%20with%20traditional%20pavilion%2C%20lotus%20pond%2C%20morning%20mist%2C%20bamboo%20grove%2C%20serene%20atmosphere%2C%20soft%20warm%20light&image_size=landscape_16_9" alt="生活节律">
+      <div class="banner-content"><h2>生活节律</h2><p>顺时起居 · 轻动疏肝 · 情志调畅</p></div>
+    </div>
     <div class="page-header"><div><h1>生活节律</h1><div class="sub">作息·轻动·情绪三维调理</div></div></div>
     <div class="tab-bar">
       <div class="tab active" onclick="switchRhythmTab('sleep', event)">作息节律</div>
       <div class="tab" onclick="switchRhythmTab('exercise', event)">轻动建议</div>
       <div class="tab" onclick="switchRhythmTab('mood', event)">情绪疏解</div>
     </div>
-
-    <!-- Tab1: 作息 -->
     <div id="rhythmTab1">
       <div class="card" style="margin-bottom:20px;">
         <div class="timeline">
@@ -441,21 +514,17 @@
         <div style="font-size:14px;color:var(--text-mid);margin-top:12px;">&#129504; 本周三、周六入睡偏晚，建议提前15分钟放下手机</div>
       </div>
     </div>
-
-    <!-- Tab2: 轻动 -->
     <div id="rhythmTab2" style="display:none;">
       <div class="tag-row"><div class="tag-chip active">全部</div><div class="tag-chip">办公课间</div><div class="tag-chip">日常居家</div></div>
-      <div class="card-grid-3">
-        <div class="acu-card-grid"><div class="img-area">&#129496;</div><div class="card-body"><h4>八段锦·两手托天</h4><span class="tag tag-primary">舒肝理气</span><div class="effect">3分钟 · 通调三焦</div><button class="btn btn-sm btn-outline btn-block">跟着做</button></div></div>
+      <div class="card-grid-3" id="exerciseGrid">
+        <div class="acu-card-grid"><div class="img-area">&#129492;</div><div class="card-body"><h4>八段锦·两手托天</h4><span class="tag tag-primary">舒肝理气</span><div class="effect">3分钟 · 通调三焦</div><button class="btn btn-sm btn-outline btn-block">跟着做</button></div></div>
         <div class="acu-card-grid"><div class="img-area">&#128066;</div><div class="card-body"><h4>梳头功</h4><span class="tag tag-primary">疏肝明目</span><div class="effect">2分钟 · 十指梳头</div><button class="btn btn-sm btn-outline btn-block">跟着做</button></div></div>
         <div class="acu-card-grid"><div class="img-area">&#128170;</div><div class="card-body"><h4>扩胸运动</h4><span class="tag tag-primary">宽胸理气</span><div class="effect">2分钟 · 疏通肺经</div><button class="btn btn-sm btn-outline btn-block">跟着做</button></div></div>
         <div class="acu-card-grid"><div class="img-area">&#129499;</div><div class="card-body"><h4>侧腰拉伸</h4><span class="tag tag-primary">疏通胆经</span><div class="effect">3分钟 · 左右各15次</div><button class="btn btn-sm btn-outline btn-block">跟着做</button></div></div>
-        <div class="acu-card-grid"><div class="img-area">&#128400;</div><div class="card-body"><h4>搓胁肋</h4><span class="tag tag-primary">疏肝解郁</span><div class="effect">2分钟 · 沿肋间隙推</div><button class="btn btn-sm btn-outline btn-block">跟着做</button></div></div>
+        <div class="acu-card-grid"><div class="img-area">&#129474;</div><div class="card-body"><h4>搓胁肋</h4><span class="tag tag-primary">疏肝解郁</span><div class="effect">2分钟 · 沿肋间隙推</div><button class="btn btn-sm btn-outline btn-block">跟着做</button></div></div>
         <div class="acu-card-grid"><div class="img-area">&#127807;</div><div class="card-body"><h4>深呼吸478</h4><span class="tag tag-primary">安神定志</span><div class="effect">4分钟 · 4轮呼吸</div><button class="btn btn-sm btn-outline btn-block">跟着做</button></div></div>
       </div>
     </div>
-
-    <!-- Tab3: 情绪 -->
     <div id="rhythmTab3" style="display:none;">
       <div class="row" style="margin-bottom:20px;">
         <div class="col-6">
@@ -485,51 +554,30 @@
           <div class="card-beige" style="text-align:center;"><div style="font-size:28px;">&#128534;</div><div style="font-weight:500;">紧绷了</div><div style="font-size:13px;color:var(--text-light);">肩颈拉伸2分钟</div></div>
         </div>
       </div>
-      <div class="card">
-        <h3 style="margin-bottom:12px;">月度情绪趋势</h3>
-        <div style="height:80px;display:flex;align-items:end;justify-content:space-around;">
-          <div style="width:20px;height:30px;background:var(--success);border-radius:3px;"></div>
-          <div style="width:20px;height:50px;background:var(--success);border-radius:3px;"></div>
-          <div style="width:20px;height:40px;background:var(--warn);border-radius:3px;"></div>
-          <div style="width:20px;height:60px;background:var(--warn);border-radius:3px;"></div>
-          <div style="width:20px;height:45px;background:var(--success);border-radius:3px;"></div>
-          <div style="width:20px;height:55px;background:var(--warn);border-radius:3px;"></div>
-          <div style="width:20px;height:35px;background:var(--success);border-radius:3px;"></div>
-          <div style="width:20px;height:70px;background:var(--danger);border-radius:3px;"></div>
-          <div style="width:20px;height:50px;background:var(--warn);border-radius:3px;"></div>
-          <div style="width:20px;height:40px;background:var(--success);border-radius:3px;"></div>
-        </div>
-      </div>
     </div>
   </div>
 </div>
 
-<!-- ============ 7. 功法带练页 ============ -->
+<!-- ============ 8. 功法带练页 ============ -->
 <div class="page" id="page-practice">
   <div class="container">
-    <div class="page-header"><div><h1>功法带练</h1><div class="sub">八段锦·疏肝拉伸·办公室微动</div></div></div>
-    <div class="tab-bar">
-      <div class="tab active" onclick="switchPracticeTab('baduanjin', event)">八段锦</div>
-      <div class="tab" onclick="switchPracticeTab('stretch', event)">疏肝拉伸操</div>
-      <div class="tab" onclick="switchPracticeTab('office', event)">办公室微运动</div>
+    <div class="page-banner">
+      <img class="banner-img" src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Silhouette%20of%20a%20person%20practicing%20Tai%20Chi%20Qigong%20in%20a%20misty%20Chinese%20mountain%20garden%20at%20sunrise%2C%20traditional%20pavilion%2C%20peaceful%20zen%20atmosphere&image_size=landscape_16_9" alt="功法带练">
+      <div class="banner-content"><h2>功法带练</h2><p>八段锦 · 疏肝拉伸 · 动静相宜</p></div>
     </div>
-    <div class="row" id="practiceTab1" style="margin-bottom:20px;">
+    <div class="page-header"><div><h1>功法带练</h1><div class="sub">八段锦·疏肝拉伸·办公室微动</div></div></div>
+    <div class="tab-bar"><div class="tab active">八段锦</div><div class="tab">疏肝拉伸操</div><div class="tab">办公室微运动</div></div>
+    <div class="row" style="margin-bottom:20px;">
       <div class="col-8">
         <div class="player-area">
           <div class="play-btn">&#9658;</div>
-          <div class="player-controls">
-            <span>&#9658;</span>
-            <div class="progress"><div class="bar"></div></div>
-            <span style="font-size:12px;">1:05 / 3:42</span>
-            <span>1.0x</span>
-            <span>&#9974;</span>
-          </div>
+          <div class="player-controls"><span>&#9658;</span><div class="progress"><div class="bar"></div></div><span style="font-size:12px;">1:05 / 3:42</span><span>1.0x</span><span>&#9974;</span></div>
         </div>
       </div>
       <div class="col-4">
         <div class="card" style="height:100%;">
           <h3 style="margin-bottom:12px;">动作序列</h3>
-          <div class="move-list">
+          <div class="move-list" id="moveList">
             <div class="move-item active"><div class="num">&#9658;</div><div class="name">两手托天理三焦</div><div class="duration">30s</div></div>
             <div class="move-item"><div class="num">2</div><div class="name">左右开弓似射雕</div><div class="duration">30s</div></div>
             <div class="move-item"><div class="num">3</div><div class="name">调理脾胃须单举</div><div class="duration">30s</div></div>
@@ -542,81 +590,13 @@
         </div>
       </div>
     </div>
-    <div class="card" id="practiceTab1Extra">
+    <div class="card">
       <h3 style="margin-bottom:16px;">动作分解讲解</h3>
       <div style="display:flex;gap:20px;overflow-x:auto;padding-bottom:8px;">
-        <div class="card-beige" style="min-width:200px;text-align:center;border:2px solid var(--primary);"><div style="font-size:40px;">&#129496;</div><div style="font-weight:500;">两手托天</div><div style="font-size:13px;color:var(--text-light);">十指交叉上托</div><div style="font-size:12px;color:var(--primary);margin-top:4px;">通调三焦</div></div>
+        <div class="card-beige" style="min-width:200px;text-align:center;border:2px solid var(--accent);"><div style="font-size:40px;">&#129492;</div><div style="font-weight:500;">两手托天</div><div style="font-size:13px;color:var(--text-light);">十指交叉上托</div><div style="font-size:12px;color:var(--accent);margin-top:4px;">通调三焦</div></div>
         <div class="card-beige" style="min-width:200px;text-align:center;"><div style="font-size:40px;">&#127993;</div><div style="font-weight:500;">左右开弓</div><div style="font-size:13px;color:var(--text-light);">马步左右射箭</div><div style="font-size:12px;color:var(--text-light);margin-top:4px;">疏肝理气</div></div>
         <div class="card-beige" style="min-width:200px;text-align:center;"><div style="font-size:40px;">&#9996;</div><div style="font-weight:500;">单举脾胃</div><div style="font-size:13px;color:var(--text-light);">单手上举</div><div style="font-size:12px;color:var(--text-light);margin-top:4px;">调理脾胃</div></div>
         <div class="card-beige" style="min-width:200px;text-align:center;"><div style="font-size:40px;">&#128064;</div><div style="font-weight:500;">往后瞧</div><div style="font-size:13px;color:var(--text-light);">转头后看</div><div style="font-size:12px;color:var(--text-light);margin-top:4px;">预防劳损</div></div>
-      </div>
-    </div>
-
-    <!-- Tab2: 疏肝拉伸操 -->
-    <div id="practiceTab2" style="display:none;">
-      <div class="card-grid-3">
-        <div class="acu-card-grid"><div class="img-area">&#129499;</div><div class="card-body"><h4>侧腰拉伸</h4><span class="tag tag-primary">疏通胆经</span><div class="effect">3分钟 · 左右各15次</div><button class="btn btn-sm btn-outline btn-block">跟着做</button></div></div>
-        <div class="acu-card-grid"><div class="img-area">&#128400;</div><div class="card-body"><h4>搓胁肋</h4><span class="tag tag-primary">疏肝解郁</span><div class="effect">2分钟 · 沿肋间隙推</div><button class="btn btn-sm btn-outline btn-block">跟着做</button></div></div>
-        <div class="acu-card-grid"><div class="img-area">&#128066;</div><div class="card-body"><h4>梳头功</h4><span class="tag tag-primary">疏肝明目</span><div class="effect">2分钟 · 十指梳头</div><button class="btn btn-sm btn-outline btn-block">跟着做</button></div></div>
-        <div class="acu-card-grid"><div class="img-area">&#127807;</div><div class="card-body"><h4>深呼吸478</h4><span class="tag tag-primary">安神定志</span><div class="effect">4分钟 · 4轮呼吸</div><button class="btn btn-sm btn-outline btn-block">跟着做</button></div></div>
-      </div>
-    </div>
-
-    <!-- Tab3: 办公室微运动 -->
-    <div id="practiceTab3" style="display:none;">
-      <div class="card-grid-3">
-        <div class="acu-card-grid"><div class="img-area">&#128170;</div><div class="card-body"><h4>扩胸运动</h4><span class="tag tag-primary">宽胸理气</span><div class="effect">2分钟 · 疏通肺经</div><button class="btn btn-sm btn-outline btn-block">跟着做</button></div></div>
-        <div class="acu-card-grid"><div class="img-area">&#128066;</div><div class="card-body"><h4>梳头功</h4><span class="tag tag-primary">疏肝明目</span><div class="effect">2分钟 · 十指梳头</div><button class="btn btn-sm btn-outline btn-block">跟着做</button></div></div>
-        <div class="acu-card-grid"><div class="img-area">&#127807;</div><div class="card-body"><h4>深呼吸478</h4><span class="tag tag-primary">安神定志</span><div class="effect">4分钟 · 4轮呼吸</div><button class="btn btn-sm btn-outline btn-block">跟着做</button></div></div>
-        <div class="acu-card-grid"><div class="img-area">&#129496;</div><div class="card-body"><h4>两手托天</h4><span class="tag tag-primary">舒肝理气</span><div class="effect">3分钟 · 通调三焦</div><button class="btn btn-sm btn-outline btn-block">跟着做</button></div></div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ============ 8. AI对话页 ============ -->
-<div class="page" id="page-chat">
-  <div class="container">
-    <div class="page-header"><div><h1>AI疏肝对话</h1><div class="sub">说说你的状态，我来帮你疏解</div></div></div>
-    <div class="chat-page">
-      <div class="chat-main">
-        <div class="chat-messages" id="chatMessages">
-          <div class="chat-msg ai"><div class="avatar">&#127807;</div><div class="bubble">你好呀，我是小松 &#127807; 今天感觉怎么样？有什么不舒服可以跟我说~</div></div>
-          <div class="chat-msg user"><div class="avatar">&#129489;</div><div class="bubble">最近总是胸闷，晚上还睡不着</div></div>
-          <div class="chat-msg ai"><div class="avatar">&#127807;</div><div class="bubble">胸闷失眠多因肝气郁结。建议你：<br>1. 睡前按揉<b>太冲穴</b>5分钟<br>2. 泡一杯<b>玫瑰花茶</b><br>3. 练习<b>478呼吸法</b>4轮<br>坚持3天，应该会有明显改善~<div class="actions"><button>加入待办</button><button>查看详情</button></div></div></div>
-        </div>
-        <div class="chat-input-bar">
-          <div class="mic-btn">&#127908;</div>
-          <input type="text" id="chatInput" placeholder="说说你的状态或问题…" onkeydown="if(event.key==='Enter') sendMessage()">
-          <div class="send-btn" onclick="sendMessage()">&#10148;</div>
-        </div>
-      </div>
-      <div class="chat-side">
-        <div class="card">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-            <h3>今日疏肝处方</h3>
-            <button class="btn btn-primary btn-sm" onclick="generatePrescription()">一键生成</button>
-          </div>
-          <div id="prescriptionArea"></div>
-        </div>
-        <div class="card">
-          <h3 style="margin-bottom:12px;">常用问题</h3>
-          <div class="quick-tags">
-            <div class="qt" onclick="quickAsk('睡不着怎么办')">睡不着怎么办</div>
-            <div class="qt" onclick="quickAsk('生气了怎么疏解')">生气了怎么疏解</div>
-            <div class="qt" onclick="quickAsk('肩颈疼按哪')">肩颈疼按哪</div>
-            <div class="qt" onclick="quickAsk('今天吃什么好')">今天吃什么好</div>
-          </div>
-        </div>
-        <div class="card">
-          <h3 style="margin-bottom:12px;">今日健康概览</h3>
-          <div style="display:flex;justify-content:space-around;text-align:center;">
-            <div><div style="font-size:24px;font-weight:600;color:var(--primary);">62</div><div style="font-size:12px;color:var(--text-light);">肝郁指数</div></div>
-            <div><div style="font-size:24px;font-weight:600;color:var(--success);">3/4</div><div style="font-size:12px;color:var(--text-light);">已完成待办</div></div>
-            <div><div style="font-size:24px;font-weight:600;color:var(--warn);">8min</div><div style="font-size:12px;color:var(--text-light);">运动时长</div></div>
-          </div>
-          <button class="btn-sm btn-block" style="color:var(--primary);margin-top:12px;">查看完整记录</button>
-        </div>
       </div>
     </div>
   </div>
@@ -625,29 +605,43 @@
 <!-- ============ 9. 健康记录页 ============ -->
 <div class="page" id="page-record">
   <div class="container">
-    <div class="page-header"><div><h1>健康记录</h1><div class="sub">症状·用药·慢病全周期跟踪</div></div><button class="btn btn-primary">添加记录</button></div>
+    <div class="page-banner">
+      <img class="banner-img" src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Traditional%20Chinese%20medicine%20cabinet%20with%20small%20wooden%20drawers%20and%20herbal%20jars%2C%20vintage%20pharmacy%20aesthetic%2C%20warm%20amber%20lighting%2C%20neatly%20organized&image_size=landscape_16_9" alt="健康记录">
+      <div class="banner-content"><h2>健康记录</h2><p>症状追踪 · 用药提醒 · 慢病调理</p></div>
+    </div>
+    <div class="page-header"><div><h1>健康记录</h1><div class="sub">症状·用药·慢病全周期跟踪</div></div><button class="btn btn-primary" onclick="switchRecordTab('symptom', event)">添加记录</button></div>
     <div class="tab-bar">
       <div class="tab active" onclick="switchRecordTab('symptom', event)">症状记录</div>
       <div class="tab" onclick="switchRecordTab('medicine', event)">用药提醒</div>
       <div class="tab" onclick="switchRecordTab('chronic', event)">慢病调理</div>
     </div>
-
-    <!-- Tab1: 症状 -->
     <div id="recordTab1">
       <div class="card" style="margin-bottom:20px;">
         <h3>快速记录症状</h3>
-        <div class="symptom-tags">
-          <div class="st">&#129292; 头疼</div><div class="st">&#128567; 胸闷</div><div class="st">&#128164; 失眠</div><div class="st">&#128548; 易怒</div><div class="st">&#128373; 腹胀</div><div class="st">&#128068; 口苦</div>
+        <div class="symptom-tags" id="symptomTags">
+          <div class="st" onclick="quickSymptom('头疼')">&#129292; 头疼</div><div class="st" onclick="quickSymptom('胸闷')">&#128567; 胸闷</div><div class="st" onclick="quickSymptom('失眠')">&#128164; 失眠</div><div class="st" onclick="quickSymptom('易怒')">&#128548; 易怒</div><div class="st" onclick="quickSymptom('腹胀')">&#128373; 腹胀</div><div class="st" onclick="quickSymptom('口苦')">&#128067; 口苦</div>
+        </div>
+        <div class="symptom-form" id="symptomForm" style="display:none;">
+          <div style="margin-bottom:8px;">症状：<b id="sfName">--</b></div>
+          <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;">
+            <div>程度：
+              <select id="sfSeverity" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);">
+                <option>轻度</option><option>中度</option><option>重度</option>
+              </select>
+            </div>
+            <div>可能原因：<input type="text" id="sfCause" maxlength="50" placeholder="如：熬夜、压力大" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);"></div>
+            <button class="btn btn-primary btn-sm" onclick="submitSymptom()">记录</button>
+            <button class="btn btn-outline btn-sm" onclick="hideSymptomForm()">取消</button>
+          </div>
         </div>
       </div>
       <div class="row">
         <div class="col-8">
           <div class="card">
             <h3 style="margin-bottom:12px;">症状历史</h3>
-            <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);"><div><b>胸闷</b> · 轻度</div><div style="color:var(--text-light);">09-12 14:30 · 工作压力</div></div>
-            <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);"><div><b>失眠</b> · 中度</div><div style="color:var(--text-light);">09-11 23:00 · 熬夜刷手机</div></div>
-            <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);"><div><b>易怒</b> · 轻度</div><div style="color:var(--text-light);">09-11 10:00 · 会议冲突</div></div>
-            <div style="display:flex;justify-content:space-between;padding:10px 0;"><div><b>头痛</b> · 轻度</div><div style="color:var(--text-light);">09-10 16:00 · 空调直吹</div></div>
+            <div id="symptomList">
+              <div style="color:var(--text-light);font-size:14px;">正在加载症状记录…</div>
+            </div>
           </div>
         </div>
         <div class="col-4">
@@ -667,15 +661,10 @@
         </div>
       </div>
     </div>
-
-    <!-- Tab2: 用药 -->
     <div id="recordTab2" style="display:none;">
-      <div style="text-align:right;margin-bottom:16px;"><button class="btn btn-primary btn-sm">+ 添加用药</button></div>
-      <div class="med-grid" style="margin-bottom:20px;">
-        <div class="med-card"><div class="mc-left"><div class="name">逍遥丸</div><div class="dose">8粒/次</div></div><div class="mc-right"><div style="font-size:13px;color:var(--text-light);margin-bottom:4px;">饭后30分钟</div><div class="punch" onclick="this.classList.toggle('done')"></div></div></div>
-        <div class="med-card"><div class="mc-left"><div class="name">柴胡疏肝散</div><div class="dose">1袋/次</div></div><div class="mc-right"><div style="font-size:13px;color:var(--text-light);margin-bottom:4px;">早晚饭后</div><div class="punch done" onclick="this.classList.toggle('done')">&#10003;</div></div></div>
-        <div class="med-card"><div class="mc-left"><div class="name">归脾丸</div><div class="dose">10粒/次</div></div><div class="mc-right"><div style="font-size:13px;color:var(--text-light);margin-bottom:4px;">睡前1小时</div><div class="punch" onclick="this.classList.toggle('done')"></div></div></div>
-        <div class="med-card"><div class="mc-left"><div class="name">玫瑰花茶</div><div class="dose">5朵/杯</div></div><div class="mc-right"><div style="font-size:13px;color:var(--text-light);margin-bottom:4px;">下午3点</div><div class="punch done" onclick="this.classList.toggle('done')">&#10003;</div></div></div>
+      <div style="text-align:right;margin-bottom:16px;"><button class="btn btn-primary btn-sm" onclick="alert('添加用药功能即将上线')">+ 添加用药</button></div>
+      <div class="med-grid" style="margin-bottom:20px;" id="medList">
+        <div style="color:var(--text-light);font-size:14px;">正在加载用药提醒…</div>
       </div>
       <div class="card">
         <h3 style="margin-bottom:12px;">用药常识提示</h3>
@@ -684,15 +673,13 @@
         <div style="font-size:14px;color:var(--text-mid);">&#9888; 归脾丸宜温水送服，不宜与浓茶同服</div>
       </div>
     </div>
-
-    <!-- Tab3: 慢病 -->
     <div id="recordTab3" style="display:none;">
       <div class="tag-row" style="margin-bottom:20px;"><div class="tag-chip active">偏头痛</div><div class="tag-chip">慢性咽炎</div><div class="tag-chip">月经不调</div><div class="tag-chip">功能性消化不良</div></div>
       <div class="card" style="margin-bottom:20px;">
         <div class="row">
           <div class="col-6">
             <h3 style="margin-bottom:12px;">日常调理方法</h3>
-            <div style="font-size:14px;margin-bottom:8px;"><b>&#128400; 穴位：</b>风池 + 太阳 + 合谷</div>
+            <div style="font-size:14px;margin-bottom:8px;"><b>&#129474; 穴位：</b>风池 + 太阳 + 合谷</div>
             <div style="font-size:14px;margin-bottom:8px;"><b>&#127813; 饮食：</b>天麻炖鱼头 · 菊花茶</div>
             <div style="font-size:14px;"><b>&#128164; 作息：</b>23点前入睡 · 午休20分钟</div>
           </div>
@@ -722,14 +709,18 @@
 <!-- ============ 10. 个人中心页 ============ -->
 <div class="page" id="page-profile">
   <div class="container">
+    <div class="page-banner">
+      <img class="banner-img" src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Traditional%20Chinese%20medicine%20herbs%20and%20a%20book%20on%20a%20wooden%20desk%2C%20warm%20afternoon%20light%2C%20calm%20and%20organized%20atmosphere%2C%20dried%20chrysanthemum%20and%20goji%20berries%20in%20a%20bowl&image_size=landscape_16_9" alt="个人中心">
+      <div class="banner-content"><h2>个人中心</h2><p>健康档案 · 体质测评 · 偏好设置</p></div>
+    </div>
     <div class="page-header"><div><h1>个人中心</h1><div class="sub">健康档案与偏好设置</div></div></div>
     <div class="profile-layout">
       <div class="profile-menu">
         <div class="card">
           <div class="user-info">
-            <div class="avatar">松</div>
-            <div class="nick" id="pfNick">小松</div>
-            <span class="tag tag-primary" id="pfLevelTag">—</span>
+            <div class="avatar" id="pfAvatar">松</div>
+            <div class="nick" id="pfNick">--</div>
+            <span class="tag tag-primary" id="pfLevelTag">--</span>
           </div>
           <div class="menu-list">
             <div class="mi active">我的健康档案 <span class="arrow">&rarr;</span></div>
@@ -744,32 +735,30 @@
       <div class="profile-content">
         <div class="card" style="margin-bottom:20px;">
           <h3 style="margin-bottom:12px;">基本信息</h3>
-          <div class="info-row"><span class="ir-label">姓名</span><span class="ir-value" id="pfName">—</span></div>
-          <div class="info-row"><span class="ir-label">年龄</span><span class="ir-value">26岁</span></div>
-          <div class="info-row"><span class="ir-label">性别</span><span class="ir-value">女</span></div>
-          <div class="info-row"><span class="ir-label">过敏史</span><span class="ir-value" id="pfAllergy">—</span></div>
-          <button class="btn btn-outline btn-sm" style="margin-top:12px;" onclick="toggleProfileEdit(this, [{id:'pfAllergy',key:'allergy'}])">编辑</button>
+          <div class="info-row"><span class="ir-label">昵称</span><span class="ir-value" id="pfName">--</span></div>
+          <div class="info-row"><span class="ir-label">账号</span><span class="ir-value" id="pfUsername">--</span></div>
+          <div class="info-row"><span class="ir-label">邮箱</span><span class="ir-value" id="pfEmail">--</span></div>
+          <div class="info-row"><span class="ir-label">过敏史</span><span class="ir-value" id="pfAllergy">--</span></div>
+          <button class="btn btn-outline btn-sm" style="margin-top:12px;" onclick="toggleProfileEdit(this, [{id:'pfAllergy',key:'allergy',label:'过敏史'}])">编辑</button>
         </div>
         <div class="card" style="margin-bottom:20px;">
           <h3 style="margin-bottom:12px;">体质测评</h3>
-          <div class="info-row"><span class="ir-label">中医体质</span><span class="ir-value" id="pfConstitution">—</span></div>
-          <div class="info-row"><span class="ir-label">肝郁指数</span><span class="ir-value" id="pfScore" style="color:var(--primary);">—</span></div>
-          <div class="info-row"><span class="ir-label">更新时间</span><span class="ir-value" id="pfUpdated">—</span></div>
-          <button class="btn btn-outline btn-sm" style="margin-top:12px;" onclick="toggleProfileEdit(this, [{id:'pfConstitution',key:'constitution'},{id:'pfScore',key:'score'}])">编辑</button>
-          <button class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="alert('测评问卷功能即将上线，敬请期待')">重新测评</button>
+          <div class="info-row"><span class="ir-label">档案更新</span><span class="ir-value" id="pfUpdated">--</span></div>
+          <div class="info-row"><span class="ir-label">肝郁指数</span><span class="ir-value" style="color:var(--accent);" id="pfScore">--</span></div>
+          <button class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="toggleProfileEdit(this, [{id:'pfScore',key:'score',label:'肝郁指数(0-100)'}])">重新测评</button>
         </div>
         <div class="card" style="margin-bottom:20px;">
           <h3 style="margin-bottom:12px;">健康偏好</h3>
-          <div class="info-row"><span class="ir-label">饮食偏好</span><span class="ir-value" id="pfDiet">—</span></div>
-          <div class="info-row"><span class="ir-label">运动习惯</span><span class="ir-value" id="pfExercise">—</span></div>
-          <div class="info-row"><span class="ir-label">作息规律</span><span class="ir-value" id="pfSleep">—</span></div>
-          <div class="info-row"><span class="ir-label">体感敏感度</span><span class="ir-value" id="pfBody">—</span></div>
-          <button class="btn btn-outline btn-sm" style="margin-top:12px;" onclick="toggleProfileEdit(this, [{id:'pfDiet',key:'dietPref'},{id:'pfExercise',key:'exercisePref'},{id:'pfSleep',key:'sleepPref'},{id:'pfBody',key:'bodySense'}])">编辑</button>
+          <div class="info-row"><span class="ir-label">饮食偏好</span><span class="ir-value" id="pfDiet">--</span></div>
+          <div class="info-row"><span class="ir-label">运动习惯</span><span class="ir-value" id="pfExercise">--</span></div>
+          <div class="info-row"><span class="ir-label">作息规律</span><span class="ir-value" id="pfSleep">--</span></div>
+          <div class="info-row"><span class="ir-label">体感敏感度</span><span class="ir-value" id="pfBody">--</span></div>
+          <button class="btn btn-outline btn-sm" style="margin-top:12px;" onclick="toggleProfileEdit(this, [{id:'pfDiet',key:'dietPref',label:'饮食偏好'},{id:'pfExercise',key:'exercisePref',label:'运动习惯'},{id:'pfSleep',key:'sleepPref',label:'作息规律'},{id:'pfBody',key:'bodySense',label:'体感敏感度'}])">编辑</button>
         </div>
         <div class="card">
           <h3 style="margin-bottom:12px;">数据总览</h3>
           <div class="med-grid">
-            <div class="card-beige" style="text-align:center;"><div style="font-size:24px;font-weight:600;color:var(--primary);">23:15</div><div style="font-size:13px;color:var(--text-light);">平均入睡时间</div></div>
+            <div class="card-beige" style="text-align:center;"><div style="font-size:24px;font-weight:600;color:var(--accent);">23:15</div><div style="font-size:13px;color:var(--text-light);">平均入睡时间</div></div>
             <div class="card-beige" style="text-align:center;"><div style="font-size:24px;font-weight:600;color:var(--success);">62</div><div style="font-size:13px;color:var(--text-light);">平均肝郁指数</div></div>
             <div class="card-beige" style="text-align:center;"><div style="font-size:24px;font-weight:600;color:var(--warn);">8次</div><div style="font-size:13px;color:var(--text-light);">本月症状记录</div></div>
             <div class="card-beige" style="text-align:center;"><div style="font-size:24px;font-weight:600;color:var(--primary);">4.2h</div><div style="font-size:13px;color:var(--text-light);">月均运动时长</div></div>
@@ -779,7 +768,7 @@
     </div>
   </div>
 </div>
-
 <script src="js/app.js"></script>
+
 </body>
 </html>
