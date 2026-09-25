@@ -6,14 +6,34 @@
 const API_BASE = window.location.origin + '/api';
 
 // ============ 工具函数 ============
+const TOKEN_KEY = 'songxu_token';
+const USER_KEY = 'songxu_user';
+
+function getToken() { return localStorage.getItem(TOKEN_KEY) || ''; }
+function saveLogin(token, user) {
+  localStorage.setItem(TOKEN_KEY, token);
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
+  window.currentUser = user;
+}
+function clearLogin() {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+  window.currentUser = null;
+}
+
 async function fetchAPI(endpoint, options = {}) {
   try {
-    const res = await fetch(API_BASE + endpoint, {
-      headers: { 'Content-Type': 'application/json' },
-      ...options,
-    });
-    const data = await res.json();
-    return data;
+    const headers = { 'Content-Type': 'application/json', ...options.headers };
+    const token = getToken();
+    if (token) headers.Authorization = 'Bearer ' + token;
+    const res = await fetch(API_BASE + endpoint, { ...options, headers });
+    if (res.status === 401 && !endpoint.startsWith('/auth/')) {
+      // 登录态失效：清除并回到登录页
+      clearLogin();
+      showPage('login');
+      return { success: false, message: '登录已过期，请重新登录' };
+    }
+    return await res.json();
   } catch (err) {
     console.error('API Error:', err);
     return { success: false, message: '网络请求失败' };
@@ -39,6 +59,7 @@ function showPage(name) {
   if (name === 'home') loadHomeData();
   if (name === 'care') loadAcupoints();
   if (name === 'diet') loadDietData();
+  if (name === 'clothing') loadClothing();
   if (name === 'chat') scrollChatToBottom();
   if (name === 'record') loadSymptomRecords();
 }
@@ -78,16 +99,42 @@ function countdown(btn) {
   }, 1000);
 }
 
+async function sendCode(btn) {
+  const phone = document.getElementById('loginPhone').value.trim();
+  if (!/^1\d{10}$/.test(phone)) {
+    alert('请输入正确的手机号');
+    return;
+  }
+  const res = await fetchAPI('/auth/send-code', {
+    method: 'POST',
+    body: JSON.stringify({ phone }),
+  });
+  if (res.success) {
+    if (res.devCode) {
+      const codeInput = document.getElementById('loginCode');
+      if (codeInput && !codeInput.value) codeInput.value = res.devCode;
+    }
+    countdown(btn);
+  } else {
+    alert(res.message || '验证码发送失败');
+  }
+}
+
 async function loginSuccess() {
+  const phone = document.getElementById('loginPhone').value.trim();
+  const code = document.getElementById('loginCode').value.trim();
+  if (!/^1\d{10}$/.test(phone)) { alert('请输入正确的手机号'); return; }
+  if (!code) { alert('请输入验证码'); return; }
+
   const res = await fetchAPI('/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ phone: '13800006688', code: '1234' }),
+    body: JSON.stringify({ phone, code }),
   });
-  if (res.success || res.user) {
-    window.currentUser = res.user || { name: '小松', score: 62, level: '轻度肝郁' };
+  if (res.success && res.token) {
+    saveLogin(res.token, res.user);
     showPage('home');
   } else {
-    showPage('home');
+    alert(res.message || '登录失败，请重试');
   }
 }
 
@@ -193,6 +240,29 @@ async function loadDietData() {
       el.querySelector('div[style*="font-size:18px"]').textContent = res.data.principle;
     }
   }
+}
+
+// ============ 穿衣建议 ============
+// 接口失败时保留页面默认静态内容，不影响浏览
+async function loadClothing() {
+  const res = await fetchAPI('/clothing');
+  if (!res.success || !res.data) return;
+  const d = res.data;
+  const set = (id, text) => {
+    const el = document.getElementById(id);
+    if (el && text !== undefined && text !== null) el.textContent = text;
+  };
+  set('wcEmoji', d.weather);
+  set('wcTemp', d.temp + '°C');
+  set('wcCity', d.city + ' · ' + (d.weatherText || ''));
+  set('wcHighLow', '\u{1F321} 最高' + d.high + '°C / 最低' + d.low + '°C');
+  set('wcDiff', '\u{1F4CF} 温差' + d.diff + '°C');
+  set('wcWind', '\u{1F32A} ' + d.wind);
+  set('wcHumidity', '\u{1F4A7} 湿度' + d.humidity + '%');
+  set('caPrinciple', d.principle);
+  set('caInner', d.inner);
+  set('caOuter', d.outer);
+  set('caShoes', d.shoes);
 }
 
 // ============ 生活节律 ============
@@ -403,7 +473,7 @@ function escapeHtml(str) {
 }
 
 // ============ 初始化 ============
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   initTagRows();
   initProfileMenu();
   initNavScroll();
@@ -417,4 +487,15 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   setInterval(rotateTips, 3000);
+
+  // 登录态持久化：有 token 时自动恢复登录，失效则留在登录页
+  if (getToken()) {
+    const res = await fetchAPI('/auth/me');
+    if (res.success && res.data) {
+      window.currentUser = res.data;
+      showPage('home');
+    } else {
+      clearLogin();
+    }
+  }
 });

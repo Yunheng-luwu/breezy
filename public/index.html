@@ -71,12 +71,12 @@
       <div class="welcome-sub">开启今天的舒心调理</div>
       <div class="login-form">
         <div class="field">
-          <input type="tel" placeholder="手机号" value="13800006688">
+          <input type="tel" id="loginPhone" placeholder="手机号" value="13800006688">
         </div>
         <div class="field">
           <div class="code-row">
-            <input type="text" placeholder="验证码" value="1234">
-            <button onclick="countdown(this)">获取验证码</button>
+            <input type="text" id="loginCode" placeholder="验证码" value="1234">
+            <button onclick="sendCode(this)">获取验证码</button>
           </div>
         </div>
         <button class="wechat-btn">&#129309; 微信一键登录</button>
@@ -325,26 +325,26 @@
     <div class="row" style="margin-bottom:20px;">
       <div class="col-8">
         <!-- 天气总览 -->
-        <div class="card weather-card" style="margin-bottom:20px;">
+        <div class="card weather-card" id="weatherCard" style="margin-bottom:20px;">
           <div class="wc-left">
             <div style="display:flex;align-items:center;gap:12px;">
-              <div style="font-size:48px;">&#127782;</div>
-              <div><div class="temp">18°C</div><div class="city">杭州 · 阴转小雨</div></div>
+              <div style="font-size:48px;" id="wcEmoji">&#127782;</div>
+              <div><div class="temp" id="wcTemp">18°C</div><div class="city" id="wcCity">杭州 · 阴转小雨</div></div>
             </div>
           </div>
           <div class="wc-right">
-            <div class="item">&#127777; 最高22°C / 最低14°C</div>
-            <div class="item">&#128207; 温差8°C</div>
-            <div class="item">&#127786; 北风3级</div>
-            <div class="item">&#128167; 湿度65%</div>
+            <div class="item" id="wcHighLow">&#127777; 最高22°C / 最低14°C</div>
+            <div class="item" id="wcDiff">&#128207; 温差8°C</div>
+            <div class="item" id="wcWind">&#127786; 北风3级</div>
+            <div class="item" id="wcHumidity">&#128167; 湿度65%</div>
           </div>
         </div>
         <!-- 穿搭建议 -->
-        <div class="card">
-          <div style="font-size:18px;margin-bottom:12px;">今日降温大风，重点护住颈肩脚踝</div>
-          <div class="clothing-row"><div class="label">内搭</div><div class="content">薄长袖纯棉打底，透气吸汗 <span class="tag tag-gray">上课</span></div></div>
-          <div class="clothing-row"><div class="label">外套</div><div class="content">薄羽绒或风衣，防风为主 <span class="tag tag-gray">通勤</span></div></div>
-          <div class="clothing-row"><div class="label">鞋子</div><div class="content">运动鞋或短靴，不露脚踝</div></div>
+        <div class="card" id="clothingAdviceCard">
+          <div style="font-size:18px;margin-bottom:12px;" id="caPrinciple">今日降温大风，重点护住颈肩脚踝</div>
+          <div class="clothing-row"><div class="label">内搭</div><div class="content" id="caInner">薄长袖纯棉打底，透气吸汗 <span class="tag tag-gray">上课</span></div></div>
+          <div class="clothing-row"><div class="label">外套</div><div class="content" id="caOuter">薄羽绒或风衣，防风为主 <span class="tag tag-gray">通勤</span></div></div>
+          <div class="clothing-row"><div class="label">鞋子</div><div class="content" id="caShoes">运动鞋或短靴，不露脚踝</div></div>
         </div>
       </div>
       <div class="col-4">

@@ -4,7 +4,7 @@
 require('dotenv').config();
 
 module.exports = {
-  port: process.env.PORT || 3100,
+  port: process.env.PORT || 3000,
 
   deepseek: {
     apiKey: process.env.DEEPSEEK_API_KEY || '',
@@ -17,8 +17,17 @@ module.exports = {
     port: Number(process.env.DB_PORT || 3306),
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'songxu_ai',
+    database: process.env.DB_NAME || 'songxu',
   },
 
   memoryTurns: Number(process.env.MEMORY_TURNS || 10),
+
+  jwt: {
+    secret: process.env.JWT_SECRET || '',
+    expires: process.env.JWT_EXPIRES || '7d',
+  },
+
+  amap: {
+    key: process.env.AMAP_KEY || '',
+  },
 };
