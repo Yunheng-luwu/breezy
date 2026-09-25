@@ -1,0 +1,14 @@
+{
+  "name": "breezy-backend",
+  "version": "1.0.0",
+  "description": "松序 - 模拟接口后端（静态托管 + Mock API）",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2"
+  }
+}

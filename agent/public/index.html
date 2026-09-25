@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>松序 AI · 独立服务测试台</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">松</div>
+        <div>
+          <div class="title">松序 AI 服务</div>
+          <div class="subtitle">songxu-ai · 独立开发/测试台</div>
+        </div>
+      </div>
+      <div class="status">
+        <span class="badge" id="storageBadge">存储：检测中</span>
+        <span class="badge" id="keyBadge">模型：检测中</span>
+        <button class="btn-ghost" id="newChatBtn">新对话</button>
+      </div>
+    </header>
+
+    <main class="chat" id="chatBox">
+      <div class="msg ai">
+        <div class="avatar">🌿</div>
+        <div class="bubble">
+          你好，我是小松，松序的中医轻养生助手。可以跟我说说你最近的状态，比如胸闷、失眠、压力大，我会陪你一起慢慢调理。
+          <div class="meta">会话将在你发出第一条消息后创建</div>
+        </div>
+      </div>
+    </main>
+
+    <div class="quick" id="quickBar">
+      <button>生气后两胁胀痛怎么办</button>
+      <button>最近总是失眠多梦</button>
+      <button>久坐肩颈很紧张</button>
+      <button>今天适合泡什么脚</button>
+    </div>
+
+    <footer class="input-bar">
+      <input type="text" id="msgInput" placeholder="输入你想说的话，Enter 发送…" maxlength="500" autocomplete="off">
+      <button id="sendBtn">发送</button>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
