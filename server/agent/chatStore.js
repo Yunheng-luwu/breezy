@@ -10,7 +10,7 @@ let dbReady = false;
 
 // 内存降级存储
 const memoryDB = {
-  seq: { user: 1, session: 1 },
+  seq: { user: 1, session: 1, message: 1 },
   sessions: new Map(), // sessionId -> { id, userId, title, messages: [] }
 };
 
@@ -30,8 +30,7 @@ function getStorageMode() {
 }
 
 /**
- * 获取或创建用户
- * 当前未接入登录体系：有 userId 用 userId，否则使用固定演示用户
+ * 获取或创建演示用户（手机号模拟登录）
  */
 async function resolveUser(userId) {
   if (dbReady) {
@@ -49,6 +48,9 @@ async function resolveUser(userId) {
   return { id: memoryDB.seq.user, phone: 'demo', name: '小松' };
 }
 
+/**
+ * 获取或创建会话
+ */
 async function resolveSession(user, sessionId) {
   if (dbReady) {
     if (sessionId) {
@@ -74,6 +76,9 @@ async function resolveSession(user, sessionId) {
   return session;
 }
 
+/**
+ * 读取最近 N 条历史消息（按时间正序返回）
+ */
 async function loadHistory(sessionId) {
   if (dbReady) {
     const [rows] = await pool.query(
@@ -91,6 +96,9 @@ async function loadHistory(sessionId) {
   return session.messages.slice(-config.memoryTurns).map(m => ({ role: m.role, content: m.content }));
 }
 
+/**
+ * 追加一条消息
+ */
 async function appendMessage(sessionId, role, content) {
   if (dbReady) {
     await pool.query(

@@ -1,0 +1,18 @@
+{
+  "name": "songxu",
+  "version": "1.0.0",
+  "description": "松序 - 顺气舒心，慢养日常 | 疏肝解郁轻养生指南",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js",
+    "dev": "node server/server.js"
+  },
+  "dependencies": {
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "dotenv": "^18.0.3",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.3",
+    "mysql2": "^3.24.4"
+  }
+}

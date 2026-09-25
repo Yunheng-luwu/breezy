@@ -17,7 +17,7 @@ class ProviderError extends Error {
 /**
  * 调用大模型生成回复
  * @param {Array<{role:string, content:string}>} messages
- * @returns {Promise<string>}
+ * @returns {Promise<string>} 助手回复文本
  */
 async function chat(messages) {
   const { apiKey, baseURL, model } = config.deepseek;

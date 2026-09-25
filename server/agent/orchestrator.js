@@ -11,8 +11,10 @@ async function handle({ userId, sessionId, message }) {
   const user = await store.resolveUser(userId);
   const session = await store.resolveSession(user, sessionId);
 
+  // 先保存用户消息
   await store.appendMessage(session.id, 'user', message);
 
+  // 安全预检
   const guard = safety.detect(message);
 
   let reply;
