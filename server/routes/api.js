@@ -6,7 +6,7 @@
 const express = require('express');
 const router = express.Router();
 const { pool } = require('../db/pool');
-const { signToken, optionalAuth, requireAuth, DEV_CODE } = require('../middleware/auth');
+const { signToken, optionalAuth, requireAuth, hashPassword, verifyPassword } = require('../middleware/auth');
 const { getClothingByWeather } = require('../services/weather');
 
 // 所有路由先做可选认证（有 token 解析出 req.userId，无 token 按演示用户处理）
@@ -324,40 +324,71 @@ router.post('/record/medicines/:id/punch', wrap(async (req, res) => {
   res.json({ success: true, message: '已打卡' });
 }));
 
-// 发送验证码（开发期固定验证码，接入短信服务后替换）
-router.post('/auth/send-code', wrap(async (req, res) => {
-  const phone = (req.body.phone || '').trim();
-  if (!/^1\d{10}$/.test(phone)) {
-    return res.status(400).json({ success: false, message: '请输入正确的手机号' });
+// ============ 注册 / 登录（账号 + 密码，be-10） ============
+
+const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PASSWORD_RE = /^[a-zA-Z0-9]{6,16}$/;
+
+// 注册：账号 + 昵称 + 邮箱 + 密码 → 创建用户并直接登录
+router.post('/auth/register', wrap(async (req, res) => {
+  const username = (req.body.username || '').trim();
+  const nickname = ((req.body.nickname || '').trim() || '小松').slice(0, 50);
+  const email = (req.body.email || '').trim();
+  const password = req.body.password || '';
+
+  if (!USERNAME_RE.test(username)) {
+    return res.status(400).json({ success: false, message: '账号须为 3-20 位字母、数字或下划线' });
   }
+  if (!EMAIL_RE.test(email) || email.length > 100) {
+    return res.status(400).json({ success: false, message: '请输入正确的邮箱地址' });
+  }
+  if (!PASSWORD_RE.test(password)) {
+    return res.status(400).json({ success: false, message: '密码须为 6-16 位字母或数字' });
+  }
+
+  const [exist] = await pool.query(
+    'SELECT username, email FROM users WHERE username = ? OR email = ? LIMIT 2',
+    [username, email],
+  );
+  if (exist.some(r => r.username === username)) {
+    return res.status(400).json({ success: false, message: '该账号已被注册' });
+  }
+  if (exist.some(r => r.email === email)) {
+    return res.status(400).json({ success: false, message: '该邮箱已被注册' });
+  }
+
+  const [result] = await pool.query(
+    'INSERT INTO users (username, email, password_hash, name) VALUES (?, ?, ?, ?)',
+    [username, email, hashPassword(password), nickname],
+  );
+  const token = signToken(result.insertId);
   res.json({
     success: true,
-    message: '验证码已发送（开发环境）',
-    devCode: DEV_CODE, // 开发环境直接返回便于测试，上线前移除
+    message: '注册成功',
+    user: { name: nickname, username, email, score: 62, level: '轻度肝郁' },
+    token,
   });
 }));
 
-// 登录：手机号 + 验证码 → JWT
+// 登录：账号（用户名或邮箱）+ 密码 → JWT
 router.post('/auth/login', wrap(async (req, res) => {
-  const phone = (req.body.phone || '').trim();
-  const code = (req.body.code || '').trim();
-  if (!/^1\d{10}$/.test(phone)) {
-    return res.status(400).json({ success: false, message: '请输入正确的手机号' });
+  const account = (req.body.account || '').trim();
+  const password = req.body.password || '';
+  if (!account || !password) {
+    return res.status(400).json({ success: false, message: '请输入账号和密码' });
   }
-  if (code !== DEV_CODE) {
-    return res.status(401).json({ success: false, message: '验证码错误' });
-  }
-  let [rows] = await pool.query('SELECT id, name, score, level FROM users WHERE phone = ?', [phone]);
-  if (!rows[0]) {
-    const [result] = await pool.query(
-      'INSERT INTO users (phone, name) VALUES (?, ?)', [phone, '小松'],
-    );
-    rows = [{ id: result.insertId, name: '小松', score: 62, level: '轻度肝郁' }];
-  }
+  const [rows] = await pool.query(
+    'SELECT id, name, username, email, password_hash, score, level FROM users WHERE username = ? OR email = ? LIMIT 1',
+    [account, account],
+  );
   const u = rows[0];
+  if (!u || !u.password_hash || !verifyPassword(password, u.password_hash)) {
+    return res.status(401).json({ success: false, message: '账号或密码错误' });
+  }
   res.json({
     success: true,
-    user: { name: u.name, phone, score: u.score, level: u.level },
+    user: { name: u.name, username: u.username, email: u.email, score: u.score, level: u.level },
     token: signToken(u.id),
   });
 }));
@@ -365,7 +396,7 @@ router.post('/auth/login', wrap(async (req, res) => {
 // 当前登录用户信息（登录态持久化校验）
 router.get('/auth/me', requireAuth, wrap(async (req, res) => {
   const [rows] = await pool.query(
-    'SELECT name, phone, score, level FROM users WHERE id = ?', [req.userId],
+    'SELECT name, username, email, score, level FROM users WHERE id = ?', [req.userId],
   );
   if (!rows[0]) {
     return res.status(401).json({ success: false, message: '用户不存在' });
@@ -389,7 +420,7 @@ router.get('/profile', wrap(async (req, res) => {
   const profileSql = `
     SELECT constitution, allergy, diet_pref, exercise_pref, sleep_pref, body_sense, updated_at
       FROM health_profiles WHERE user_id = ?`;
-  const [users] = await pool.query('SELECT name, score, level FROM users WHERE id = ?', [userId]);
+  const [users] = await pool.query('SELECT name, username, email, score, level FROM users WHERE id = ?', [userId]);
   let [rows] = await pool.query(profileSql, [userId]);
   if (!rows[0]) {
     await pool.query('INSERT IGNORE INTO health_profiles (user_id) VALUES (?)', [userId]);
@@ -400,7 +431,8 @@ router.get('/profile', wrap(async (req, res) => {
   res.json({
     success: true,
     data: {
-      name: u.name, score: u.score, level: u.level,
+      name: u.name, username: u.username, email: u.email,
+      score: u.score, level: u.level,
       constitution: p.constitution, allergy: p.allergy,
       dietPref: p.diet_pref, exercisePref: p.exercise_pref,
       sleepPref: p.sleep_pref, bodySense: p.body_sense,
