@@ -145,6 +145,13 @@ img { max-width: 100%; display: block; }
 .todo-list .todo-item .text { flex:1; font-size:15px; }
 .todo-list .todo-item .text.done { color: var(--text-light); text-decoration: line-through; }
 .todo-list .todo-item .time { font-size:13px; color: var(--text-light); }
+.todo-list .todo-item .todo-del { margin-left:10px; color:var(--text-light); cursor:pointer; font-size:18px; line-height:1; padding:2px 6px; border-radius:4px; user-select:none; }
+.todo-list .todo-item .todo-del:hover { color:#c0392b; background:var(--bg-beige); }
+.todo-list .todo-empty { padding:20px 0; text-align:center; color:var(--text-light); font-size:14px; }
+.todo-add-row { display:none; gap:8px; align-items:center; margin-top:12px; padding:10px 12px; background:var(--bg-beige); border-radius:8px; flex-wrap:wrap; }
+.todo-add-row input[type="text"] { flex:1; min-width:160px; padding:6px 10px; border:1px solid var(--border); border-radius:6px; font-size:14px; font-family:inherit; background:#fff; }
+.todo-add-row input[type="time"] { padding:5px 8px; border:1px solid var(--border); border-radius:6px; font-size:14px; font-family:inherit; background:#fff; }
+.todo-add-row input:focus-visible { outline:2px solid var(--primary); outline-offset:1px; }
 .acu-card { text-align:center; }
 .acu-card .acu-img { font-size:48px; margin:12px 0; }
 .acu-card .acu-name { font-size:16px; font-weight:600; }

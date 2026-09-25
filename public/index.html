@@ -134,12 +134,15 @@
             <button class="btn-sm" style="color:var(--primary);" onclick="markAllDone()">全部标记完成</button>
           </div>
           <div class="todo-list" id="todoList">
-            <div class="todo-item"><div class="check" onclick="toggleTodo(this)"></div><div class="text">逍遥丸 · 饭后30分钟</div><div class="time">12:30</div></div>
-            <div class="todo-item"><div class="check done" onclick="toggleTodo(this)">&#10003;</div><div class="text done">玫瑰花茶一杯</div><div class="time">16:00</div></div>
-            <div class="todo-item"><div class="check" onclick="toggleTodo(this)"></div><div class="text">太冲穴按揉5分钟</div><div class="time">15:00</div></div>
-            <div class="todo-item"><div class="check" onclick="toggleTodo(this)"></div><div class="text">23点前放下手机</div><div class="time">22:30</div></div>
+            <div class="todo-empty">今天还没有待办，点下方“+ 添加待办”创建</div>
           </div>
-          <button class="btn-sm" style="color:var(--primary);margin-top:12px;">+ 添加待办</button>
+          <div class="todo-add-row" id="todoAddRow" style="display:none;">
+            <input type="text" id="todoNewText" maxlength="50" placeholder="要做什么？如：泡脚20分钟">
+            <input type="time" id="todoNewTime">
+            <button class="btn-sm" style="color:var(--primary);" onclick="confirmAddTodo()">添加</button>
+            <button class="btn-sm" onclick="hideAddTodo()">取消</button>
+          </div>
+          <button class="btn-sm" style="color:var(--primary);margin-top:12px;" onclick="showAddTodo()">+ 添加待办</button>
         </div>
       </div>
       <div class="col-4">

@@ -170,7 +170,65 @@ router.post('/rhythm/mood', wrap(async (req, res) => {
   res.json({ success: true, message: '情绪已记录: ' + mood });
 }));
 
-// 待办：切换完成状态（be-4 前端对接用）
+// ============ 待办事项（be-4） ============
+
+const TODO_TYPES = ['med', 'ai', 'sleep', 'diet'];
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+// 按日查询待办（不传 date 默认今天）
+router.get('/todos', wrap(async (req, res) => {
+  const date = (req.query.date || '').trim();
+  if (date && !DATE_RE.test(date)) {
+    return res.status(400).json({ success: false, message: '日期格式应为 YYYY-MM-DD' });
+  }
+  const [rows] = await pool.query(
+    `SELECT id, content AS text, todo_time AS time, is_done AS done, type
+       FROM todos
+      WHERE user_id = ? AND todo_date = COALESCE(?, CURDATE())
+      ORDER BY todo_time`,
+    [getUserId(req), date || null],
+  );
+  res.json({ success: true, data: rows.map(t => ({ ...t, done: !!t.done })) });
+}));
+
+// 创建待办
+router.post('/todos', wrap(async (req, res) => {
+  const content = (req.body.content || '').trim();
+  if (!content) {
+    return res.status(400).json({ success: false, message: '请输入待办内容' });
+  }
+  const time = (req.body.time || '').trim();
+  if (time && !TIME_RE.test(time)) {
+    return res.status(400).json({ success: false, message: '提醒时间格式应为 HH:mm' });
+  }
+  const type = TODO_TYPES.includes(req.body.type) ? req.body.type : 'ai';
+  const date = (req.body.date || '').trim();
+  if (date && !DATE_RE.test(date)) {
+    return res.status(400).json({ success: false, message: '日期格式应为 YYYY-MM-DD' });
+  }
+  const [result] = await pool.query(
+    'INSERT INTO todos (user_id, content, todo_time, type, todo_date) VALUES (?, ?, ?, ?, COALESCE(?, CURDATE()))',
+    [getUserId(req), content.slice(0, 255), time, type, date || null],
+  );
+  res.json({ success: true, data: { id: result.insertId }, message: '待办已添加' });
+}));
+
+// 批量标记当天全部完成/未完成
+router.post('/todos/toggle-all', wrap(async (req, res) => {
+  const date = (req.body.date || '').trim();
+  if (date && !DATE_RE.test(date)) {
+    return res.status(400).json({ success: false, message: '日期格式应为 YYYY-MM-DD' });
+  }
+  const done = req.body.done === false ? 0 : 1;
+  await pool.query(
+    'UPDATE todos SET is_done = ? WHERE user_id = ? AND todo_date = COALESCE(?, CURDATE())',
+    [done, getUserId(req), date || null],
+  );
+  res.json({ success: true, message: done ? '已全部标记完成' : '已全部标记未完成' });
+}));
+
+// 待办：切换完成状态
 router.post('/todos/:id/toggle', wrap(async (req, res) => {
   const [result] = await pool.query(
     'UPDATE todos SET is_done = 1 - is_done WHERE id = ? AND user_id = ?',
@@ -180,6 +238,18 @@ router.post('/todos/:id/toggle', wrap(async (req, res) => {
     return res.status(404).json({ success: false, message: '待办不存在' });
   }
   res.json({ success: true });
+}));
+
+// 删除待办
+router.delete('/todos/:id', wrap(async (req, res) => {
+  const [result] = await pool.query(
+    'DELETE FROM todos WHERE id = ? AND user_id = ?',
+    [req.params.id, getUserId(req)],
+  );
+  if (!result.affectedRows) {
+    return res.status(404).json({ success: false, message: '待办不存在' });
+  }
+  res.json({ success: true, message: '待办已删除' });
 }));
 
 // AI对话（旧版关键词模拟，AI 能力已由独立服务 songxu-ai 提供）
