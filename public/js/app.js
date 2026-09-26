@@ -532,6 +532,9 @@ async function loadDietData() {
   if (r1.success && r1.data) {
     const el = document.getElementById('dietPrinciple');
     if (el && r1.data.principle) el.textContent = r1.data.principle;
+    if (Array.isArray(r1.data.principles) && r1.data.principles.length) {
+      principlePool = r1.data.principles;
+    }
   }
   if (r2.success && r2.data) {
     const good = r2.data.good || {};
@@ -552,6 +555,7 @@ async function loadDietData() {
 
 // ---- 食谱：换一批 / 收藏 / 购物清单 ----
 let recipePoolCache = null;
+let principlePool = [];
 let currentRecipes = [];
 const RECIPE_EMOJI = { '早餐': '\u{1F963}', '午餐': '\u{1F962}', '晚餐': '\u{1F372}', '加餐': '\u{1F375}' };
 const POOL_KEY = { '早餐': 'breakfast', '午餐': 'lunch', '晚餐': 'dinner', '加餐': 'snack' };
@@ -604,6 +608,13 @@ function toggleFav(time, name, ingredients, el) {
 }
 function shuffleRecipes() {
   if (!recipePoolCache) { loadDietData(); return; }
+  // 轮换「今日饮食原则」（避免和当前相同）
+  const principleEl = document.getElementById('dietPrinciple');
+  if (principleEl && principlePool.length > 1) {
+    const current = principleEl.textContent;
+    let candidates = principlePool.filter(p => p !== current);
+    principleEl.textContent = candidates[Math.floor(Math.random() * candidates.length)];
+  }
   const picked = [];
   Object.keys(POOL_KEY).forEach(time => {
     const pool = recipePoolCache[POOL_KEY[time]] || [];
@@ -615,7 +626,7 @@ function shuffleRecipes() {
     picked.push({ time, name: r.name, ingredients: r.ingredients });
   });
   renderRecipes(picked);
-  toast('换了一批新食谱～');
+  toast('原则和食谱都换了一批～');
 }
 function showShoppingList() {
   const set = new Set();
