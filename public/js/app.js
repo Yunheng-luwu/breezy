@@ -1249,7 +1249,7 @@ function renderChatBubble(role, text, cardsHtml) {
 }
 
 // 在聊天区左侧构建/刷新「本次提问」目录（≥2 条提问、宽屏时显示）
-let qTocObserver = null;
+let qTocScroll = null; // {area, fn} 当前滚动监听
 function buildChatQToc() {
   const view = document.querySelector('.chat-view');
   const area = document.getElementById('chatMessages');
@@ -1260,7 +1260,7 @@ function buildChatQToc() {
   if (userMsgs.length < 2) {
     if (toc) toc.remove();
     view.classList.remove('has-qtoc');
-    if (qTocObserver) { qTocObserver.disconnect(); qTocObserver = null; }
+    if (qTocScroll) { qTocScroll.area.removeEventListener('scroll', qTocScroll.fn); qTocScroll = null; }
     return;
   }
 
@@ -1303,25 +1303,22 @@ function buildChatQToc() {
   let spyIdx = n - 1;
   toc.onmousemove = (e) => setPeak(centerFromY(e.clientY));
   toc.onmouseleave = () => setPeak(spyIdx);
-  // 初始波峰为最新一条提问（发送/加载后视图位于底部）
-  setPeak(spyIdx);
-
-  // 滚动联动：当前阅读到的提问为波峰（鼠标悬停导轨时不干扰）
-  if (qTocObserver) qTocObserver.disconnect();
-  if ('IntersectionObserver' in window) {
-    qTocObserver = new IntersectionObserver((entries) => {
-      const visible = entries
-        .filter(en => en.isIntersecting)
-        .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-      if (!visible.length) return;
-      const activeId = visible[0].target.id;
-      const idx = dots.findIndex(d => d.dataset.target === activeId);
-      if (idx < 0) return;
-      spyIdx = idx;
-      if (!toc.matches(':hover')) setPeak(spyIdx);
-    }, { root: area, rootMargin: '-20% 0px -70% 0px', threshold: 0 });
-    userMsgs.forEach(m => qTocObserver.observe(m));
-  }
+  // 滚动联动：取「最后一条顶部越过阅读线（视口约 25% 高）」的提问为当前阅读位置；
+  // 滚到底部时直接锁定最后一条（长回复场景提问气泡会停在判定线上方，穿线判定会失效）
+  if (qTocScroll) { qTocScroll.area.removeEventListener('scroll', qTocScroll.fn); qTocScroll = null; }
+  const onScroll = () => {
+    const line = area.getBoundingClientRect().top + area.clientHeight * 0.25;
+    let idx = 0;
+    userMsgs.forEach((m, i) => {
+      if (m.getBoundingClientRect().top <= line) idx = i;
+    });
+    if (area.scrollTop + area.clientHeight >= area.scrollHeight - 40) idx = n - 1;
+    spyIdx = idx;
+    if (!toc.matches(':hover')) setPeak(spyIdx);
+  };
+  area.addEventListener('scroll', onScroll, { passive: true });
+  qTocScroll = { area, fn: onScroll };
+  onScroll(); // 初始同步（加载/发送后视图位于底部 → 自动锁定最新提问）
 }
 
 // 目录点击：在消息容器内平滑跳转到对应提问（事件委托，重渲染后仍有效）
