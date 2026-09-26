@@ -1646,13 +1646,102 @@ function stopPractice(withToast) {
 // ============ 健康记录 ============
 function switchRecordTab(tab, ev) {
   document.querySelectorAll('#page-record .tab-bar .tab').forEach(t => t.classList.remove('active'));
-  if (ev && ev.currentTarget) ev.currentTarget.classList.add('active');
+  const trigger = (ev && ev.currentTarget) || document.querySelector(`#page-record .tab-bar .tab[data-rkey="${tab}"]`);
+  if (trigger) trigger.classList.add('active');
   const tabs = ['symptom', 'medicine', 'chronic'];
   tabs.forEach((t, i) => {
     const el = document.getElementById('recordTab' + (i + 1));
     if (el) el.style.display = tab === t ? 'block' : 'none';
   });
   if (tab === 'chronic') switchChronic(currentChronic);
+}
+
+// 「＋ 添加记录」入口：选择记录类型
+function openRecordMenu() {
+  if (!getToken()) { toast('登录后才能记录健康数据哦', 'warn'); return; }
+  openModal(`
+    <h3 style="margin:0 0 16px;">添加记录</h3>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <button class="record-menu-item" onclick="pickRecordType('symptom')">
+        <span class="rmi-icon">&#129658;</span>
+        <span style="text-align:left;"><b>记录症状</b><span style="display:block;font-size:12px;color:var(--text-light);font-weight:400;">头疼、失眠等，可自定义症状名</span></span>
+      </button>
+      <button class="record-menu-item" onclick="pickRecordType('medicine')">
+        <span class="rmi-icon">&#128138;</span>
+        <span style="text-align:left;"><b>添加用药提醒</b><span style="display:block;font-size:12px;color:var(--text-light);font-weight:400;">药品、剂量、提醒时间</span></span>
+      </button>
+    </div>
+    <button class="btn btn-outline btn-block" style="margin-top:16px;" onclick="closeModal()">取消</button>`);
+}
+
+function pickRecordType(type) {
+  closeModal();
+  if (type === 'symptom') {
+    switchRecordTab('symptom');
+    setTimeout(openSymptomModal, 120);
+  } else if (type === 'medicine') {
+    switchRecordTab('medicine');
+    setTimeout(openMedForm, 120);
+  }
+}
+
+// 自定义症状记录弹窗（预设标签也可复用）
+const SYMPTOM_QUICK = ['头疼', '胸闷', '失眠', '易怒', '腹胀', '口苦'];
+function openSymptomModal(presetName) {
+  const tags = SYMPTOM_QUICK.map(n =>
+    `<div class="st${n === presetName ? ' selected' : ''}" onclick="pickSymptomSuggestion(this, '${n}')">${n}</div>`).join('');
+  openModal(`
+    <h3 style="margin:0 0 12px;">记录症状</h3>
+    <label class="form-label">症状名称 *</label>
+    <input class="form-input" id="symModalName" maxlength="50" placeholder="直接输入症状，或点下方常用项" value="${escapeHtml(presetName || '')}">
+    <div class="symptom-tags" style="margin:8px 0 14px;">${tags}</div>
+    <label class="form-label">程度</label>
+    <select class="form-input" id="symModalSeverity"><option>轻度</option><option>中度</option><option>重度</option></select>
+    <label class="form-label" style="margin-top:12px;">可能原因</label>
+    <input class="form-input" id="symModalCause" maxlength="50" placeholder="如：熬夜、压力大（选填）">
+    <div style="display:flex;gap:10px;margin-top:20px;">
+      <button class="btn btn-outline" style="flex:1;" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" style="flex:1;" id="symModalSave">记录</button>
+    </div>`);
+  setTimeout(() => {
+    const input = document.getElementById('symModalName');
+    if (input) { input.focus(); input.setSelectionRange(input.value.length, input.value.length); }
+    const btn = document.getElementById('symModalSave');
+    if (btn) btn.onclick = submitSymptomModal;
+  }, 50);
+}
+
+function pickSymptomSuggestion(el, name) {
+  document.querySelectorAll('#modalBox .symptom-tags .st').forEach(s => s.classList.remove('selected'));
+  el.classList.add('selected');
+  const input = document.getElementById('symModalName');
+  if (input) input.value = name;
+}
+
+async function submitSymptomModal() {
+  const name = (document.getElementById('symModalName').value || '').trim();
+  if (!name) { toast('请输入症状名称'); return; }
+  const btn = document.getElementById('symModalSave');
+  btn.disabled = true;
+  btn.textContent = '记录中…';
+  const res = await fetchAPI('/record/symptoms', {
+    method: 'POST',
+    body: JSON.stringify({
+      symptom: name,
+      severity: document.getElementById('symModalSeverity').value,
+      cause: (document.getElementById('symModalCause').value || '').trim(),
+    }),
+  });
+  if (res.success) {
+    closeModal();
+    toast('症状已记录，小松会持续帮你关注 🌿', 'success');
+    loadSymptomRecords();
+    loadSymptomStats();
+  } else {
+    btn.disabled = false;
+    btn.textContent = '记录';
+    toast(res.message || '记录失败，请稍后重试', 'error');
+  }
 }
 
 function quickSymptom(name) {
@@ -1695,7 +1784,7 @@ async function loadSymptomRecords() {
   const list = document.getElementById('symptomList');
   if (!res.success || !res.data || !list) return;
   if (!res.data.length) {
-    list.innerHTML = '<div style="color:var(--text-light);font-size:14px;">还没有症状记录，点上方症状标签快速记录</div>';
+    list.innerHTML = '<div style="color:var(--text-light);font-size:14px;">还没有症状记录，点右上角「＋ 添加记录」开始</div>';
     return;
   }
   list.innerHTML = res.data.map(r => `
