@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash VARCHAR(120) NULL COMMENT 'scrypt:salt:hash',
   phone         VARCHAR(20) NULL,
   name          VARCHAR(50) NOT NULL DEFAULT '小松',
+  role          VARCHAR(10) NOT NULL DEFAULT 'user' COMMENT 'admin=管理员 user=普通用户',
   score         TINYINT UNSIGNED NOT NULL DEFAULT 62 COMMENT '肝郁指数 0-100',
   level         VARCHAR(20) NOT NULL DEFAULT '轻度肝郁',
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
