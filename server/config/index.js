@@ -5,6 +5,8 @@ require('dotenv').config();
 
 module.exports = {
   port: process.env.PORT || 3000,
+  // 生产环境设为 127.0.0.1，仅允许本机（Nginx 反代）访问，不暴露公网
+  host: process.env.HOST || '0.0.0.0',
 
   deepseek: {
     apiKey: process.env.DEEPSEEK_API_KEY || '',
