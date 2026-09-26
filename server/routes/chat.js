@@ -7,7 +7,7 @@ const router = express.Router();
 const orchestrator = require('../agent/orchestrator');
 const store = require('../agent/chatStore');
 const { ProviderError } = require('../agent/providers/deepseek');
-const { ApiError, wrap } = require('../utils/http');
+const { ApiError, wrap, ok } = require('../utils/http');
 
 // 当前用户的会话列表（未登录时走演示用户，与 POST /api/chat 行为一致）
 router.get('/sessions', wrap(async (req, res) => {
@@ -24,6 +24,16 @@ router.get('/sessions/:id/messages', wrap(async (req, res) => {
     throw new ApiError(404, '会话不存在');
   }
   res.json({ success: true, data });
+}));
+
+// 删除会话（校验归属，连带删除消息）
+router.delete('/sessions/:id', wrap(async (req, res) => {
+  const user = await store.resolveUser(req.userId);
+  const deleted = await store.deleteSession(Number(req.params.id), user);
+  if (!deleted) {
+    throw new ApiError(404, '会话不存在');
+  }
+  ok(res, undefined, '会话已删除');
 }));
 
 router.post('/', async (req, res, next) => {

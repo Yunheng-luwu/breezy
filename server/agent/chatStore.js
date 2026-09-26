@@ -162,6 +162,41 @@ async function loadMessages(sessionId, user) {
 }
 
 /**
+ * 删除会话（校验归属，连带删除消息）
+ * @returns {boolean} 是否删除成功（会话不存在或不属于该用户时为 false）
+ */
+async function deleteSession(sessionId, user) {
+  if (dbReady) {
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+      const [sessions] = await conn.query(
+        'SELECT id FROM chat_sessions WHERE id = ? AND user_id = ? FOR UPDATE',
+        [sessionId, user.id],
+      );
+      if (!sessions.length) {
+        await conn.rollback();
+        return false;
+      }
+      await conn.query('DELETE FROM chat_messages WHERE session_id = ?', [sessionId]);
+      const [result] = await conn.query('DELETE FROM chat_sessions WHERE id = ? AND user_id = ?', [sessionId, user.id]);
+      await conn.commit();
+      return result.affectedRows > 0;
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
+    }
+  }
+
+  const session = memoryDB.sessions.get(Number(sessionId));
+  if (!session || session.userId !== user.id) return false;
+  memoryDB.sessions.delete(Number(sessionId));
+  return true;
+}
+
+/**
  * 首条消息时自动命名会话（仅当标题仍是默认名）
  */
 async function renameSessionIfDefault(sessionId, title) {
@@ -186,5 +221,6 @@ module.exports = {
   appendMessage,
   listSessions,
   loadMessages,
+  deleteSession,
   renameSessionIfDefault,
 };

@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -25,7 +25,16 @@
       <a data-page="record">📋 健康记录</a>
       <a data-page="profile">👤 我的</a>
     </nav>
-    <div class="sb-section">历史对话</div>
+    <div class="sb-section">
+      <span>历史对话</span>
+      <button class="sb-manage-btn" id="sbManageBtn" title="管理对话" onclick="toggleSessionManage()">⚙</button>
+    </div>
+    <div class="sb-manage-bar" id="sbManageBar">
+      <label class="sbm-all" onclick="toggleSelAllSessions()">
+        <input type="checkbox" id="sbSelAll" tabindex="-1"><span>全选</span>
+      </label>
+      <button class="sbm-del" onclick="deleteSelectedSessions()">删除<span id="sbSelCount"></span></button>
+    </div>
     <div class="sb-sessions" id="sessionList"></div>
     <div class="sb-footer">
       <div class="avatar" id="sbAvatar">松</div>
@@ -733,7 +742,7 @@
           <div class="menu-list">
             <div class="mi active" onclick="switchProfileView('profile', this)">我的健康档案 <span class="arrow">&rarr;</span></div>
             <div class="mi" onclick="switchProfileView('favorites', this)">我的收藏 <span class="arrow">&rarr;</span></div>
-            <div class="mi" onclick="document.getElementById('pfStatCard').scrollIntoView({behavior:'smooth'})">健康数据总览 <span class="arrow">&rarr;</span></div>
+            <div class="mi" onclick="switchProfileView('stats', this)">健康数据总览 <span class="arrow">&rarr;</span></div>
             <div class="mi" onclick="toast('提醒设置即将上线，可先在「穿衣建议」页开启天气提醒')">提醒设置 <span class="arrow">&rarr;</span></div>
             <div class="mi" onclick="toast('账号安全功能即将上线')">账号与安全 <span class="arrow">&rarr;</span></div>
             <div class="mi" onclick="toast('感谢反馈，可直接在 AI 对话里告诉小松你的建议～')">意见反馈 <span class="arrow">&rarr;</span></div>

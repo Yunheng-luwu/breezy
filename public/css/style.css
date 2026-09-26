@@ -546,7 +546,19 @@ body.drawer-open .mobile-drawer { right:0; }
 .sb-brand .logo { width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg,#C97B5A,#E8A87C); display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:bold; color:#fff; box-shadow:0 2px 8px rgba(201,123,90,0.3); }
 .sb-new-chat { margin:4px 14px 8px; padding:10px; border:1px solid var(--border); border-radius:12px; background:var(--bg-warm); color:var(--primary); font-size:14px; font-weight:600; cursor:pointer; transition:all .2s; }
 .sb-new-chat:hover { background:var(--primary); color:#fff; border-color:var(--primary); }
-.sb-section { padding:12px 18px 6px; font-size:12px; color:var(--text-light); letter-spacing:1px; }
+.sb-section { padding:12px 18px 6px; font-size:12px; color:var(--text-light); letter-spacing:1px; display:flex; align-items:center; justify-content:space-between; }
+.sb-manage-btn { border:none; background:transparent; color:var(--text-light); font-size:14px; line-height:1; padding:3px 6px; border-radius:7px; cursor:pointer; transition:background .15s,color .15s; }
+.sb-manage-btn:hover { background:var(--card-beige); color:var(--primary); }
+.sb-manage-btn.active { font-size:12px; font-weight:600; color:var(--primary); }
+.sb-manage-bar { display:none; align-items:center; justify-content:space-between; gap:8px; padding:2px 18px 8px; font-size:12.5px; color:var(--text-mid); }
+.app-sidebar.managing .sb-manage-bar { display:flex; }
+.sbm-all { display:flex; align-items:center; gap:5px; cursor:pointer; user-select:none; }
+.sbm-all input { accent-color:var(--primary); cursor:pointer; margin:0; }
+.sbm-del { border:none; background:rgba(181,74,58,.12); color:#b54a3a; font-size:12.5px; font-weight:600; padding:4px 12px; border-radius:8px; cursor:pointer; }
+.sbm-del:hover { background:#b54a3a; color:#fff; }
+.sb-session-check { accent-color:var(--primary); width:15px; height:15px; margin:0; cursor:pointer; flex-shrink:0; }
+.sb-session-pick { display:flex; align-items:center; gap:9px; }
+.sb-session-pick.picked { background:rgba(122,139,111,0.14); color:var(--text-dark); font-weight:600; }
 .sb-nav { display:flex; flex-direction:column; padding:0 8px; }
 .sb-nav a { padding:9px 12px; border-radius:10px; font-size:14px; color:var(--text-mid); cursor:pointer; transition:background .15s; }
 .sb-nav a:hover { background:var(--card-beige); color:var(--primary); }
@@ -555,6 +567,7 @@ body.drawer-open .mobile-drawer { right:0; }
 .sb-session { padding:9px 12px; border-radius:10px; font-size:13.5px; color:var(--text-mid); cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .sb-session:hover { background:var(--card-beige); color:var(--primary); }
 .sb-session.active { background:rgba(122,139,111,0.16); color:var(--text-dark); font-weight:600; }
+.sb-session .sb-session-title { display:block; }
 .sb-empty { padding:10px 12px; font-size:12.5px; color:var(--text-light); }
 .sb-footer { display:flex; align-items:center; gap:10px; padding:12px 14px; border-top:1px solid var(--border); }
 .sb-user { flex:1; font-size:14px; color:var(--text-dark); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -593,6 +606,20 @@ body.drawer-open .mobile-drawer { right:0; }
 .chat-input-wrap { padding:0 clamp(16px, 6vw, 80px) 14px; }
 .chat-input-wrap .chat-input-bar { box-shadow:0 4px 18px rgba(54,39,24,0.10); }
 .chat-tip { text-align:center; font-size:12px; color:var(--text-light); margin-top:8px; }
+
+/* 会话提问目录：左侧圆点导轨，每条提问一个圆点（仅桌面布局、≥2 条提问时显示） */
+.chat-view { position:relative; }
+.chat-q-toc { display:none; }
+@media (min-width: 901px) {
+  .chat-view.has-qtoc .chat-q-toc {
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px;
+    position:absolute; left:18px; top:72px; bottom:92px; width:20px; z-index:5;
+  }
+  .chat-view.has-qtoc .chat-messages { padding-left:64px; }
+  .cqt-dot { width:8px; height:8px; border-radius:50%; background:rgba(107,78,46,0.22); cursor:pointer; transition:transform .12s ease-out, background .2s; }
+  .cqt-dot:hover { background:rgba(107,78,46,0.4); }
+  .cqt-dot.active { background:var(--primary); }
+}
 
 /* 板块抽屉（右侧滑出） */
 .panel-mask { position:fixed; inset:0; background:rgba(54,39,24,0.45); z-index:1500; opacity:0; pointer-events:none; transition:opacity .25s; }

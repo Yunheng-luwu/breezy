@@ -83,6 +83,10 @@ function logout() {
   clearLogin();
   chatSessionId = null;
   favCache = []; favLoaded = false;
+  sessionManageMode = false;
+  selectedSessions.clear();
+  const sb = document.getElementById('appSidebar');
+  if (sb) sb.classList.remove('managing');
   const list = document.getElementById('sessionList');
   if (list) list.innerHTML = '';
   showPage('login');
@@ -1230,12 +1234,111 @@ async function selectMood(el) {
 // ============ AI对话 ============
 let chatSessionId = null;
 
+// 会话提问目录：以用户的每条提问为条目，点击跳转到对应问答
+let chatMsgSeq = 0;
+
 function renderChatBubble(role, text, cardsHtml) {
   const avatar = role === 'user' ? '🧑' : '🌿';
   const safeText = escapeHtml(text).replace(/\n/g, '<br>');
   const extra = cardsHtml ? `<div class="ai-cards">${cardsHtml}</div>` : '';
-  return `<div class="chat-msg ${role}"><div class="avatar">${avatar}</div><div class="bubble">${safeText}${extra}</div></div>`;
+  if (role === 'user') {
+    const uid = ++chatMsgSeq;
+    return `<div class="chat-msg user" id="qturn${uid}"><div class="avatar">${avatar}</div><div class="bubble">${safeText}${extra}</div></div>`;
+  }
+  return `<div class="chat-msg ai"><div class="avatar">${avatar}</div><div class="bubble">${safeText}${extra}</div></div>`;
 }
+
+// 在聊天区左侧构建/刷新「本次提问」目录（≥2 条提问、宽屏时显示）
+let qTocObserver = null;
+function buildChatQToc() {
+  const view = document.querySelector('.chat-view');
+  const area = document.getElementById('chatMessages');
+  if (!view || !area) return;
+  let toc = document.getElementById('chatQToc');
+  const userMsgs = [...area.querySelectorAll('.chat-msg.user')];
+
+  if (userMsgs.length < 2) {
+    if (toc) toc.remove();
+    view.classList.remove('has-qtoc');
+    if (qTocObserver) { qTocObserver.disconnect(); qTocObserver = null; }
+    return;
+  }
+
+  if (!toc) {
+    toc = document.createElement('nav');
+    toc.id = 'chatQToc';
+    toc.className = 'chat-q-toc';
+    view.appendChild(toc);
+  }
+  view.classList.add('has-qtoc');
+  toc.innerHTML = userMsgs.map((m) => {
+    const raw = (m.querySelector('.bubble') || m).textContent.trim().replace(/\s+/g, ' ');
+    const label = raw.length > 24 ? raw.slice(0, 24) + '…' : raw;
+    return `<a class="cqt-dot" data-target="${m.id}" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}"></a>`;
+  }).join('');
+
+  // 正态分布波动：波峰为选中圆点，邻近圆点按高斯曲线渐次放大，随鼠标平滑流动
+  const dots = [...toc.querySelectorAll('.cqt-dot')];
+  const n = dots.length;
+  const SIGMA = 0.85;   // 曲线宽度
+  const AMP = 0.9;      // 波峰额外放大量
+  const setPeak = (center) => {
+    dots.forEach((d, i) => {
+      const dist = i - center;
+      const s = 1 + AMP * Math.exp(-(dist * dist) / (2 * SIGMA * SIGMA));
+      d.style.transform = `scale(${s.toFixed(3)})`;
+    });
+    const idx = Math.max(0, Math.min(n - 1, Math.round(center)));
+    dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+  };
+  const centerFromY = (clientY) => {
+    const first = dots[0].getBoundingClientRect();
+    const last = dots[n - 1].getBoundingClientRect();
+    const firstC = first.top + first.height / 2;
+    const lastC = last.top + last.height / 2;
+    const spacing = (lastC - firstC) / (n - 1) || 1;
+    return Math.max(0, Math.min(n - 1, (clientY - firstC) / spacing));
+  };
+  // 阅读位置独立记录，鼠标滑过不污染；移出导轨后波峰回到它
+  let spyIdx = n - 1;
+  toc.onmousemove = (e) => setPeak(centerFromY(e.clientY));
+  toc.onmouseleave = () => setPeak(spyIdx);
+  // 初始波峰为最新一条提问（发送/加载后视图位于底部）
+  setPeak(spyIdx);
+
+  // 滚动联动：当前阅读到的提问为波峰（鼠标悬停导轨时不干扰）
+  if (qTocObserver) qTocObserver.disconnect();
+  if ('IntersectionObserver' in window) {
+    qTocObserver = new IntersectionObserver((entries) => {
+      const visible = entries
+        .filter(en => en.isIntersecting)
+        .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+      if (!visible.length) return;
+      const activeId = visible[0].target.id;
+      const idx = dots.findIndex(d => d.dataset.target === activeId);
+      if (idx < 0) return;
+      spyIdx = idx;
+      if (!toc.matches(':hover')) setPeak(spyIdx);
+    }, { root: area, rootMargin: '-20% 0px -70% 0px', threshold: 0 });
+    userMsgs.forEach(m => qTocObserver.observe(m));
+  }
+}
+
+// 目录点击：在消息容器内平滑跳转到对应提问（事件委托，重渲染后仍有效）
+document.addEventListener('click', (e) => {
+  const item = e.target.closest && e.target.closest('.cqt-dot');
+  if (!item) return;
+  const target = document.getElementById(item.dataset.target);
+  if (!target) return;
+  const area = document.getElementById('chatMessages');
+  if (area) {
+    // 显式对滚动容器定位，并预留顶部间距
+    const top = target.getBoundingClientRect().top - area.getBoundingClientRect().top + area.scrollTop - 84;
+    area.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+  } else {
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+});
 
 async function sendMessage() {
   const input = document.getElementById('chatInput');
@@ -1265,6 +1368,7 @@ async function sendMessage() {
       ? res.data.cards.map(renderChatCard).join('')
       : '';
     chatArea.innerHTML += renderChatBubble('ai', res.data.reply, cardsHtml);
+    buildChatQToc();
     loadSessionList();
   } else {
     chatArea.innerHTML += renderChatBubble('ai', res.message || '抱歉，我暂时无法回复，请稍后再试~');
@@ -1272,12 +1376,17 @@ async function sendMessage() {
   scrollChatToBottom();
 }
 
-// ============ 会话历史（新对话 / 列表 / 回看续聊） ============
+// ============ 会话历史（新对话 / 列表 / 回看续聊 / 管理删除） ============
 const WELCOME_HTML = '<div class="chat-msg ai"><div class="avatar">🌿</div><div class="bubble">你好呀，我是小松 🌿 今天感觉怎么样？有什么不舒服可以跟我说~</div></div>';
+
+let sessionManageMode = false;
+let sessionListCache = [];
+const selectedSessions = new Set();
 
 function newChat() {
   chatSessionId = null;
   document.getElementById('chatMessages').innerHTML = WELCOME_HTML;
+  buildChatQToc();
   document.body.classList.remove('sb-open');
   loadSessionList();
   const input = document.getElementById('chatInput');
@@ -1289,14 +1398,80 @@ async function loadSessionList() {
   if (!box) return;
   const res = await fetchAPI('/chat/sessions');
   if (!res.success || !Array.isArray(res.data)) return;
+  sessionListCache = res.data;
   if (!res.data.length) {
     box.innerHTML = '<div class="sb-empty">还没有对话，和小松聊聊吧</div>';
+    updateManageBar();
     return;
   }
-  box.innerHTML = res.data.map(s =>
-    `<div class="sb-session${s.id === chatSessionId ? ' active' : ''}" onclick="loadSession(${s.id})" title="${escapeHtml(s.lastMessage || '')}">
+  box.innerHTML = res.data.map(s => {
+    if (sessionManageMode) {
+      const on = selectedSessions.has(s.id);
+      return `<div class="sb-session sb-session-pick${on ? ' picked' : ''}" data-sid="${s.id}" onclick="toggleSessionPick(${s.id})" title="${escapeHtml(s.lastMessage || '')}">
+        <input type="checkbox" class="sb-session-check" ${on ? 'checked' : ''} tabindex="-1">
+        <span class="sb-session-title">${escapeHtml(s.title || '新的对话')}</span>
+      </div>`;
+    }
+    return `<div class="sb-session${s.id === chatSessionId ? ' active' : ''}" onclick="loadSession(${s.id})" title="${escapeHtml(s.lastMessage || '')}">
       <span class="sb-session-title">${escapeHtml(s.title || '新的对话')}</span>
-    </div>`).join('');
+    </div>`;
+  }).join('');
+  updateManageBar();
+}
+
+function updateManageBar() {
+  const cnt = selectedSessions.size;
+  const countEl = document.getElementById('sbSelCount');
+  if (countEl) countEl.textContent = cnt ? ' (' + cnt + ')' : '';
+  const all = document.getElementById('sbSelAll');
+  if (all) all.checked = sessionListCache.length > 0 && cnt === sessionListCache.length;
+}
+
+// 进入/退出「管理对话」模式
+function toggleSessionManage(force) {
+  sessionManageMode = typeof force === 'boolean' ? force : !sessionManageMode;
+  selectedSessions.clear();
+  document.getElementById('appSidebar').classList.toggle('managing', sessionManageMode);
+  const btn = document.getElementById('sbManageBtn');
+  if (btn) {
+    btn.textContent = sessionManageMode ? '完成' : '⚙';
+    btn.title = sessionManageMode ? '完成管理' : '管理对话';
+    btn.classList.toggle('active', sessionManageMode);
+  }
+  loadSessionList();
+}
+
+function toggleSessionPick(id) {
+  if (selectedSessions.has(id)) selectedSessions.delete(id);
+  else selectedSessions.add(id);
+  loadSessionList();
+}
+
+function toggleSelAllSessions() {
+  const allPicked = sessionListCache.length > 0 && selectedSessions.size === sessionListCache.length;
+  selectedSessions.clear();
+  if (!allPicked) sessionListCache.forEach(s => selectedSessions.add(s.id));
+  loadSessionList();
+}
+
+async function deleteSelectedSessions() {
+  const ids = [...selectedSessions];
+  if (!ids.length) {
+    toast('请先勾选要删除的对话', 'warn');
+    return;
+  }
+  if (!confirm(`确定删除选中的 ${ids.length} 条对话吗？删除后不可恢复`)) return;
+  let okCount = 0;
+  let failCount = 0;
+  for (const id of ids) {
+    const res = await fetchAPI('/chat/sessions/' + id, { method: 'DELETE' });
+    if (res.success) okCount++; else failCount++;
+  }
+  const currentDeleted = selectedSessions.has(chatSessionId);
+  selectedSessions.clear();
+  toast(failCount ? `已删除 ${okCount} 条，${failCount} 条失败` : `已删除 ${okCount} 条对话`);
+  if (currentDeleted) newChat();
+  else loadSessionList();
 }
 
 async function loadSession(id) {
@@ -1310,6 +1485,7 @@ async function loadSession(id) {
   chatArea.innerHTML = res.data.messages.length
     ? res.data.messages.map(m => renderChatBubble(m.role === 'user' ? 'user' : 'ai', m.content)).join('')
     : WELCOME_HTML;
+  buildChatQToc();
   scrollChatToBottom();
   document.body.classList.remove('sb-open');
   loadSessionList();
@@ -2035,6 +2211,12 @@ function switchProfileView(view, mi) {
   } else {
     if (favCard) favCard.style.display = 'none';
     cards.forEach(c => c.style.display = '');
+    if (view === 'stats') {
+      setTimeout(() => {
+        const statCard = document.getElementById('pfStatCard');
+        if (statCard) statCard.scrollIntoView({ behavior: 'smooth' });
+      }, 60);
+    }
   }
 }
 async function renderFavList() {
