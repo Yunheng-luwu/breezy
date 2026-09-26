@@ -12,6 +12,8 @@ const apiRoutes = require('./routes/api');
 const chatRoutes = require('./routes/chat');
 const adminRoutes = require('./routes/admin');
 const chatStore = require('./agent/chatStore');
+const { optionalAuth } = require('./middleware/auth');
+const { notFoundApi, errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
 
@@ -22,10 +24,19 @@ app.use(express.urlencoded({ extended: true }));
 // 静态文件服务：仅开放 public 目录，不暴露 server/ 源码与 package.json
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
+// 所有 /api 接口先做可选认证：有 token 解析出 req.userId，无 token 放行（由各接口决定是否强制登录）
+app.use('/api', optionalAuth);
+
 // 路由
 app.use('/api/chat', chatRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api', apiRoutes);
+
+// /api 下未匹配路由：JSON 404（必须在静态兜底之前）
+app.use('/api', notFoundApi);
+
+// 全局错误处理（含非法 JSON 请求体、异步路由抛错）
+app.use(errorHandler);
 
 // 默认路由 - 返回首页
 app.get('/', (req, res) => {

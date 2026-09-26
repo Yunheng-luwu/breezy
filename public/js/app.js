@@ -236,8 +236,8 @@ async function doLogin() {
     method: 'POST',
     body: JSON.stringify({ account, password }),
   });
-  if (res.success && res.token) {
-    saveLogin(res.token, res.user);
+  if (res.success && res.data && res.data.token) {
+    saveLogin(res.data.token, res.data.user);
     enterApp();
   } else {
     alert(res.message || '登录失败，请重试');
@@ -276,8 +276,8 @@ async function doRegister() {
     method: 'POST',
     body: JSON.stringify({ username, nickname, email, password }),
   });
-  if (res.success && res.token) {
-    saveLogin(res.token, res.user);
+  if (res.success && res.data && res.data.token) {
+    saveLogin(res.data.token, res.data.user);
     enterApp();
   } else {
     alert(res.message || '注册失败，请重试');
@@ -1738,6 +1738,13 @@ async function toggleProfileEdit(btn, fields) {
   btn.textContent = '编辑';
   btn.dataset.editing = '0';
   await loadProfile();
+  // 昵称变更后同步侧边栏与本地登录信息
+  if (payload.name !== undefined && window.currentUser) {
+    window.currentUser.name = payload.name;
+    localStorage.setItem(USER_KEY, JSON.stringify(window.currentUser));
+    document.getElementById('sbUserName').textContent = payload.name;
+    document.getElementById('sbAvatar').textContent = payload.name.charAt(0);
+  }
 }
 
 // ============ 标签切换通用 ============
