@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -621,17 +621,17 @@
       <img class="banner-img" src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Traditional%20Chinese%20medicine%20cabinet%20with%20small%20wooden%20drawers%20and%20herbal%20jars%2C%20vintage%20pharmacy%20aesthetic%2C%20warm%20amber%20lighting%2C%20neatly%20organized&image_size=landscape_16_9" alt="健康记录">
       <div class="banner-content"><h2>健康记录</h2><p>症状追踪 · 用药提醒 · 慢病调理</p></div>
     </div>
-    <div class="page-header"><div><h1>健康记录</h1><div class="sub">症状·用药·慢病全周期跟踪</div></div><button class="btn btn-primary" onclick="switchRecordTab('symptom', event)">添加记录</button></div>
+    <div class="page-header"><div><h1>健康记录</h1><div class="sub">症状·用药·慢病全周期跟踪</div></div><button class="btn btn-primary" onclick="openRecordMenu(event)">＋ 添加记录</button></div>
     <div class="tab-bar">
-      <div class="tab active" onclick="switchRecordTab('symptom', event)">症状记录</div>
-      <div class="tab" onclick="switchRecordTab('medicine', event)">用药提醒</div>
-      <div class="tab" onclick="switchRecordTab('chronic', event)">慢病调理</div>
+      <div class="tab active" data-rkey="symptom" onclick="switchRecordTab('symptom', event)">症状记录</div>
+      <div class="tab" data-rkey="medicine" onclick="switchRecordTab('medicine', event)">用药提醒</div>
+      <div class="tab" data-rkey="chronic" onclick="switchRecordTab('chronic', event)">慢病调理</div>
     </div>
     <div id="recordTab1">
       <div class="card" style="margin-bottom:20px;">
         <h3>快速记录症状</h3>
         <div class="symptom-tags" id="symptomTags">
-          <div class="st" onclick="quickSymptom('头疼')">&#129292; 头疼</div><div class="st" onclick="quickSymptom('胸闷')">&#128567; 胸闷</div><div class="st" onclick="quickSymptom('失眠')">&#128164; 失眠</div><div class="st" onclick="quickSymptom('易怒')">&#128548; 易怒</div><div class="st" onclick="quickSymptom('腹胀')">&#128373; 腹胀</div><div class="st" onclick="quickSymptom('口苦')">&#128067; 口苦</div>
+          <div class="st" onclick="quickSymptom('头疼')">&#129292; 头疼</div><div class="st" onclick="quickSymptom('胸闷')">&#128567; 胸闷</div><div class="st" onclick="quickSymptom('失眠')">&#128164; 失眠</div><div class="st" onclick="quickSymptom('易怒')">&#128548; 易怒</div><div class="st" onclick="quickSymptom('腹胀')">&#128373; 腹胀</div><div class="st" onclick="quickSymptom('口苦')">&#128067; 口苦</div><div class="st st-custom" onclick="openSymptomModal()">&#9999; 其他症状</div>
         </div>
         <div class="symptom-form" id="symptomForm" style="display:none;">
           <div style="margin-bottom:8px;">症状：<b id="sfName">--</b></div>
@@ -652,7 +652,7 @@
           <div class="card">
             <h3 style="margin-bottom:12px;">症状历史</h3>
             <div id="symptomList">
-              <div style="color:var(--text-light);font-size:14px;">正在加载症状记录…</div>
+              <div style="color:var(--text-light);font-size:14px;">还没有症状记录，点右上角「＋ 添加记录」开始</div>
             </div>
           </div>
         </div>

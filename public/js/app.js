@@ -82,6 +82,7 @@ function logout() {
   if (!confirm('确定退出登录吗？')) return;
   clearLogin();
   chatSessionId = null;
+  favCache = []; favLoaded = false;
   const list = document.getElementById('sessionList');
   if (list) list.innerHTML = '';
   showPage('login');
@@ -169,6 +170,7 @@ function enterApp() {
   document.getElementById('sbUserName').textContent = name;
   newChat();
   refreshChatOverview();
+  loadFavs();
 }
 
 function openPanel(name) {
@@ -524,6 +526,7 @@ function renderFoodTags(el, items, cls) {
 }
 
 async function loadDietData() {
+  if (!favLoaded) await loadFavs();
   const [r1, r2, r3] = await Promise.all([
     fetchAPI('/diet/recommend'),
     fetchAPI('/diet/foods'),
@@ -559,12 +562,58 @@ let principlePool = [];
 let currentRecipes = [];
 const RECIPE_EMOJI = { '早餐': '\u{1F963}', '午餐': '\u{1F962}', '晚餐': '\u{1F372}', '加餐': '\u{1F375}' };
 const POOL_KEY = { '早餐': 'breakfast', '午餐': 'lunch', '晚餐': 'dinner', '加餐': 'snack' };
-const FAV_KEY = 'songxu_favs';
-function getFavs() {
-  try { return JSON.parse(localStorage.getItem(FAV_KEY) || '[]'); } catch (e) { return []; }
+const FAV_KEY = 'songxu_favs'; // 旧版本地收藏键：登录后一次性迁移到账号，随后清除
+let favCache = [];
+let favLoaded = false;
+function getFavs() { return favCache; }
+function isFav(name) { return favCache.some(f => f.name === name); }
+
+// 拉取账号收藏；首次拉取时把旧版本地收藏迁移到服务端
+async function loadFavs() {
+  if (!getToken()) { favCache = []; favLoaded = false; return; }
+  let legacy = [];
+  try { legacy = JSON.parse(localStorage.getItem(FAV_KEY) || '[]'); } catch (e) { legacy = []; }
+  try {
+    if (legacy.length) {
+      await fetchAPI('/favorites', {
+        method: 'POST',
+        body: JSON.stringify({ items: legacy.map(f => ({ type: 'recipe', name: f.name, time: f.time || '', ingredients: f.ingredients || '' })) }),
+      });
+      localStorage.removeItem(FAV_KEY);
+    }
+    const res = await fetchAPI('/favorites');
+    if (res.success) { favCache = res.data || []; favLoaded = true; }
+  } catch (e) {
+    favCache = legacy; // 网络异常时至少保留本地可见
+  }
 }
-function saveFavs(list) { localStorage.setItem(FAV_KEY, JSON.stringify(list)); }
-function isFav(name) { return getFavs().some(f => f.name === name); }
+
+function paintFavBtn(el, name) {
+  if (!el) return;
+  el.classList.toggle('faved', isFav(name));
+  el.textContent = isFav(name) ? '\u2764 已收藏' : '\u{1F90D} 收藏';
+}
+
+async function toggleFav(time, name, ingredients, el) {
+  if (!getToken()) { toast('登录后收藏才能多端同步哦', 'warn'); return; }
+  const existed = isFav(name);
+  // 乐观更新，接口失败再回滚
+  if (existed) favCache = favCache.filter(f => f.name !== name);
+  else favCache.unshift({ type: 'recipe', time, name, ingredients });
+  paintFavBtn(el, name);
+  try {
+    const res = existed
+      ? await fetchAPI('/favorites', { method: 'DELETE', body: JSON.stringify({ type: 'recipe', name }) })
+      : await fetchAPI('/favorites', { method: 'POST', body: JSON.stringify({ type: 'recipe', name, time, ingredients }) });
+    if (!res.success) throw new Error(res.message || '操作失败');
+    toast(existed ? '已取消收藏' : '已收藏，可在「我的-我的收藏」查看', existed ? 'info' : 'success');
+  } catch (e) {
+    if (existed) favCache.unshift({ type: 'recipe', time, name, ingredients });
+    else favCache = favCache.filter(f => f.name !== name);
+    paintFavBtn(el, name);
+    toast(e.message || '操作失败，请稍后再试', 'error');
+  }
+}
 function renderRecipes(items) {
   currentRecipes = items;
   const grid = document.getElementById('recipeGrid');
@@ -589,22 +638,6 @@ function renderRecipes(items) {
       </div>
     </div>`;
   }).join('');
-}
-function toggleFav(time, name, ingredients, el) {
-  let favs = getFavs();
-  const idx = favs.findIndex(f => f.name === name);
-  if (idx >= 0) {
-    favs.splice(idx, 1);
-    toast('已取消收藏');
-  } else {
-    favs.push({ time, name, ingredients });
-    toast('已收藏，可在「我的-我的收藏」查看', 'success');
-  }
-  saveFavs(favs);
-  if (el) {
-    el.classList.toggle('faved', idx < 0);
-    el.textContent = idx < 0 ? '\u2764 已收藏' : '\u{1F90D} 收藏';
-  }
 }
 function shuffleRecipes() {
   if (!recipePoolCache) { loadDietData(); return; }
@@ -1613,13 +1646,102 @@ function stopPractice(withToast) {
 // ============ 健康记录 ============
 function switchRecordTab(tab, ev) {
   document.querySelectorAll('#page-record .tab-bar .tab').forEach(t => t.classList.remove('active'));
-  if (ev && ev.currentTarget) ev.currentTarget.classList.add('active');
+  const trigger = (ev && ev.currentTarget) || document.querySelector(`#page-record .tab-bar .tab[data-rkey="${tab}"]`);
+  if (trigger) trigger.classList.add('active');
   const tabs = ['symptom', 'medicine', 'chronic'];
   tabs.forEach((t, i) => {
     const el = document.getElementById('recordTab' + (i + 1));
     if (el) el.style.display = tab === t ? 'block' : 'none';
   });
   if (tab === 'chronic') switchChronic(currentChronic);
+}
+
+// 「＋ 添加记录」入口：选择记录类型
+function openRecordMenu() {
+  if (!getToken()) { toast('登录后才能记录健康数据哦', 'warn'); return; }
+  openModal(`
+    <h3 style="margin:0 0 16px;">添加记录</h3>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <button class="record-menu-item" onclick="pickRecordType('symptom')">
+        <span class="rmi-icon">&#129658;</span>
+        <span style="text-align:left;"><b>记录症状</b><span style="display:block;font-size:12px;color:var(--text-light);font-weight:400;">头疼、失眠等，可自定义症状名</span></span>
+      </button>
+      <button class="record-menu-item" onclick="pickRecordType('medicine')">
+        <span class="rmi-icon">&#128138;</span>
+        <span style="text-align:left;"><b>添加用药提醒</b><span style="display:block;font-size:12px;color:var(--text-light);font-weight:400;">药品、剂量、提醒时间</span></span>
+      </button>
+    </div>
+    <button class="btn btn-outline btn-block" style="margin-top:16px;" onclick="closeModal()">取消</button>`);
+}
+
+function pickRecordType(type) {
+  closeModal();
+  if (type === 'symptom') {
+    switchRecordTab('symptom');
+    setTimeout(openSymptomModal, 120);
+  } else if (type === 'medicine') {
+    switchRecordTab('medicine');
+    setTimeout(openMedForm, 120);
+  }
+}
+
+// 自定义症状记录弹窗（预设标签也可复用）
+const SYMPTOM_QUICK = ['头疼', '胸闷', '失眠', '易怒', '腹胀', '口苦'];
+function openSymptomModal(presetName) {
+  const tags = SYMPTOM_QUICK.map(n =>
+    `<div class="st${n === presetName ? ' selected' : ''}" onclick="pickSymptomSuggestion(this, '${n}')">${n}</div>`).join('');
+  openModal(`
+    <h3 style="margin:0 0 12px;">记录症状</h3>
+    <label class="form-label">症状名称 *</label>
+    <input class="form-input" id="symModalName" maxlength="50" placeholder="直接输入症状，或点下方常用项" value="${escapeHtml(presetName || '')}">
+    <div class="symptom-tags" style="margin:8px 0 14px;">${tags}</div>
+    <label class="form-label">程度</label>
+    <select class="form-input" id="symModalSeverity"><option>轻度</option><option>中度</option><option>重度</option></select>
+    <label class="form-label" style="margin-top:12px;">可能原因</label>
+    <input class="form-input" id="symModalCause" maxlength="50" placeholder="如：熬夜、压力大（选填）">
+    <div style="display:flex;gap:10px;margin-top:20px;">
+      <button class="btn btn-outline" style="flex:1;" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" style="flex:1;" id="symModalSave">记录</button>
+    </div>`);
+  setTimeout(() => {
+    const input = document.getElementById('symModalName');
+    if (input) { input.focus(); input.setSelectionRange(input.value.length, input.value.length); }
+    const btn = document.getElementById('symModalSave');
+    if (btn) btn.onclick = submitSymptomModal;
+  }, 50);
+}
+
+function pickSymptomSuggestion(el, name) {
+  document.querySelectorAll('#modalBox .symptom-tags .st').forEach(s => s.classList.remove('selected'));
+  el.classList.add('selected');
+  const input = document.getElementById('symModalName');
+  if (input) input.value = name;
+}
+
+async function submitSymptomModal() {
+  const name = (document.getElementById('symModalName').value || '').trim();
+  if (!name) { toast('请输入症状名称'); return; }
+  const btn = document.getElementById('symModalSave');
+  btn.disabled = true;
+  btn.textContent = '记录中…';
+  const res = await fetchAPI('/record/symptoms', {
+    method: 'POST',
+    body: JSON.stringify({
+      symptom: name,
+      severity: document.getElementById('symModalSeverity').value,
+      cause: (document.getElementById('symModalCause').value || '').trim(),
+    }),
+  });
+  if (res.success) {
+    closeModal();
+    toast('症状已记录，小松会持续帮你关注 🌿', 'success');
+    loadSymptomRecords();
+    loadSymptomStats();
+  } else {
+    btn.disabled = false;
+    btn.textContent = '记录';
+    toast(res.message || '记录失败，请稍后重试', 'error');
+  }
 }
 
 function quickSymptom(name) {
@@ -1662,7 +1784,7 @@ async function loadSymptomRecords() {
   const list = document.getElementById('symptomList');
   if (!res.success || !res.data || !list) return;
   if (!res.data.length) {
-    list.innerHTML = '<div style="color:var(--text-light);font-size:14px;">还没有症状记录，点上方症状标签快速记录</div>';
+    list.innerHTML = '<div style="color:var(--text-light);font-size:14px;">还没有症状记录，点右上角「＋ 添加记录」开始</div>';
     return;
   }
   list.innerHTML = res.data.map(r => `
@@ -1915,9 +2037,13 @@ function switchProfileView(view, mi) {
     cards.forEach(c => c.style.display = '');
   }
 }
-function renderFavList() {
+async function renderFavList() {
   const el = document.getElementById('favList');
   if (!el) return;
+  if (!favLoaded) {
+    el.innerHTML = '<div style="color:var(--text-light);font-size:14px;">正在加载收藏…</div>';
+    await loadFavs();
+  }
   const favs = getFavs();
   if (!favs.length) {
     el.innerHTML = '<div style="color:var(--text-light);font-size:14px;">还没有收藏，去「饮食调理」点亮食谱的收藏吧</div>';
@@ -1931,10 +2057,21 @@ function renderFavList() {
       <span class="fav-del" onclick="removeFav('${escapeHtml(f.name)}')">移除收藏</span>
     </div>`).join('') + '</div>';
 }
-function removeFav(name) {
-  saveFavs(getFavs().filter(f => f.name !== name));
-  toast('已移除收藏');
+async function removeFav(name) {
+  if (!getToken()) { toast('登录后才能管理收藏', 'warn'); return; }
+  const backup = getFavs().slice();
+  favCache = favCache.filter(f => f.name !== name);
   renderFavList();
+  const el = document.getElementById('favList');
+  try {
+    const res = await fetchAPI('/favorites', { method: 'DELETE', body: JSON.stringify({ type: 'recipe', name }) });
+    if (!res.success) throw new Error(res.message || '移除失败');
+    toast('已移除收藏');
+  } catch (e) {
+    favCache = backup;
+    if (el) renderFavList();
+    toast(e.message || '移除失败，请稍后再试', 'error');
+  }
 }
 
 // 卡片内编辑：点“编辑”把字段变为输入框，点“保存”提交 PUT /profile
