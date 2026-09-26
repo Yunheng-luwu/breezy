@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -486,9 +486,9 @@
     <div id="rhythmTab1">
       <div class="card" style="margin-bottom:20px;">
         <div class="timeline">
-          <div class="tl-node active"><div class="dot">&#9200;</div><div class="time" id="tlWakeTime">07:00</div><div class="name">起床</div><div class="punch" role="button" tabindex="0" onclick="editRhythmTime('wakeTime','起床')">调整</div></div>
-          <div class="tl-node"><div class="dot">&#128564;</div><div class="time" id="tlNapTime">13:00</div><div class="name">午憩</div><div class="punch" role="button" tabindex="0" onclick="editRhythmTime('napTime','午憩')">调整</div></div>
-          <div class="tl-node"><div class="dot">&#127769;</div><div class="time" id="tlBedTime">23:00</div><div class="name">入睡</div><div class="punch" role="button" tabindex="0" onclick="editRhythmTime('bedTime','入睡')">调整</div></div>
+          <div class="tl-node active"><div class="dot">&#9200;</div><div class="time" id="tlWakeTime">07:00</div><div class="name">起床</div><div class="tl-actions"><div class="tl-punch" id="punchWake" role="button" tabindex="0" onclick="quickRhythmPunch('wake')">打卡</div><div class="tl-edit" role="button" tabindex="0" onclick="editRhythmTime('wakeTime','起床')">调整</div></div></div>
+          <div class="tl-node"><div class="dot">&#128564;</div><div class="time" id="tlNapTime">13:00</div><div class="name">午憩</div><div class="tl-actions"><div class="tl-punch" id="punchNap" role="button" tabindex="0" onclick="quickRhythmPunch('nap')">打卡</div><div class="tl-edit" role="button" tabindex="0" onclick="editRhythmTime('napTime','午憩')">调整</div></div></div>
+          <div class="tl-node"><div class="dot">&#127769;</div><div class="time" id="tlBedTime">23:00</div><div class="name">入睡</div><div class="tl-actions"><div class="tl-punch" id="punchBed" role="button" tabindex="0" onclick="quickRhythmPunch('bed')">打卡</div><div class="tl-edit" role="button" tabindex="0" onclick="editRhythmTime('bedTime','入睡')">调整</div></div></div>
           <div class="tl-node"><div class="dot">&#127811;</div><div class="time">01:00</div><div class="name">肝经当令</div></div>
         </div>
       </div>

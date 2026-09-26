@@ -125,6 +125,7 @@ CREATE TABLE IF NOT EXISTS sleep_checkins (
   checkin_date DATE NOT NULL,
   sleep_time   VARCHAR(5) NOT NULL DEFAULT '' COMMENT '入睡时刻 HH:mm',
   wake_time    VARCHAR(5) NOT NULL DEFAULT '' COMMENT '起床时刻 HH:mm',
+  nap_time     VARCHAR(5) NOT NULL DEFAULT '' COMMENT '午憩时刻 HH:mm',
   created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uk_sleep_user_date (user_id, checkin_date),

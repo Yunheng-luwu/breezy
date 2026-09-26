@@ -153,29 +153,37 @@ router.post('/rhythm/mood', requireAuth, wrap(async (req, res) => {
 // 作息打卡：查近 7 天 + 今日记录
 router.get('/rhythm/sleep', requireAuth, wrap(async (req, res) => {
   const [rows] = await pool.query(
-    `SELECT DATE_FORMAT(checkin_date, '%Y-%m-%d') AS date, sleep_time AS sleepTime, wake_time AS wakeTime
+    `SELECT DATE_FORMAT(checkin_date, '%Y-%m-%d') AS date, sleep_time AS sleepTime,
+            wake_time AS wakeTime, nap_time AS napTime
        FROM sleep_checkins
       WHERE user_id = ? AND checkin_date >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
       ORDER BY checkin_date`,
     [req.userId],
   );
   const [todayRows] = await pool.query(
-    `SELECT sleep_time AS sleepTime, wake_time AS wakeTime
+    `SELECT sleep_time AS sleepTime, wake_time AS wakeTime, nap_time AS napTime
        FROM sleep_checkins WHERE user_id = ? AND checkin_date = CURDATE()`,
     [req.userId],
   );
   ok(res, { week: rows, today: todayRows[0] || null });
 }));
 
-// 作息打卡：当天 upsert（HH:mm 校验）
+// 作息打卡：当天 upsert；起床/入睡/午憩可单独打卡，仅更新本次提交的非空时间
 router.post('/rhythm/sleep', requireAuth, wrap(async (req, res) => {
-  const sleepTime = timeField(req.body.sleepTime, true, '入睡时间');
-  const wakeTime = timeField(req.body.wakeTime, true, '起床时间');
+  const sleepTime = timeField(req.body.sleepTime, false, '入睡时间');
+  const wakeTime = timeField(req.body.wakeTime, false, '起床时间');
+  const napTime = timeField(req.body.napTime, false, '午憩时间');
+  if (!sleepTime && !wakeTime && !napTime) {
+    throw new ApiError(400, '请至少提交一个打卡时间');
+  }
   await pool.query(
-    `INSERT INTO sleep_checkins (user_id, checkin_date, sleep_time, wake_time)
-     VALUES (?, CURDATE(), ?, ?)
-     ON DUPLICATE KEY UPDATE sleep_time = VALUES(sleep_time), wake_time = VALUES(wake_time)`,
-    [req.userId, sleepTime, wakeTime],
+    `INSERT INTO sleep_checkins (user_id, checkin_date, sleep_time, wake_time, nap_time)
+     VALUES (?, CURDATE(), ?, ?, ?)
+     ON DUPLICATE KEY UPDATE
+       sleep_time = IF(VALUES(sleep_time) = '', sleep_time, VALUES(sleep_time)),
+       wake_time  = IF(VALUES(wake_time)  = '', wake_time,  VALUES(wake_time)),
+       nap_time   = IF(VALUES(nap_time)   = '', nap_time,   VALUES(nap_time))`,
+    [req.userId, sleepTime, wakeTime, napTime],
   );
   ok(res, undefined, '今日作息已打卡');
 }));

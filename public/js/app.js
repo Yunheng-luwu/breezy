@@ -953,6 +953,48 @@ const RHYTHM_RANGES = {
   napTime: [12 * 60, 15 * 60],
   bedTime: [20 * 60, 26 * 60 + 30],
 };
+// 时间轴快捷打卡：按钮 / 目标时间元素 / 提交字段 / 称呼
+const RHYTHM_PUNCH = {
+  wake: { btn: 'punchWake', timeEl: 'tlWakeTime', field: 'wakeTime', label: '起床' },
+  nap: { btn: 'punchNap', timeEl: 'tlNapTime', field: 'napTime', label: '午憩' },
+  bed: { btn: 'punchBed', timeEl: 'tlBedTime', field: 'sleepTime', label: '入睡' },
+};
+
+// 按当日记录回显三个打卡按钮状态
+function renderRhythmPunchStates(today) {
+  for (const key of Object.keys(RHYTHM_PUNCH)) {
+    const cfg = RHYTHM_PUNCH[key];
+    const btn = document.getElementById(cfg.btn);
+    if (!btn) continue;
+    const done = !!(today && today[cfg.field]);
+    btn.classList.toggle('done', done);
+    btn.textContent = done ? '已打卡' : '打卡';
+  }
+}
+
+// 时间轴快捷打卡：按当前目标时间一键记录
+async function quickRhythmPunch(key) {
+  if (!getToken()) { toast('登录后才能打卡哦', 'warn'); return; }
+  const cfg = RHYTHM_PUNCH[key];
+  const btn = document.getElementById(cfg.btn);
+  if (btn.classList.contains('done')) {
+    toast(`今天的${cfg.label}已经打过卡了`, 'warn');
+    return;
+  }
+  const time = document.getElementById(cfg.timeEl).textContent.trim();
+  btn.classList.add('disabled');
+  const res = await fetchAPI('/rhythm/sleep', {
+    method: 'POST', body: JSON.stringify({ [cfg.field]: time }),
+  });
+  btn.classList.remove('disabled');
+  if (res.success) {
+    btn.classList.add('done');
+    btn.textContent = '已打卡';
+    toast(`${cfg.label}打卡成功 · ${time}`, 'success');
+  } else {
+    toast(res.message || '打卡失败，请稍后重试', 'error');
+  }
+}
 
 function fmtHM(mins) {
   const m = ((mins % 1440) + 1440) % 1440;
@@ -1017,6 +1059,7 @@ async function loadSleep() {
   const res = await fetchAPI('/rhythm/sleep');
   if (!res.success || !res.data) return;
   const { week = [], today } = res.data;
+  renderRhythmPunchStates(today);
   if (today) {
     const sSel = document.getElementById('sleepTimeInput');
     const wSel = document.getElementById('wakeTimeInput');
