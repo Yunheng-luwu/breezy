@@ -80,6 +80,7 @@ document.addEventListener('keydown', (e) => {
 // ============ 退出登录 ============
 function logout() {
   if (!confirm('确定退出登录吗？')) return;
+  stopTodoReminder();
   clearLogin();
   chatSessionId = null;
   favCache = []; favLoaded = false;
@@ -141,6 +142,71 @@ document.addEventListener('click', (e) => {
   if (!e.target.closest('#notifPanel') && !e.target.closest('.icon-btn')) closeNotification();
 });
 
+// ============ 待办到点提醒（浏览器内：页面打开时每 30 秒检查一次，关页面失效） ============
+let todoReminderTimer = null;
+
+function reminderToday() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function getRemindedSet() {
+  try { return new Set(JSON.parse(localStorage.getItem('songxu_reminded_' + reminderToday()) || '[]')); }
+  catch (e) { return new Set(); }
+}
+function markReminded(key, set) {
+  set.add(key);
+  localStorage.setItem('songxu_reminded_' + reminderToday(), JSON.stringify([...set]));
+}
+
+async function checkTodoReminders() {
+  if (!getToken()) return;
+  const dash = await fetchAPI('/health/dashboard');
+  const todos = (dash.success && dash.data && dash.data.todos || []).filter(t => !t.done && t.time);
+  if (!todos.length) return;
+  const d = new Date();
+  const nowHm = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  const fired = getRemindedSet();
+  for (const t of todos) {
+    const key = t.time + '|' + t.text;
+    if (t.time <= nowHm && !fired.has(key)) {
+      markReminded(key, fired);
+      fireTodoReminder(t);
+    }
+  }
+}
+
+function fireTodoReminder(t) {
+  // 浏览器系统通知（已授权时；应用内弹窗始终显示）
+  if ('Notification' in window && Notification.permission === 'granted') {
+    try { new Notification('松序 · 到点提醒', { body: (t.time ? t.time + ' ' : '') + t.text }); } catch (e) {}
+  }
+  openModal(`
+    <div class="modal-head">
+      <div class="modal-title">⏰ 到点提醒</div>
+      <span class="modal-close" onclick="closeModal()">×</span>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:16px;line-height:1.8;">${escapeHtml((t.time ? t.time + ' ' : '') + t.text)}</div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-primary" onclick="closeModal()">知道了</button>
+    </div>`);
+}
+
+function startTodoReminder() {
+  stopTodoReminder();
+  checkTodoReminders();
+  todoReminderTimer = setInterval(checkTodoReminders, 30000);
+}
+function stopTodoReminder() {
+  if (todoReminderTimer) { clearInterval(todoReminderTimer); todoReminderTimer = null; }
+}
+// 首次点击页面时申请系统通知权限（浏览器要求用户交互后才允许申请）
+document.addEventListener('click', function askNotifPerm() {
+  if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
+  document.removeEventListener('click', askNotifPerm);
+});
+
 // ============ 页面切换（AI 对话常驻主区，其余板块走抽屉） ============
 const PANEL_TITLES = {
   home: '首页', care: '居家保健', diet: '饮食调理', clothing: '穿衣建议',
@@ -175,6 +241,7 @@ function enterApp() {
   newChat();
   refreshChatOverview();
   loadFavs();
+  startTodoReminder();
 }
 
 function openPanel(name) {
