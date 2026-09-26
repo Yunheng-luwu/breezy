@@ -143,6 +143,20 @@ CREATE TABLE IF NOT EXISTS mood_checkins (
   CONSTRAINT fk_bp_mood_user FOREIGN KEY (user_id) REFERENCES users(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 用户收藏（食谱等内容，跟随账号多端同步）
+CREATE TABLE IF NOT EXISTS user_favorites (
+  id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id     BIGINT UNSIGNED NOT NULL,
+  fav_type    VARCHAR(20) NOT NULL DEFAULT 'recipe' COMMENT '收藏类型：recipe=食谱',
+  target_name VARCHAR(100) NOT NULL COMMENT '收藏对象名称（如食谱名）',
+  meta        VARCHAR(255) NOT NULL DEFAULT '' COMMENT '附加信息（餐次/食材等快照）',
+  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_fav_user_target (user_id, fav_type, target_name),
+  KEY idx_fav_user (user_id),
+  CONSTRAINT fk_fav_user FOREIGN KEY (user_id) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ============ 内容数据（种子） ============
 
 -- 穴位库

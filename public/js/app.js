@@ -82,6 +82,7 @@ function logout() {
   if (!confirm('确定退出登录吗？')) return;
   clearLogin();
   chatSessionId = null;
+  favCache = []; favLoaded = false;
   const list = document.getElementById('sessionList');
   if (list) list.innerHTML = '';
   showPage('login');
@@ -169,6 +170,7 @@ function enterApp() {
   document.getElementById('sbUserName').textContent = name;
   newChat();
   refreshChatOverview();
+  loadFavs();
 }
 
 function openPanel(name) {
@@ -524,6 +526,7 @@ function renderFoodTags(el, items, cls) {
 }
 
 async function loadDietData() {
+  if (!favLoaded) await loadFavs();
   const [r1, r2, r3] = await Promise.all([
     fetchAPI('/diet/recommend'),
     fetchAPI('/diet/foods'),
@@ -559,12 +562,58 @@ let principlePool = [];
 let currentRecipes = [];
 const RECIPE_EMOJI = { '早餐': '\u{1F963}', '午餐': '\u{1F962}', '晚餐': '\u{1F372}', '加餐': '\u{1F375}' };
 const POOL_KEY = { '早餐': 'breakfast', '午餐': 'lunch', '晚餐': 'dinner', '加餐': 'snack' };
-const FAV_KEY = 'songxu_favs';
-function getFavs() {
-  try { return JSON.parse(localStorage.getItem(FAV_KEY) || '[]'); } catch (e) { return []; }
+const FAV_KEY = 'songxu_favs'; // 旧版本地收藏键：登录后一次性迁移到账号，随后清除
+let favCache = [];
+let favLoaded = false;
+function getFavs() { return favCache; }
+function isFav(name) { return favCache.some(f => f.name === name); }
+
+// 拉取账号收藏；首次拉取时把旧版本地收藏迁移到服务端
+async function loadFavs() {
+  if (!getToken()) { favCache = []; favLoaded = false; return; }
+  let legacy = [];
+  try { legacy = JSON.parse(localStorage.getItem(FAV_KEY) || '[]'); } catch (e) { legacy = []; }
+  try {
+    if (legacy.length) {
+      await fetchAPI('/favorites', {
+        method: 'POST',
+        body: JSON.stringify({ items: legacy.map(f => ({ type: 'recipe', name: f.name, time: f.time || '', ingredients: f.ingredients || '' })) }),
+      });
+      localStorage.removeItem(FAV_KEY);
+    }
+    const res = await fetchAPI('/favorites');
+    if (res.success) { favCache = res.data || []; favLoaded = true; }
+  } catch (e) {
+    favCache = legacy; // 网络异常时至少保留本地可见
+  }
 }
-function saveFavs(list) { localStorage.setItem(FAV_KEY, JSON.stringify(list)); }
-function isFav(name) { return getFavs().some(f => f.name === name); }
+
+function paintFavBtn(el, name) {
+  if (!el) return;
+  el.classList.toggle('faved', isFav(name));
+  el.textContent = isFav(name) ? '\u2764 已收藏' : '\u{1F90D} 收藏';
+}
+
+async function toggleFav(time, name, ingredients, el) {
+  if (!getToken()) { toast('登录后收藏才能多端同步哦', 'warn'); return; }
+  const existed = isFav(name);
+  // 乐观更新，接口失败再回滚
+  if (existed) favCache = favCache.filter(f => f.name !== name);
+  else favCache.unshift({ type: 'recipe', time, name, ingredients });
+  paintFavBtn(el, name);
+  try {
+    const res = existed
+      ? await fetchAPI('/favorites', { method: 'DELETE', body: JSON.stringify({ type: 'recipe', name }) })
+      : await fetchAPI('/favorites', { method: 'POST', body: JSON.stringify({ type: 'recipe', name, time, ingredients }) });
+    if (!res.success) throw new Error(res.message || '操作失败');
+    toast(existed ? '已取消收藏' : '已收藏，可在「我的-我的收藏」查看', existed ? 'info' : 'success');
+  } catch (e) {
+    if (existed) favCache.unshift({ type: 'recipe', time, name, ingredients });
+    else favCache = favCache.filter(f => f.name !== name);
+    paintFavBtn(el, name);
+    toast(e.message || '操作失败，请稍后再试', 'error');
+  }
+}
 function renderRecipes(items) {
   currentRecipes = items;
   const grid = document.getElementById('recipeGrid');
@@ -589,22 +638,6 @@ function renderRecipes(items) {
       </div>
     </div>`;
   }).join('');
-}
-function toggleFav(time, name, ingredients, el) {
-  let favs = getFavs();
-  const idx = favs.findIndex(f => f.name === name);
-  if (idx >= 0) {
-    favs.splice(idx, 1);
-    toast('已取消收藏');
-  } else {
-    favs.push({ time, name, ingredients });
-    toast('已收藏，可在「我的-我的收藏」查看', 'success');
-  }
-  saveFavs(favs);
-  if (el) {
-    el.classList.toggle('faved', idx < 0);
-    el.textContent = idx < 0 ? '\u2764 已收藏' : '\u{1F90D} 收藏';
-  }
 }
 function shuffleRecipes() {
   if (!recipePoolCache) { loadDietData(); return; }
@@ -1915,9 +1948,13 @@ function switchProfileView(view, mi) {
     cards.forEach(c => c.style.display = '');
   }
 }
-function renderFavList() {
+async function renderFavList() {
   const el = document.getElementById('favList');
   if (!el) return;
+  if (!favLoaded) {
+    el.innerHTML = '<div style="color:var(--text-light);font-size:14px;">正在加载收藏…</div>';
+    await loadFavs();
+  }
   const favs = getFavs();
   if (!favs.length) {
     el.innerHTML = '<div style="color:var(--text-light);font-size:14px;">还没有收藏，去「饮食调理」点亮食谱的收藏吧</div>';
@@ -1931,10 +1968,21 @@ function renderFavList() {
       <span class="fav-del" onclick="removeFav('${escapeHtml(f.name)}')">移除收藏</span>
     </div>`).join('') + '</div>';
 }
-function removeFav(name) {
-  saveFavs(getFavs().filter(f => f.name !== name));
-  toast('已移除收藏');
+async function removeFav(name) {
+  if (!getToken()) { toast('登录后才能管理收藏', 'warn'); return; }
+  const backup = getFavs().slice();
+  favCache = favCache.filter(f => f.name !== name);
   renderFavList();
+  const el = document.getElementById('favList');
+  try {
+    const res = await fetchAPI('/favorites', { method: 'DELETE', body: JSON.stringify({ type: 'recipe', name }) });
+    if (!res.success) throw new Error(res.message || '移除失败');
+    toast('已移除收藏');
+  } catch (e) {
+    favCache = backup;
+    if (el) renderFavList();
+    toast(e.message || '移除失败，请稍后再试', 'error');
+  }
 }
 
 // 卡片内编辑：点“编辑”把字段变为输入框，点“保存”提交 PUT /profile

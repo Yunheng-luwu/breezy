@@ -362,6 +362,70 @@ router.get('/record/symptoms/stats', requireAuth, wrap(async (req, res) => {
   ok(res, { days, monthCount });
 }));
 
+// ============ 用户收藏（跟随账号，多端同步） ============
+
+const FAV_TYPES = ['recipe'];
+
+function parseFavRow(row) {
+  let meta = {};
+  try { meta = row.meta ? JSON.parse(row.meta) : {}; } catch (e) { meta = {}; }
+  return {
+    type: row.fav_type,
+    name: row.target_name,
+    time: meta.time || '',
+    ingredients: meta.ingredients || '',
+    createdAt: row.created_at,
+  };
+}
+
+// 收藏列表（默认食谱）
+router.get('/favorites', requireAuth, wrap(async (req, res) => {
+  const type = enumOr(req.query.type, FAV_TYPES, 'recipe');
+  const [rows] = await pool.query(
+    'SELECT fav_type, target_name, meta, created_at FROM user_favorites WHERE user_id = ? AND fav_type = ? ORDER BY id DESC',
+    [req.userId, type],
+  );
+  ok(res, rows.map(parseFavRow));
+}));
+
+// 添加收藏：支持单条 {type,name,time,ingredients} 或批量数组（用于本地收藏一次性迁移）
+router.post('/favorites', requireAuth, wrap(async (req, res) => {
+  const list = Array.isArray(req.body.items) ? req.body.items : [req.body];
+  const rows = [];
+  for (const item of list.slice(0, 200)) {
+    const type = enumOr(item && item.type, FAV_TYPES, 'recipe');
+    const name = cleanStr(item && item.name, 100);
+    if (!name) continue;
+    const meta = JSON.stringify({
+      time: cleanStr(item.time, 20),
+      ingredients: cleanStr(item.ingredients, 200),
+    });
+    await pool.query(
+      'INSERT IGNORE INTO user_favorites (user_id, fav_type, target_name, meta) VALUES (?, ?, ?, ?)',
+      [req.userId, type, name, meta],
+    );
+    rows.push({ type, name });
+  }
+  ok(res, { count: rows.length }, rows.length ? '已收藏' : '没有可收藏的内容');
+}));
+
+// 取消收藏
+router.delete('/favorites', requireAuth, wrap(async (req, res) => {
+  const type = enumOr(req.body.type, FAV_TYPES, 'recipe');
+  const name = cleanStr(req.body.name, 100);
+  if (!name) {
+    throw new ApiError(400, '缺少收藏名称');
+  }
+  const [result] = await pool.query(
+    'DELETE FROM user_favorites WHERE user_id = ? AND fav_type = ? AND target_name = ?',
+    [req.userId, type, name],
+  );
+  if (!result.affectedRows) {
+    throw new ApiError(404, '收藏不存在');
+  }
+  ok(res, undefined, '已取消收藏');
+}));
+
 // ============ 注册 / 登录（账号 + 密码，be-2） ============
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
