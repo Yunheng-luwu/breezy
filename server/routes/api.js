@@ -11,7 +11,7 @@ const { pool } = require('../db/pool');
 const { signToken, requireAuth, hashPassword, verifyPassword } = require('../middleware/auth');
 const { getClothingByWeather, getClothingByAdcode, searchCity, locateByLngLat } = require('../services/weather');
 const {
-  ApiError, ok, wrap, cleanStr, optionalDate, timeField, enumOr,
+  ApiError, ok, wrap, cleanStr, optionalDate, timeField, enumOr, TIME_RE,
 } = require('../utils/http');
 const {
   dietData, clothingData, exerciseData,
@@ -452,7 +452,8 @@ router.get('/practice/moves', wrap(async (req, res) => {
 router.get('/profile', requireAuth, wrap(async (req, res) => {
   const userId = req.userId;
   const profileSql = `
-    SELECT constitution, allergy, diet_pref, exercise_pref, sleep_pref, body_sense, updated_at
+    SELECT constitution, allergy, diet_pref, exercise_pref, sleep_pref, body_sense,
+           wake_time, nap_time, bed_time, updated_at
       FROM health_profiles WHERE user_id = ?`;
   const [users] = await pool.query('SELECT name, username, email, score, level FROM users WHERE id = ?', [userId]);
   let [rows] = await pool.query(profileSql, [userId]);
@@ -468,6 +469,7 @@ router.get('/profile', requireAuth, wrap(async (req, res) => {
     constitution: p.constitution, allergy: p.allergy,
     dietPref: p.diet_pref, exercisePref: p.exercise_pref,
     sleepPref: p.sleep_pref, bodySense: p.body_sense,
+    wakeTime: p.wake_time, napTime: p.nap_time, bedTime: p.bed_time,
     updatedAt: p.updated_at,
   });
 }));
@@ -502,6 +504,22 @@ router.put('/profile', requireAuth, wrap(async (req, res) => {
     }
   }
 
+  // 目标作息时间：HH:mm 校验，传 null 可清空；未提交则保持原值
+  const timeLabels = { wakeTime: '起床时间', napTime: '午憩时间', bedTime: '入睡时间' };
+  const timeCols = { wakeTime: 'wake_time', napTime: 'nap_time', bedTime: 'bed_time' };
+  for (const [jsKey, col] of Object.entries(timeCols)) {
+    if (body[jsKey] === undefined) {
+      merged[col] = cur[col] !== undefined ? cur[col] : null;
+      continue;
+    }
+    const v = body[jsKey];
+    if (v === null || v === '') { merged[col] = null; continue; }
+    if (typeof v !== 'string' || !TIME_RE.test(v.trim())) {
+      throw new ApiError(400, `${timeLabels[jsKey]}格式应为 HH:mm`);
+    }
+    merged[col] = v.trim();
+  }
+
   // 昵称：可选，写入 users.name（限长 50）
   if (body.name !== undefined) {
     const name = cleanStr(body.name, 50);
@@ -524,14 +542,18 @@ router.put('/profile', requireAuth, wrap(async (req, res) => {
   }
 
   await pool.query(
-    `INSERT INTO health_profiles (user_id, constitution, allergy, diet_pref, exercise_pref, sleep_pref, body_sense)
-     VALUES (?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO health_profiles
+       (user_id, constitution, allergy, diet_pref, exercise_pref, sleep_pref, body_sense,
+        wake_time, nap_time, bed_time)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON DUPLICATE KEY UPDATE
        constitution = VALUES(constitution), allergy = VALUES(allergy),
        diet_pref = VALUES(diet_pref), exercise_pref = VALUES(exercise_pref),
-       sleep_pref = VALUES(sleep_pref), body_sense = VALUES(body_sense)`,
+       sleep_pref = VALUES(sleep_pref), body_sense = VALUES(body_sense),
+       wake_time = VALUES(wake_time), nap_time = VALUES(nap_time), bed_time = VALUES(bed_time)`,
     [userId, merged.constitution, merged.allergy, merged.diet_pref,
-      merged.exercise_pref, merged.sleep_pref, merged.body_sense],
+      merged.exercise_pref, merged.sleep_pref, merged.body_sense,
+      merged.wake_time, merged.nap_time, merged.bed_time],
   );
   ok(res, undefined, '健康档案已保存');
 }));

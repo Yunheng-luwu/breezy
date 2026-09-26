@@ -187,7 +187,7 @@ function openPanel(name) {
   if (name === 'care') loadAcupoints();
   if (name === 'diet') loadDietData();
   if (name === 'clothing') loadClothing();
-  if (name === 'rhythm') { loadExercise(); loadSleep(); }
+  if (name === 'rhythm') { loadExercise(); loadSleep(); loadRhythmPrefs(); }
   if (name === 'practice') loadPracticeMoves();
   if (name === 'record') { loadSymptomRecords(); loadMedicines(); loadSymptomStats(); }
   if (name === 'profile') { loadProfile(); loadProfileStats(); }
@@ -941,6 +941,77 @@ function sleepMinutes(t) {
   const [h, m] = t.split(':').map(Number);
   return h < 12 ? h * 60 + m + 1440 : h * 60 + m;
 }
+
+// ============ 目标作息时间（起床/午憩/入睡，存健康档案，跟随账号） ============
+const RHYTHM_DEFAULTS = { wakeTime: '07:00', napTime: '13:00', bedTime: '23:00' };
+const RHYTHM_LABELS = { wakeTime: '起床', napTime: '午憩', bedTime: '入睡' };
+// 时间轴元素 id 后缀
+const RHYTHM_EL = { wakeTime: 'tlWakeTime', napTime: 'tlNapTime', bedTime: 'tlBedTime' };
+// 各项目可选范围（分钟，入睡跨午夜用 24:xx 表示）
+const RHYTHM_RANGES = {
+  wakeTime: [5 * 60, 11 * 60 + 30],
+  napTime: [12 * 60, 15 * 60],
+  bedTime: [20 * 60, 26 * 60 + 30],
+};
+
+function fmtHM(mins) {
+  const m = ((mins % 1440) + 1440) % 1440;
+  return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+}
+
+// 打开作息抽屉时拉取个性化目标时间；未登录或没设置时显示默认值
+async function loadRhythmPrefs() {
+  const apply = (prefs) => {
+    for (const key of Object.keys(RHYTHM_EL)) {
+      const el = document.getElementById(RHYTHM_EL[key]);
+      if (el) el.textContent = prefs[key] || RHYTHM_DEFAULTS[key];
+    }
+  };
+  apply(RHYTHM_DEFAULTS);
+  if (!getToken()) return;
+  const res = await fetchAPI('/profile');
+  if (res.success && res.data) apply(res.data);
+}
+
+function editRhythmTime(key, label) {
+  if (!getToken()) { toast('登录后才能调整你的专属作息时间哦', 'warn'); return; }
+  const curEl = document.getElementById(RHYTHM_EL[key]);
+  const cur = curEl ? curEl.textContent.trim() : RHYTHM_DEFAULTS[key];
+  const [start, end] = RHYTHM_RANGES[key];
+  let options = '';
+  for (let m = start; m <= end; m += 30) {
+    const v = fmtHM(m);
+    options += `<option value="${v}"${v === cur ? ' selected' : ''}>${v}</option>`;
+  }
+  openModal(`
+    <h3 style="margin:0 0 4px;">调整${label}时间</h3>
+    <div style="font-size:13px;color:var(--text-light);margin-bottom:16px;">保存后会同步到你的健康档案，AI 建议也会参考它</div>
+    <select id="rhythmTimeSelect" style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);font-size:15px;background:#fff;">${options}</select>
+    <div style="display:flex;gap:10px;margin-top:20px;">
+      <button class="btn btn-outline" style="flex:1;" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" style="flex:1;" id="rhythmTimeSave">保存</button>
+    </div>`);
+  document.getElementById('rhythmTimeSave').onclick = () => saveRhythmTime(key);
+}
+
+async function saveRhythmTime(key) {
+  const value = document.getElementById('rhythmTimeSelect').value;
+  const btn = document.getElementById('rhythmTimeSave');
+  btn.disabled = true;
+  btn.textContent = '保存中…';
+  const res = await fetchAPI('/profile', { method: 'PUT', body: JSON.stringify({ [key]: value }) });
+  if (res.success) {
+    const el = document.getElementById(RHYTHM_EL[key]);
+    if (el) el.textContent = value;
+    closeModal();
+    toast(`${RHYTHM_LABELS[key]}时间已调整为 ${value}`, 'success');
+  } else {
+    btn.disabled = false;
+    btn.textContent = '保存';
+    toast(res.message || '保存失败，请重试', 'error');
+  }
+}
+
 async function loadSleep() {
   fillSleepSelects();
   const res = await fetchAPI('/rhythm/sleep');

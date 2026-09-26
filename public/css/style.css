@@ -213,6 +213,7 @@ input { font-family:inherit; outline:none; }
 .tl-node .time { font-size:14px; font-weight:600; color:var(--text-dark); }
 .tl-node .name { font-size:13px; color:var(--text-mid); }
 .tl-node .punch { font-size:12px; color:var(--accent); margin-top:4px; cursor:pointer; }
+.tl-node .punch:hover { text-decoration:underline; }
 .tl-node.active .dot { filter:drop-shadow(0 0 8px rgba(201,123,90,0.4)); }
 .mood-btn { text-align:center; cursor:pointer; padding:12px; border-radius:12px; border:2px solid transparent; transition:all .2s; }
 .mood-btn.selected { border-color:var(--accent); background:var(--card-beige); }
