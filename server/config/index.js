@@ -29,5 +29,8 @@ module.exports = {
 
   amap: {
     key: process.env.AMAP_KEY || '',
+    // IP 定位失败（内网/机房网络）时回退的默认城市 adcode，默认杭州 330100
+    defaultAdcode: process.env.AMAP_DEFAULT_ADCODE || '330100',
+    defaultCity: process.env.AMAP_DEFAULT_CITY || '杭州',
   },
 };
