@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -25,8 +25,9 @@
       <a data-page="profile">我的</a>
     </div>
     <div class="nav-right">
-      <div class="icon-btn">&#128276;<span class="dot"></span></div>
-      <div class="avatar">松</div>
+      <div class="icon-btn" onclick="toggleNotification(event)" role="button" aria-label="今日提醒">&#128276;<span class="dot"></span></div>
+      <div class="notif-panel" id="notifPanel"></div>
+      <div class="avatar" id="navAvatar">松</div>
       <div class="nav-toggle" id="navToggle" role="button" aria-label="打开导航菜单">&#9776;</div>
     </div>
   </div>
@@ -121,7 +122,7 @@
           <div class="chat-msg ai"><div class="avatar">&#127807;</div><div class="bubble">你好呀，我是小松 &#127807; 今天感觉怎么样？有什么不舒服可以跟我说~</div></div>
         </div>
         <div class="chat-input-bar">
-          <div class="mic-btn">&#127908;</div>
+          <div class="mic-btn" onclick="toast('语音输入即将上线，先用文字跟我说吧～')" role="button" aria-label="语音输入">&#127908;</div>
           <input type="text" id="chatInput" placeholder="说说你的状态或问题…" onkeydown="if(event.key==='Enter') sendMessage()">
           <div class="send-btn" onclick="sendMessage()">&#10148;</div>
         </div>
@@ -130,7 +131,7 @@
         <div class="card">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
             <h3>今日疏肝处方</h3>
-            <button class="btn btn-primary btn-sm" onclick="generatePrescription()">一键生成</button>
+            <button class="btn btn-primary btn-sm" onclick="askAIWith('请结合我今天的状态，生成一份今日疏肝处方：情绪怎么调、做什么养生动作，再给我一句鼓励')">一键生成</button>
           </div>
           <div id="prescriptionArea"></div>
         </div>
@@ -327,15 +328,15 @@
       <div class="card-grid-3">
         <div class="herb-recipe-card">
           <img class="hr-img" src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Dried%20rose%20buds%20and%20herbs%20for%20foot%20bath%20in%20a%20wooden%20bowl%2C%20warm%20lighting%2C%20wellness%20photography%2C%20traditional%20Chinese%20medicine&image_size=square" alt="玫瑰疏肝方">
-          <div class="hr-body"><h4>玫瑰疏肝方</h4><span class="tag tag-primary">疏肝解郁</span><div style="font-size:13px;color:var(--text-mid);margin:8px 0;">玫瑰花10g + 柴胡6g + 薄荷5g</div><div style="font-size:12px;color:var(--text-light);">水温40-42°C / 20分钟</div><button class="btn btn-sm btn-outline btn-block" style="margin-top:8px;">开始泡脚</button></div>
+          <div class="hr-body"><h4>玫瑰疏肝方</h4><span class="tag tag-primary">疏肝解郁</span><div style="font-size:13px;color:var(--text-mid);margin:8px 0;">玫瑰花10g + 柴胡6g + 薄荷5g</div><div style="font-size:12px;color:var(--text-light);">水温40-42°C / 20分钟</div><button class="btn btn-sm btn-outline btn-block" style="margin-top:8px;" onclick="footbathToTodo('玫瑰疏肝方泡脚','20分钟')">开始泡脚</button></div>
         </div>
         <div class="herb-recipe-card">
           <img class="hr-img" src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Dried%20mugwort%20artemisia%20leaves%20and%20ginger%20slices%20for%20foot%20bath%2C%20traditional%20Chinese%20medicine%2C%20warm%20natural%20lighting&image_size=square" alt="艾草温通方">
-          <div class="hr-body"><h4>艾草温通方</h4><span class="tag tag-warn">温经散寒</span><div style="font-size:13px;color:var(--text-mid);margin:8px 0;">艾叶15g + 生姜3片 + 红花5g</div><div style="font-size:12px;color:var(--text-light);">水温38-40°C / 15分钟</div><button class="btn btn-sm btn-outline btn-block" style="margin-top:8px;">开始泡脚</button></div>
+          <div class="hr-body"><h4>艾草温通方</h4><span class="tag tag-warn">温经散寒</span><div style="font-size:13px;color:var(--text-mid);margin:8px 0;">艾叶15g + 生姜3片 + 红花5g</div><div style="font-size:12px;color:var(--text-light);">水温38-40°C / 15分钟</div><button class="btn btn-sm btn-outline btn-block" style="margin-top:8px;" onclick="footbathToTodo('艾草温通方泡脚','15分钟')">开始泡脚</button></div>
         </div>
         <div class="herb-recipe-card">
           <img class="hr-img" src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Dried%20he%20huan%20pi%20albizia%20bark%20and%20night%20jasmine%20vines%20for%20herbal%20foot%20soak%2C%20traditional%20Chinese%20medicine%2C%20warm%20lighting&image_size=square" alt="合欢安神方">
-          <div class="hr-body"><h4>合欢安神方</h4><span class="tag tag-success">安神助眠</span><div style="font-size:13px;color:var(--text-mid);margin:8px 0;">合欢皮10g + 夜交藤15g + 柏子仁5g</div><div style="font-size:12px;color:var(--text-light);">水温40°C / 20分钟</div><button class="btn btn-sm btn-outline btn-block" style="margin-top:8px;">开始泡脚</button></div>
+          <div class="hr-body"><h4>合欢安神方</h4><span class="tag tag-success">安神助眠</span><div style="font-size:13px;color:var(--text-mid);margin:8px 0;">合欢皮10g + 夜交藤15g + 柏子仁5g</div><div style="font-size:12px;color:var(--text-light);">水温40°C / 20分钟</div><button class="btn btn-sm btn-outline btn-block" style="margin-top:8px;" onclick="footbathToTodo('合欢安神方泡脚','20分钟')">开始泡脚</button></div>
         </div>
       </div>
     </div>
@@ -356,7 +357,7 @@
         <div style="font-size:18px;margin:8px 0;" id="dietPrinciple">今日阴雨湿重，宜喝陈皮红枣茶，忌冰饮</div>
         <div style="font-size:13px;color:var(--text-light);">基于肝郁指数与今日天气生成</div>
       </div>
-      <div class="dr-right"><div style="font-size:48px;">&#127861;</div><button class="btn-sm" style="color:var(--accent);" onclick="loadDietData()">换一批</button></div>
+      <div class="dr-right"><div style="font-size:48px;">&#127861;</div><button class="btn-sm" style="color:var(--accent);" onclick="shuffleRecipes()">换一批</button></div>
     </div>
     <div class="red-black-grid" style="margin-bottom:20px;">
       <div class="card">
@@ -423,7 +424,8 @@
           </div>
         </div>
         <div class="card">
-          <div style="font-size:18px;margin-bottom:12px;" id="caPrinciple">正在获取今日穿衣建议…</div>
+          <div style="font-size:18px;margin-bottom:8px;" id="caPrinciple">正在获取今日穿衣建议…</div>
+          <div id="caSenseTip" style="font-size:13px;color:var(--accent);margin-bottom:12px;display:none;"></div>
           <div class="clothing-row"><div class="label">内搭</div><div class="content" id="caInner">--</div></div>
           <div class="clothing-row"><div class="label">外套</div><div class="content" id="caOuter">--</div></div>
           <div class="clothing-row"><div class="label">鞋子</div><div class="content" id="caShoes">--</div></div>
@@ -448,8 +450,12 @@
       <div style="display:flex;align-items:center;justify-content:space-between;">
         <div>降温/大风天气自动提醒</div>
         <div style="display:flex;align-items:center;gap:16px;">
-          <div style="width:44px;height:24px;border-radius:12px;background:var(--primary);position:relative;cursor:pointer;"><div style="width:20px;height:20px;border-radius:50%;background:#fff;position:absolute;top:2px;right:2px;"></div></div>
-          <div style="display:flex;gap:8px;"><span class="tag tag-gray">怕冷</span><span class="tag tag-primary">正常</span><span class="tag tag-gray">怕热</span></div>
+          <div id="weatherAlertSwitch" onclick="toggleWeatherAlert()" role="switch" aria-checked="true" style="width:44px;height:24px;border-radius:12px;background:var(--primary);position:relative;cursor:pointer;"><div style="width:20px;height:20px;border-radius:50%;background:#fff;position:absolute;top:2px;right:2px;transition:all .2s;"></div></div>
+          <div style="display:flex;gap:8px;" id="bodySenseTags">
+            <span class="tag tag-gray" onclick="setBodySense('怕冷', this)">怕冷</span>
+            <span class="tag tag-primary" onclick="setBodySense('正常', this)">正常</span>
+            <span class="tag tag-gray" onclick="setBodySense('怕热', this)">怕热</span>
+          </div>
         </div>
       </div>
     </div>
@@ -482,12 +488,12 @@
         <div class="col-8">
           <div class="card">
             <h3 style="margin-bottom:12px;">作息打卡</h3>
-            <div style="display:flex;gap:16px;margin-bottom:12px;">
-              <div>入睡时间: <select style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);"><option>23:00</option><option>23:30</option><option>00:00</option></select></div>
-              <div>起床时间: <select style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);"><option>07:00</option><option>07:30</option><option>08:00</option></select></div>
+            <div style="display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap;">
+              <div>入睡时间: <select id="sleepTimeInput" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);"></select></div>
+              <div>起床时间: <select id="wakeTimeInput" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);"></select></div>
             </div>
-            <button class="btn btn-primary btn-sm">今日打卡</button>
-            <div style="margin-top:12px;font-size:13px;color:var(--text-light);">本周连续打卡 5 天</div>
+            <button class="btn btn-primary btn-sm" onclick="submitSleep(event)">今日打卡</button>
+            <div style="margin-top:12px;font-size:13px;color:var(--text-light);" id="sleepStreak">本周打卡 0 天</div>
           </div>
         </div>
         <div class="col-4">
@@ -502,20 +508,14 @@
       </div>
       <div class="card">
         <h3 style="margin-bottom:12px;">周作息趋势</h3>
-        <div style="height:120px;display:flex;align-items:end;justify-content:space-around;border-bottom:1px solid var(--border);padding-bottom:8px;">
-          <div style="text-align:center;"><div style="width:24px;height:80px;background:var(--primary);border-radius:4px;"></div><div style="font-size:12px;color:var(--text-light);margin-top:4px;">周一</div></div>
-          <div style="text-align:center;"><div style="width:24px;height:90px;background:var(--primary);border-radius:4px;"></div><div style="font-size:12px;color:var(--text-light);margin-top:4px;">周二</div></div>
-          <div style="text-align:center;"><div style="width:24px;height:100px;background:var(--warn);border-radius:4px;"></div><div style="font-size:12px;color:var(--text-light);margin-top:4px;">周三</div></div>
-          <div style="text-align:center;"><div style="width:24px;height:75px;background:var(--primary);border-radius:4px;"></div><div style="font-size:12px;color:var(--text-light);margin-top:4px;">周四</div></div>
-          <div style="text-align:center;"><div style="width:24px;height:85px;background:var(--primary);border-radius:4px;"></div><div style="font-size:12px;color:var(--text-light);margin-top:4px;">周五</div></div>
-          <div style="text-align:center;"><div style="width:24px;height:110px;background:var(--danger);border-radius:4px;"></div><div style="font-size:12px;color:var(--text-light);margin-top:4px;">周六</div></div>
-          <div style="text-align:center;"><div style="width:24px;height:95px;background:var(--warn);border-radius:4px;"></div><div style="font-size:12px;color:var(--text-light);margin-top:4px;">周日</div></div>
+        <div id="sleepTrend" style="height:120px;display:flex;align-items:end;justify-content:space-around;border-bottom:1px solid var(--border);padding-bottom:8px;">
+          <div style="color:var(--text-light);font-size:13px;margin:auto;">打卡后展示本周入睡时间趋势</div>
         </div>
-        <div style="font-size:14px;color:var(--text-mid);margin-top:12px;">&#129504; 本周三、周六入睡偏晚，建议提前15分钟放下手机</div>
+        <div style="font-size:14px;color:var(--text-mid);margin-top:12px;" id="sleepTrendTip">&#129504; 每天记录作息，这里会帮你盯住熬夜的日子</div>
       </div>
     </div>
     <div id="rhythmTab2" style="display:none;">
-      <div class="tag-row"><div class="tag-chip active">全部</div><div class="tag-chip">办公课间</div><div class="tag-chip">日常居家</div></div>
+      <div class="tag-row"><div class="tag-chip active" onclick="filterExercise(this,'all')">全部</div><div class="tag-chip" onclick="filterExercise(this,'office')">办公课间</div><div class="tag-chip" onclick="filterExercise(this,'home')">日常居家</div></div>
       <div class="card-grid-3" id="exerciseGrid">
         <div class="acu-card-grid"><div class="img-area">&#129492;</div><div class="card-body"><h4>八段锦·两手托天</h4><span class="tag tag-primary">舒肝理气</span><div class="effect">3分钟 · 通调三焦</div><button class="btn btn-sm btn-outline btn-block">跟着做</button></div></div>
         <div class="acu-card-grid"><div class="img-area">&#128066;</div><div class="card-body"><h4>梳头功</h4><span class="tag tag-primary">疏肝明目</span><div class="effect">2分钟 · 十指梳头</div><button class="btn btn-sm btn-outline btn-block">跟着做</button></div></div>
@@ -540,7 +540,7 @@
         <div class="col-6">
           <div class="card" style="text-align:center;">
             <h3 style="margin-bottom:8px;">疏肝呼吸法</h3>
-            <div class="breath-circle" onclick="alert('478呼吸法：吸气4秒→屏息7秒→呼气8秒')">开始引导</div>
+            <div class="breath-circle" onclick="breathingGuide()">开始引导</div>
             <div style="font-size:13px;color:var(--text-light);">478呼吸法 · 吸4秒·屏7秒·呼8秒</div>
           </div>
         </div>
@@ -566,17 +566,26 @@
       <div class="banner-content"><h2>功法带练</h2><p>八段锦 · 疏肝拉伸 · 动静相宜</p></div>
     </div>
     <div class="page-header"><div><h1>功法带练</h1><div class="sub">八段锦·疏肝拉伸·办公室微动</div></div></div>
-    <div class="tab-bar"><div class="tab active">八段锦</div><div class="tab">疏肝拉伸操</div><div class="tab">办公室微运动</div></div>
+    <div class="tab-bar">
+      <div class="tab active" onclick="switchPracticeTab('baduanjin', event)">八段锦</div>
+      <div class="tab" onclick="switchPracticeTab('stretch', event)">疏肝拉伸操</div>
+      <div class="tab" onclick="switchPracticeTab('office', event)">办公室微运动</div>
+    </div>
     <div class="row" style="margin-bottom:20px;">
       <div class="col-8">
-        <div class="player-area">
-          <div class="play-btn">&#9658;</div>
-          <div class="player-controls"><span>&#9658;</span><div class="progress"><div class="bar"></div></div><span style="font-size:12px;">1:05 / 3:42</span><span>1.0x</span><span>&#9974;</span></div>
+        <div class="player-area" id="practicePlayer">
+          <div class="play-btn" onclick="startPractice()">&#9658;</div>
+          <div class="player-controls">
+            <span onclick="startPractice()" style="cursor:pointer;">&#9658;</span>
+            <div class="progress"><div class="bar" id="practiceBar" style="width:0%;"></div></div>
+            <span style="font-size:12px;" id="practiceTime">0:00 / 4:00</span><span>引导</span><span>&#9974;</span>
+          </div>
         </div>
       </div>
       <div class="col-4">
         <div class="card" style="height:100%;">
-          <h3 style="margin-bottom:12px;">动作序列</h3>
+          <h3 style="margin-bottom:4px;" id="practiceSeqTitle">八段锦 · 动作序列</h3>
+          <div style="font-size:12px;color:var(--text-light);margin-bottom:10px;" id="practiceSeqHint">每式约 30 秒，整套约 4 分钟，循序渐进、不憋气</div>
           <div class="move-list" id="moveList">
             <div class="move-item active"><div class="num">&#9658;</div><div class="name">两手托天理三焦</div><div class="duration">30s</div></div>
             <div class="move-item"><div class="num">2</div><div class="name">左右开弓似射雕</div><div class="duration">30s</div></div>
@@ -592,12 +601,7 @@
     </div>
     <div class="card">
       <h3 style="margin-bottom:16px;">动作分解讲解</h3>
-      <div style="display:flex;gap:20px;overflow-x:auto;padding-bottom:8px;">
-        <div class="card-beige" style="min-width:200px;text-align:center;border:2px solid var(--accent);"><div style="font-size:40px;">&#129492;</div><div style="font-weight:500;">两手托天</div><div style="font-size:13px;color:var(--text-light);">十指交叉上托</div><div style="font-size:12px;color:var(--accent);margin-top:4px;">通调三焦</div></div>
-        <div class="card-beige" style="min-width:200px;text-align:center;"><div style="font-size:40px;">&#127993;</div><div style="font-weight:500;">左右开弓</div><div style="font-size:13px;color:var(--text-light);">马步左右射箭</div><div style="font-size:12px;color:var(--text-light);margin-top:4px;">疏肝理气</div></div>
-        <div class="card-beige" style="min-width:200px;text-align:center;"><div style="font-size:40px;">&#9996;</div><div style="font-weight:500;">单举脾胃</div><div style="font-size:13px;color:var(--text-light);">单手上举</div><div style="font-size:12px;color:var(--text-light);margin-top:4px;">调理脾胃</div></div>
-        <div class="card-beige" style="min-width:200px;text-align:center;"><div style="font-size:40px;">&#128064;</div><div style="font-weight:500;">往后瞧</div><div style="font-size:13px;color:var(--text-light);">转头后看</div><div style="font-size:12px;color:var(--text-light);margin-top:4px;">预防劳损</div></div>
-      </div>
+      <div id="practiceExplain" style="display:flex;gap:20px;overflow-x:auto;padding-bottom:8px;"></div>
     </div>
   </div>
 </div>
@@ -647,22 +651,16 @@
         <div class="col-4">
           <div class="card">
             <h3 style="margin-bottom:12px;">周趋势分析</h3>
-            <div style="height:100px;display:flex;align-items:end;justify-content:space-around;">
-              <div style="width:20px;height:30px;background:var(--primary);border-radius:3px;"></div>
-              <div style="width:20px;height:50px;background:var(--primary);border-radius:3px;"></div>
-              <div style="width:20px;height:70px;background:var(--danger);border-radius:3px;"></div>
-              <div style="width:20px;height:40px;background:var(--primary);border-radius:3px;"></div>
-              <div style="width:20px;height:55px;background:var(--warn);border-radius:3px;"></div>
-              <div style="width:20px;height:35px;background:var(--primary);border-radius:3px;"></div>
-              <div style="width:20px;height:45px;background:var(--primary);border-radius:3px;"></div>
+            <div id="symptomTrend" style="height:100px;display:flex;align-items:end;justify-content:space-around;">
+              <div style="color:var(--text-light);font-size:13px;margin:auto;">记录后展示近7天症状趋势</div>
             </div>
-            <div style="font-size:14px;color:var(--text-mid);margin-top:12px;">&#129504; 每周三症状最频繁，可能与周中压力有关</div>
+            <div style="font-size:14px;color:var(--text-mid);margin-top:12px;" id="symptomTrendTip">&#129504; 坚持记录，能看出症状和作息、压力的关系</div>
           </div>
         </div>
       </div>
     </div>
     <div id="recordTab2" style="display:none;">
-      <div style="text-align:right;margin-bottom:16px;"><button class="btn btn-primary btn-sm" onclick="alert('添加用药功能即将上线')">+ 添加用药</button></div>
+      <div style="text-align:right;margin-bottom:16px;"><button class="btn btn-primary btn-sm" onclick="openMedForm()">+ 添加用药</button></div>
       <div class="med-grid" style="margin-bottom:20px;" id="medList">
         <div style="color:var(--text-light);font-size:14px;">正在加载用药提醒…</div>
       </div>
@@ -674,23 +672,25 @@
       </div>
     </div>
     <div id="recordTab3" style="display:none;">
-      <div class="tag-row" style="margin-bottom:20px;"><div class="tag-chip active">偏头痛</div><div class="tag-chip">慢性咽炎</div><div class="tag-chip">月经不调</div><div class="tag-chip">功能性消化不良</div></div>
-      <div class="card" style="margin-bottom:20px;">
+      <div class="tag-row" style="margin-bottom:20px;">
+        <div class="tag-chip active" onclick="switchChronic('偏头痛', event)">偏头痛</div>
+        <div class="tag-chip" onclick="switchChronic('慢性咽炎', event)">慢性咽炎</div>
+        <div class="tag-chip" onclick="switchChronic('月经不调', event)">月经不调</div>
+        <div class="tag-chip" onclick="switchChronic('功能性消化不良', event)">功能性消化不良</div>
+      </div>
+      <div class="card" style="margin-bottom:20px;" id="chronicCard">
         <div class="row">
           <div class="col-6">
             <h3 style="margin-bottom:12px;">日常调理方法</h3>
-            <div style="font-size:14px;margin-bottom:8px;"><b>&#129474; 穴位：</b>风池 + 太阳 + 合谷</div>
-            <div style="font-size:14px;margin-bottom:8px;"><b>&#127813; 饮食：</b>天麻炖鱼头 · 菊花茶</div>
-            <div style="font-size:14px;"><b>&#128164; 作息：</b>23点前入睡 · 午休20分钟</div>
+            <div id="chronicMethods"></div>
           </div>
           <div class="col-6">
             <h3 style="margin-bottom:12px;">调理周期与加重信号</h3>
-            <div style="font-size:14px;margin-bottom:8px;"><b>周期：</b>4周为一疗程</div>
-            <div style="font-size:14px;margin-bottom:8px;"><b style="color:var(--danger);">加重信号：</b>发作频率增加、疼痛加剧</div>
-            <div style="font-size:14px;"><b>就医指征：</b>伴呕吐、视觉异常时就诊</div>
+            <div id="chronicSignals"></div>
           </div>
         </div>
-        <button class="btn btn-primary btn-sm btn-block" style="margin-top:16px;">生成本周调理计划</button>
+        <button class="btn btn-primary btn-sm btn-block" style="margin-top:16px;" id="chronicGenBtn" onclick="genChronicPlan()">让 AI 生成本周调理计划</button>
+        <div style="font-size:12px;color:var(--text-light);margin-top:8px;">日常养护内容仅供参考，不能替代医生诊疗</div>
       </div>
       <div class="card">
         <h3 style="margin-bottom:12px;">调理跟踪</h3>
@@ -723,17 +723,22 @@
             <span class="tag tag-primary" id="pfLevelTag">--</span>
           </div>
           <div class="menu-list">
-            <div class="mi active">我的健康档案 <span class="arrow">&rarr;</span></div>
-            <div class="mi">我的收藏 <span class="arrow">&rarr;</span></div>
-            <div class="mi">健康数据总览 <span class="arrow">&rarr;</span></div>
-            <div class="mi">提醒设置 <span class="arrow">&rarr;</span></div>
-            <div class="mi">账号与安全 <span class="arrow">&rarr;</span></div>
-            <div class="mi">意见反馈 <span class="arrow">&rarr;</span></div>
+            <div class="mi active" onclick="switchProfileView('profile', this)">我的健康档案 <span class="arrow">&rarr;</span></div>
+            <div class="mi" onclick="switchProfileView('favorites', this)">我的收藏 <span class="arrow">&rarr;</span></div>
+            <div class="mi" onclick="document.getElementById('pfStatCard').scrollIntoView({behavior:'smooth'})">健康数据总览 <span class="arrow">&rarr;</span></div>
+            <div class="mi" onclick="toast('提醒设置即将上线，可先在「穿衣建议」页开启天气提醒')">提醒设置 <span class="arrow">&rarr;</span></div>
+            <div class="mi" onclick="toast('账号安全功能即将上线')">账号与安全 <span class="arrow">&rarr;</span></div>
+            <div class="mi" onclick="toast('感谢反馈，可直接在 AI 对话里告诉小松你的建议～')">意见反馈 <span class="arrow">&rarr;</span></div>
+            <div class="mi mi-logout" onclick="logout()">退出登录 <span class="arrow">&rarr;</span></div>
           </div>
         </div>
       </div>
-      <div class="profile-content">
-        <div class="card" style="margin-bottom:20px;">
+      <div class="profile-content" id="profileContent">
+        <div class="card" id="viewFavorites" style="margin-bottom:20px;display:none;">
+          <h3 style="margin-bottom:12px;">我的收藏</h3>
+          <div id="favList"><div style="color:var(--text-light);font-size:14px;">还没有收藏，去「饮食调理」点亮食谱的收藏吧</div></div>
+        </div>
+        <div class="card pf-view-card" style="margin-bottom:20px;">
           <h3 style="margin-bottom:12px;">基本信息</h3>
           <div class="info-row"><span class="ir-label">昵称</span><span class="ir-value" id="pfName">--</span></div>
           <div class="info-row"><span class="ir-label">账号</span><span class="ir-value" id="pfUsername">--</span></div>
@@ -741,13 +746,13 @@
           <div class="info-row"><span class="ir-label">过敏史</span><span class="ir-value" id="pfAllergy">--</span></div>
           <button class="btn btn-outline btn-sm" style="margin-top:12px;" onclick="toggleProfileEdit(this, [{id:'pfAllergy',key:'allergy',label:'过敏史'}])">编辑</button>
         </div>
-        <div class="card" style="margin-bottom:20px;">
+        <div class="card pf-view-card" style="margin-bottom:20px;">
           <h3 style="margin-bottom:12px;">体质测评</h3>
           <div class="info-row"><span class="ir-label">档案更新</span><span class="ir-value" id="pfUpdated">--</span></div>
           <div class="info-row"><span class="ir-label">肝郁指数</span><span class="ir-value" style="color:var(--accent);" id="pfScore">--</span></div>
           <button class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="toggleProfileEdit(this, [{id:'pfScore',key:'score',label:'肝郁指数(0-100)'}])">重新测评</button>
         </div>
-        <div class="card" style="margin-bottom:20px;">
+        <div class="card pf-view-card" style="margin-bottom:20px;">
           <h3 style="margin-bottom:12px;">健康偏好</h3>
           <div class="info-row"><span class="ir-label">饮食偏好</span><span class="ir-value" id="pfDiet">--</span></div>
           <div class="info-row"><span class="ir-label">运动习惯</span><span class="ir-value" id="pfExercise">--</span></div>
@@ -755,19 +760,25 @@
           <div class="info-row"><span class="ir-label">体感敏感度</span><span class="ir-value" id="pfBody">--</span></div>
           <button class="btn btn-outline btn-sm" style="margin-top:12px;" onclick="toggleProfileEdit(this, [{id:'pfDiet',key:'dietPref',label:'饮食偏好'},{id:'pfExercise',key:'exercisePref',label:'运动习惯'},{id:'pfSleep',key:'sleepPref',label:'作息规律'},{id:'pfBody',key:'bodySense',label:'体感敏感度'}])">编辑</button>
         </div>
-        <div class="card">
+        <div class="card pf-view-card" id="pfStatCard">
           <h3 style="margin-bottom:12px;">数据总览</h3>
           <div class="med-grid">
-            <div class="card-beige" style="text-align:center;"><div style="font-size:24px;font-weight:600;color:var(--accent);">23:15</div><div style="font-size:13px;color:var(--text-light);">平均入睡时间</div></div>
-            <div class="card-beige" style="text-align:center;"><div style="font-size:24px;font-weight:600;color:var(--success);">62</div><div style="font-size:13px;color:var(--text-light);">平均肝郁指数</div></div>
-            <div class="card-beige" style="text-align:center;"><div style="font-size:24px;font-weight:600;color:var(--warn);">8次</div><div style="font-size:13px;color:var(--text-light);">本月症状记录</div></div>
-            <div class="card-beige" style="text-align:center;"><div style="font-size:24px;font-weight:600;color:var(--primary);">4.2h</div><div style="font-size:13px;color:var(--text-light);">月均运动时长</div></div>
+            <div class="card-beige" style="text-align:center;"><div style="font-size:24px;font-weight:600;color:var(--accent);" id="pfStatSleep">--</div><div style="font-size:13px;color:var(--text-light);">近7天平均入睡</div></div>
+            <div class="card-beige" style="text-align:center;"><div style="font-size:24px;font-weight:600;color:var(--success);" id="pfStatScore">--</div><div style="font-size:13px;color:var(--text-light);">当前肝郁指数</div></div>
+            <div class="card-beige" style="text-align:center;"><div style="font-size:24px;font-weight:600;color:var(--warn);" id="pfStatSymptom">--</div><div style="font-size:13px;color:var(--text-light);">本月症状记录</div></div>
+            <div class="card-beige" style="text-align:center;"><div style="font-size:24px;font-weight:600;color:var(--primary);" id="pfStatSleepDays">--</div><div style="font-size:13px;color:var(--text-light);">近7天作息打卡</div></div>
           </div>
         </div>
       </div>
     </div>
   </div>
 </div>
+<!-- 全局弹窗 / 提示 -->
+<div class="modal-mask" id="modalMask" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box" id="modalBox"></div>
+</div>
+<div class="toast-wrap" id="toastWrap"></div>
+
 <script src="js/app.js"></script>
 
 </body>

@@ -114,7 +114,20 @@ CREATE TABLE IF NOT EXISTS medicines (
   CONSTRAINT fk_bp_medicine_user FOREIGN KEY (user_id) REFERENCES users(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 情绪/作息打卡
+-- 作息打卡（每天一条，当天可修改）
+CREATE TABLE IF NOT EXISTS sleep_checkins (
+  id           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id      BIGINT UNSIGNED NOT NULL,
+  checkin_date DATE NOT NULL,
+  sleep_time   VARCHAR(5) NOT NULL DEFAULT '' COMMENT '入睡时刻 HH:mm',
+  wake_time    VARCHAR(5) NOT NULL DEFAULT '' COMMENT '起床时刻 HH:mm',
+  created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_sleep_user_date (user_id, checkin_date),
+  CONSTRAINT fk_sleep_user FOREIGN KEY (user_id) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 情绪打卡
 CREATE TABLE IF NOT EXISTS mood_checkins (
   id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   user_id     BIGINT UNSIGNED NOT NULL,

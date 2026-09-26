@@ -153,20 +153,21 @@ function buildAdvice(w) {
 // ============ 对外入口 ============
 
 /**
- * 根据请求来源 IP 获取穿衣建议数据；失败返回 null
+ * 根据来源 IP 获取穿衣建议数据；失败返回 null
  * 返回结构与旧 mock clothingData 保持一致，另附 weatherText/source
+ * 工具层（无 req 对象）可直接调用本函数
  */
-async function getClothingByWeather(req) {
+async function getClothingByIp(ip) {
   if (!config.amap.key) return null;
 
-  const ip = getClientIp(req);
-  const cacheKey = isPrivateIp(ip) ? '_default' : ip;
+  const cleanIp = String(ip || '').replace(/^::ffff:/, '');
+  const cacheKey = isPrivateIp(cleanIp) ? '_default' : cleanIp;
   if (cache.data && cache.key === cacheKey && Date.now() - cache.at < CACHE_TTL) {
     return cache.data;
   }
 
   try {
-    const { city, adcode } = await locateByIp(ip);
+    const { city, adcode } = await locateByIp(cleanIp);
     const w = await fetchWeather(adcode);
     const advice = buildAdvice(w);
     const data = {
@@ -193,4 +194,11 @@ async function getClothingByWeather(req) {
   }
 }
 
-module.exports = { getClothingByWeather };
+/**
+ * 从 Express 请求中解析来源 IP 后获取穿衣建议；失败返回 null
+ */
+async function getClothingByWeather(req) {
+  return getClothingByIp(getClientIp(req));
+}
+
+module.exports = { getClothingByWeather, getClothingByIp };
