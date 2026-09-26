@@ -47,6 +47,95 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+// ============ 全局轻提示 / 弹窗 ============
+function toast(msg, type) {
+  const wrap = document.getElementById('toastWrap');
+  if (!wrap) { alert(msg); return; }
+  const el = document.createElement('div');
+  el.className = 'toast' + (type === 'error' ? ' toast-error' : type === 'success' ? ' toast-success' : '');
+  el.textContent = msg;
+  wrap.appendChild(el);
+  setTimeout(() => el.classList.add('show'), 10);
+  setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => el.remove(), 300);
+  }, 2400);
+}
+
+function openModal(html) {
+  const mask = document.getElementById('modalMask');
+  const box = document.getElementById('modalBox');
+  if (!mask) return;
+  box.innerHTML = html;
+  mask.classList.add('show');
+}
+function closeModal() {
+  const mask = document.getElementById('modalMask');
+  if (mask) mask.classList.remove('show');
+}
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeModal();
+});
+
+// ============ 退出登录 ============
+function logout() {
+  if (!confirm('确定退出登录吗？')) return;
+  clearLogin();
+  chatSessionId = null;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-login').classList.add('active');
+  document.getElementById('navbar').style.display = 'none';
+  toast('已退出登录');
+}
+
+// ============ 全局快捷：带问题进入 AI 对话 ============
+function askAIWith(text) {
+  showPage('chat');
+  const input = document.getElementById('chatInput');
+  if (input) input.value = text;
+  sendMessage();
+}
+
+// ============ 顶部通知铃铛：今日未完成待办 + 用药提醒 ============
+async function toggleNotification(ev) {
+  ev.stopPropagation();
+  const panel = document.getElementById('notifPanel');
+  if (!panel) return;
+  if (panel.classList.contains('show')) {
+    panel.classList.remove('show');
+    return;
+  }
+  panel.innerHTML = '<div style="padding:12px;color:var(--text-light);font-size:13px;">正在加载…</div>';
+  panel.classList.add('show');
+  const [dash, meds] = await Promise.all([
+    fetchAPI('/health/dashboard'),
+    fetchAPI('/record/medicines'),
+  ]);
+  const todos = (dash.success && dash.data && dash.data.todos || []).filter(t => !t.done);
+  const medList = meds.success && Array.isArray(meds.data) ? meds.data : [];
+  let html = '<div class="notif-title">今日提醒</div>';
+  if (!todos.length && !medList.length) {
+    html += '<div class="notif-empty">今天没有待办，享受轻松的一天 🌿</div>';
+  } else {
+    if (todos.length) {
+      html += '<div class="notif-group">调理待办</div>' + todos.map(t =>
+        `<div class="notif-item" onclick="closeNotification();showPage('home')">⭕ ${escapeHtml((t.time ? t.time + ' ' : '') + t.text)}</div>`).join('');
+    }
+    if (medList.length) {
+      html += '<div class="notif-group">用药</div>' + medList.map(m =>
+        `<div class="notif-item" onclick="closeNotification();showPage('record')">💊 ${escapeHtml(m.name)} ${escapeHtml(m.dose || '')} <span style="color:var(--text-light);">${escapeHtml(m.time || '')}</span></div>`).join('');
+    }
+  }
+  panel.innerHTML = html;
+}
+function closeNotification() {
+  const panel = document.getElementById('notifPanel');
+  if (panel) panel.classList.remove('show');
+}
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#notifPanel') && !e.target.closest('.icon-btn')) closeNotification();
+});
+
 // ============ 页面切换 ============
 function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -56,6 +145,8 @@ function showPage(name) {
   }
   if (name !== 'login') {
     document.getElementById('navbar').style.display = 'block';
+    const navAv = document.getElementById('navAvatar');
+    if (navAv) navAv.textContent = (window.currentUser && window.currentUser.name || '松').charAt(0);
     const navItems = document.querySelectorAll(`#navMenu a[data-page="${name}"], #mobileDrawer a[data-page="${name}"]`);
     document.querySelectorAll('#navMenu a, #mobileDrawer a').forEach(a => a.classList.remove('active'));
     navItems.forEach(a => a.classList.add('active'));
@@ -67,11 +158,11 @@ function showPage(name) {
   if (name === 'care') loadAcupoints();
   if (name === 'diet') loadDietData();
   if (name === 'clothing') loadClothing();
-  if (name === 'rhythm') loadExercise();
+  if (name === 'rhythm') { loadExercise(); loadSleep(); }
   if (name === 'practice') loadPracticeMoves();
   if (name === 'chat') { scrollChatToBottom(); refreshChatOverview(); }
-  if (name === 'record') { loadSymptomRecords(); loadMedicines(); }
-  if (name === 'profile') loadProfile();
+  if (name === 'record') { loadSymptomRecords(); loadMedicines(); loadSymptomStats(); }
+  if (name === 'profile') { loadProfile(); loadProfileStats(); }
 }
 
 // ============ 注册 / 登录（账号 + 密码） ============
@@ -311,7 +402,7 @@ async function loadAcupoints(category, chip) {
         <h4>${escapeHtml(a.name)}</h4>
         <span class="tag tag-primary">${escapeHtml(a.tag)}</span>
         <div class="effect">${escapeHtml(a.effect)}</div>
-        <button class="btn btn-sm btn-outline btn-block">开始按揉</button>
+        <button class="btn btn-sm btn-outline btn-block" onclick="event.stopPropagation();openAcuDetail(${a.id})">按揉指南</button>
       </div>
     </div>
   `).join('');
@@ -320,26 +411,53 @@ async function loadAcupoints(category, chip) {
 async function openAcuDetail(id) {
   const res = await fetchAPI('/care/acupoints/' + id);
   if (!res.success || !res.data) {
-    alert('穴位详情加载失败，请稍后重试');
+    toast('穴位详情加载失败，请稍后重试', 'error');
     return;
   }
   const a = res.data;
-  alert(
-    a.name + '（' + a.tag + '）\n\n'
-    + '功效：' + a.effect + '\n'
-    + '定位：' + a.location + '\n'
-    + '手法：' + a.method + '\n'
-    + '时长：' + a.duration + '\n'
-    + '频次：' + a.frequency
-  );
+  openModal(`
+    <div class="modal-head">
+      <div><div class="modal-title">${escapeHtml(a.name)} <span class="tag tag-primary">${escapeHtml(a.tag)}</span></div></div>
+      <span class="modal-close" onclick="closeModal()">×</span>
+    </div>
+    <div class="modal-body">
+      <div class="cc-row"><span class="cc-label">功效</span><span class="cc-value">${escapeHtml(a.effect)}</span></div>
+      <div class="cc-row"><span class="cc-label">定位</span><span class="cc-value">${escapeHtml(a.location)}</span></div>
+      <div class="cc-row"><span class="cc-label">手法</span><span class="cc-value">${escapeHtml(a.method)}</span></div>
+      <div class="cc-row"><span class="cc-label">时长</span><span class="cc-value">${escapeHtml(a.duration)}</span></div>
+      <div class="cc-row"><span class="cc-label">频次</span><span class="cc-value">${escapeHtml(a.frequency)}</span></div>
+      <div class="modal-tip">按揉以局部有酸胀感为度，皮肤破损处不按，孕期请先咨询医生。</div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal()">知道了</button>
+      <button class="btn btn-primary" onclick="acuToTodo('${escapeHtml(a.name)}','${escapeHtml(a.duration || '')}')">加入今日待办</button>
+    </div>`);
+}
+
+async function acuToTodo(name, duration) {
+  closeModal();
+  const res = await fetchAPI('/todos', {
+    method: 'POST',
+    body: JSON.stringify({ content: `按揉${name}${duration ? ' ' + duration : ''}`, type: 'ai' }),
+  });
+  toast(res.success ? `已把「按揉${name}」加入今日待办` : (res.message || '添加待办失败'), res.success ? 'success' : 'error');
+  if (res.success && document.getElementById('page-home').classList.contains('active')) loadHomeData();
+}
+
+async function footbathToTodo(name, duration) {
+  const res = await fetchAPI('/todos', {
+    method: 'POST',
+    body: JSON.stringify({ content: `${name}（${duration}）`, type: 'ai' }),
+  });
+  toast(res.success ? `已把「${name}」加入今日待办` : (res.message || '添加待办失败'), res.success ? 'success' : 'error');
+  if (res.success && document.getElementById('page-home').classList.contains('active')) loadHomeData();
 }
 
 async function generateRecipe() {
   const input = document.getElementById('footbathInput');
   const status = input ? input.value.trim() : '';
   if (!status) {
-    // 前端拦截空输入
-    alert('请输入你今天的状态，如：失眠多梦、手脚冰凉');
+    toast('请输入你今天的状态，如：失眠多梦、手脚冰凉');
     return;
   }
   const area = document.getElementById('footbathResult');
@@ -356,9 +474,10 @@ async function generateRecipe() {
         <b style="font-size:16px;">${escapeHtml(d.name)}</b>
         <span style="font-size:13px;color:var(--text-mid);">${escapeHtml(d.herbs)}</span>
         <span style="font-size:12px;color:var(--text-light);">水温${escapeHtml(d.temp)} / ${escapeHtml(d.duration)}</span>
-      </div>`;
+      </div>
+      <button class="btn btn-primary btn-sm" style="margin-top:10px;" onclick="footbathToTodo('${escapeHtml(d.name)}泡脚','${escapeHtml(d.duration)}')">加入今日待办</button>`;
   } else {
-    alert(res.message || '配方生成失败，请稍后重试');
+    toast(res.message || '配方生成失败，请稍后重试', 'error');
   }
 }
 
@@ -390,19 +509,99 @@ async function loadDietData() {
     renderFoodTags(document.getElementById('dbSour'), bad.sour, 'bad');
   }
   if (r3.success && r3.data) {
-    const grid = document.getElementById('recipeGrid');
-    if (grid) {
-      grid.innerHTML = r3.data.map(r => `
-        <div class="recipe-card">
-          <div class="time-tag">${escapeHtml(r.time)}</div>
-          <div style="height:110px;background:var(--card-beige);display:flex;align-items:center;justify-content:center;font-size:40px;">\u{1F372}</div>
-          <div class="recipe-body">
-            <h4>${escapeHtml(r.name)}</h4>
-            <div class="ingr">${escapeHtml(r.ingredients)}</div>
-          </div>
-        </div>`).join('');
-    }
+    recipePoolCache = r3.data.pool || recipePoolCache;
+    renderRecipes(r3.data.items || []);
   }
+}
+
+// ---- 食谱：换一批 / 收藏 / 购物清单 ----
+let recipePoolCache = null;
+let currentRecipes = [];
+const RECIPE_EMOJI = { '早餐': '\u{1F963}', '午餐': '\u{1F962}', '晚餐': '\u{1F372}', '加餐': '\u{1F375}' };
+const POOL_KEY = { '早餐': 'breakfast', '午餐': 'lunch', '晚餐': 'dinner', '加餐': 'snack' };
+const FAV_KEY = 'songxu_favs';
+function getFavs() {
+  try { return JSON.parse(localStorage.getItem(FAV_KEY) || '[]'); } catch (e) { return []; }
+}
+function saveFavs(list) { localStorage.setItem(FAV_KEY, JSON.stringify(list)); }
+function isFav(name) { return getFavs().some(f => f.name === name); }
+function renderRecipes(items) {
+  currentRecipes = items;
+  const grid = document.getElementById('recipeGrid');
+  if (!grid) return;
+  if (!items.length) {
+    grid.innerHTML = '<div style="color:var(--text-light);font-size:14px;">食谱加载失败，点击「换一批」重试</div>';
+    return;
+  }
+  grid.innerHTML = items.map(r => {
+    const fav = isFav(r.name);
+    return `
+    <div class="recipe-card">
+      <div class="time-tag">${escapeHtml(r.time)}</div>
+      <div style="height:110px;background:var(--card-beige);display:flex;align-items:center;justify-content:center;font-size:40px;">${RECIPE_EMOJI[r.time] || '\u{1F372}'}</div>
+      <div class="recipe-body">
+        <h4>${escapeHtml(r.name)}</h4>
+        <div class="ingr">${escapeHtml(r.ingredients)}</div>
+        <div class="footer">
+          <span class="recipe-action ${fav ? 'faved' : ''}" onclick="toggleFav('${escapeHtml(r.time)}','${escapeHtml(r.name)}','${escapeHtml(r.ingredients)}',this)">${fav ? '\u2764 已收藏' : '\u{1F90D} 收藏'}</span>
+          <span class="recipe-action" onclick="showShoppingList()">购物清单</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function toggleFav(time, name, ingredients, el) {
+  let favs = getFavs();
+  const idx = favs.findIndex(f => f.name === name);
+  if (idx >= 0) {
+    favs.splice(idx, 1);
+    toast('已取消收藏');
+  } else {
+    favs.push({ time, name, ingredients });
+    toast('已收藏，可在「我的-我的收藏」查看', 'success');
+  }
+  saveFavs(favs);
+  if (el) {
+    el.classList.toggle('faved', idx < 0);
+    el.textContent = idx < 0 ? '\u2764 已收藏' : '\u{1F90D} 收藏';
+  }
+}
+function shuffleRecipes() {
+  if (!recipePoolCache) { loadDietData(); return; }
+  const picked = [];
+  Object.keys(POOL_KEY).forEach(time => {
+    const pool = recipePoolCache[POOL_KEY[time]] || [];
+    if (!pool.length) return;
+    const cur = currentRecipes.find(r => r.time === time);
+    let candidates = pool.slice();
+    if (cur && pool.length > 1) candidates = pool.filter(r => r.name !== cur.name);
+    const r = candidates[Math.floor(Math.random() * candidates.length)];
+    picked.push({ time, name: r.name, ingredients: r.ingredients });
+  });
+  renderRecipes(picked);
+  toast('换了一批新食谱～');
+}
+function showShoppingList() {
+  const set = new Set();
+  currentRecipes.forEach(r => {
+    String(r.ingredients || '').split(/[,，]/).forEach(s => {
+      s = s.trim().replace(/\d+\s*g?$/i, '').replace(/\d+颗?/, '').replace(/适量|片|粒$/, '').trim();
+      if (s) set.add(s);
+    });
+  });
+  const list = Array.from(set);
+  openModal(`
+    <div class="modal-head">
+      <div class="modal-title">本期购物清单</div>
+      <span class="modal-close" onclick="closeModal()">×</span>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:13px;color:var(--text-light);margin-bottom:10px;">已按当前 4 个食谱汇总，去掉了用量，按份买即可</div>
+      <div class="shop-list">${list.map(x => `<label><input type="checkbox"> ${escapeHtml(x)}</label>`).join('')}</div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-primary" onclick="closeModal()">去采购</button>
+    </div>`);
 }
 
 // ============ 穿衣建议 ============
@@ -426,6 +625,50 @@ async function loadClothing() {
   set('caInner', d.inner);
   set('caOuter', d.outer);
   set('caShoes', d.shoes);
+  initBodySensePrefs();
+}
+
+// ---- 冷暖偏好 / 天气提醒（本地存储）----
+const SENSE_TIP = {
+  '怕冷': '🧣 你平时怕冷：比推荐搭配多备一件薄马甲或披肩，重点护住颈背、小腹和脚踝',
+  '正常': '按今日推荐穿即可，早晚出门记得加件外套',
+  '怕热': '☀️ 你平时怕热：内搭可选薄款，但肩颈、脚踝别露，空调房备件薄外套',
+};
+function initBodySensePrefs() {
+  const sense = localStorage.getItem('songxu_body_sense') || '正常';
+  document.querySelectorAll('#bodySenseTags .tag').forEach(t => {
+    t.classList.toggle('tag-primary', t.textContent === sense);
+    t.classList.toggle('tag-gray', t.textContent !== sense);
+  });
+  const tip = document.getElementById('caSenseTip');
+  if (tip) {
+    tip.textContent = SENSE_TIP[sense] || '';
+    tip.style.display = 'block';
+  }
+  const alertOn = localStorage.getItem('songxu_weather_alert') !== '0';
+  applyWeatherSwitch(alertOn);
+}
+function setBodySense(val) {
+  localStorage.setItem('songxu_body_sense', val);
+  initBodySensePrefs();
+  toast('已记住你的冷暖偏好：' + val);
+}
+function toggleWeatherAlert() {
+  const next = localStorage.getItem('songxu_weather_alert') === '0';
+  localStorage.setItem('songxu_weather_alert', next ? '1' : '0');
+  applyWeatherSwitch(next);
+  toast(next ? '已开启降温/大风提醒' : '已关闭天气提醒');
+}
+function applyWeatherSwitch(on) {
+  const sw = document.getElementById('weatherAlertSwitch');
+  if (!sw) return;
+  sw.setAttribute('aria-checked', on ? 'true' : 'false');
+  sw.style.background = on ? 'var(--primary)' : '#C7BCA8';
+  const knob = sw.firstElementChild;
+  if (knob) {
+    knob.style.right = on ? '2px' : '';
+    knob.style.left = on ? '' : '2px';
+  }
 }
 
 // ============ 生活节律 ============
@@ -439,21 +682,223 @@ function switchRhythmTab(tab, ev) {
   });
 }
 
+let exerciseCache = [];
+const EXERCISE_SCENE = {
+  '梳头功': 'office', '扩胸运动': 'office', '深呼吸478': 'office', '侧腰拉伸': 'office',
+  '八段锦·两手托天': 'home', '搓胁肋': 'home',
+};
 async function loadExercise() {
   const grid = document.getElementById('exerciseGrid');
   if (!grid) return;
   const res = await fetchAPI('/rhythm/exercise');
   if (!res.success || !Array.isArray(res.data)) return;
-  grid.innerHTML = res.data.map(e => `
+  exerciseCache = res.data;
+  renderExercise('all');
+}
+function renderExercise(scene) {
+  const grid = document.getElementById('exerciseGrid');
+  if (!grid) return;
+  const list = exerciseCache.filter(e => scene === 'all' || EXERCISE_SCENE[e.name] === scene);
+  if (!list.length) {
+    grid.innerHTML = '<div style="color:var(--text-light);font-size:14px;">该场景暂无动作</div>';
+    return;
+  }
+  grid.innerHTML = list.map(e => `
     <div class="acu-card-grid">
       <div class="img-area">${escapeHtml(e.icon || '\u{1F9CD}')}</div>
       <div class="card-body">
         <h4>${escapeHtml(e.name)}</h4>
         <span class="tag tag-primary">${escapeHtml(e.tag)}</span>
         <div class="effect">${escapeHtml(e.duration)}</div>
-        <button class="btn btn-sm btn-outline btn-block">跟着做</button>
+        <button class="btn btn-sm btn-outline btn-block" onclick="followExercise('${escapeHtml(e.name)}')">跟着做</button>
       </div>
     </div>`).join('');
+}
+function filterExercise(el, scene) {
+  el.parentElement.querySelectorAll('.tag-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderExercise(scene);
+}
+function followExercise(name) {
+  if (name.indexOf('478') >= 0) { breathingGuide(); return; }
+  showPage('practice');
+  toast('跟着带练慢慢做，配合自然呼吸～');
+}
+
+// ============ 作息打卡 ============
+function buildTimeOptions(start, end, stepMin) {
+  // 支持跨夜，如 buildTimeOptions('20:00','02:30',30)
+  const toMin = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+  let s = toMin(start);
+  let e = toMin(end);
+  if (e <= s) e += 24 * 60;
+  const out = [];
+  for (let t = s; t <= e; t += stepMin) {
+    const h = Math.floor(t / 60) % 24;
+    const m = t % 60;
+    out.push(String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0'));
+  }
+  return out;
+}
+function fillSleepSelects() {
+  const sSel = document.getElementById('sleepTimeInput');
+  const wSel = document.getElementById('wakeTimeInput');
+  if (!sSel || sSel.options.length) return;
+  buildTimeOptions('20:00', '02:30', 30).forEach(t => {
+    sSel.appendChild(new Option(t, t));
+  });
+  buildTimeOptions('05:00', '11:30', 30).forEach(t => {
+    wSel.appendChild(new Option(t, t));
+  });
+}
+async function submitSleep(ev) {
+  fillSleepSelects();
+  const sleepTime = document.getElementById('sleepTimeInput').value;
+  const wakeTime = document.getElementById('wakeTimeInput').value;
+  if (!sleepTime || !wakeTime) {
+    toast('请选择入睡和起床时间');
+    return;
+  }
+  const btn = ev ? ev.target : null;
+  if (btn) { btn.disabled = true; btn.textContent = '保存中…'; }
+  const res = await fetchAPI('/rhythm/sleep', {
+    method: 'POST',
+    body: JSON.stringify({ sleepTime, wakeTime }),
+  });
+  if (btn) { btn.disabled = false; btn.textContent = '今日打卡'; }
+  if (!res.success) {
+    toast(res.message || '打卡失败，请稍后重试', 'error');
+    return;
+  }
+  toast('作息已打卡，早睡是最好的养肝药 🌿', 'success');
+  loadSleep();
+}
+function sleepMinutes(t) {
+  const [h, m] = t.split(':').map(Number);
+  return h < 12 ? h * 60 + m + 1440 : h * 60 + m;
+}
+async function loadSleep() {
+  fillSleepSelects();
+  const res = await fetchAPI('/rhythm/sleep');
+  if (!res.success || !res.data) return;
+  const { week = [], today } = res.data;
+  if (today) {
+    const sSel = document.getElementById('sleepTimeInput');
+    const wSel = document.getElementById('wakeTimeInput');
+    if (sSel && today.sleepTime) sSel.value = today.sleepTime;
+    if (wSel && today.wakeTime) wSel.value = today.wakeTime;
+  }
+  // 后端只返回有记录的日期，前端补齐近 7 天空位
+  const fmtDay = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const map = new Map(week.map(d => [d.date, d]));
+  const fullWeek = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = fmtDay(d);
+    fullWeek.push(map.get(key) || { date: key, sleepTime: null, wakeTime: null });
+  }
+  const days = fullWeek.filter(d => d.sleepTime);
+  const streakEl = document.getElementById('sleepStreak');
+  if (streakEl) {
+    streakEl.textContent = days.length
+      ? `近7天已打卡 ${days.length} 天${today ? ' · 今天已完成' : ' · 今天还没打卡'}`
+      : '近7天还没有打卡，从今晚开始吧';
+  }
+  const trend = document.getElementById('sleepTrend');
+  if (trend) {
+    {
+      const WEEK_CN = ['日', '一', '二', '三', '四', '五', '六'];
+      const MIN_MIN = 20 * 60, MAX_MIN = 26 * 60 + 30; // 20:00 ~ 02:30
+      trend.innerHTML = fullWeek.map(d => {
+        if (!d.sleepTime) {
+          return `<div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+            <div style="width:22px;height:14%;border-radius:4px 4px 0 0;background:repeating-linear-gradient(45deg,var(--border),var(--border) 4px,transparent 4px,transparent 8px);"></div>
+            <div style="font-size:12px;color:var(--text-light);">${WEEK_CN[new Date(d.date + 'T00:00:00').getDay()]}</div>
+          </div>`;
+        }
+        const mins = sleepMinutes(d.sleepTime);
+        const pct = Math.max(18, Math.min(100, ((mins - MIN_MIN) / (MAX_MIN - MIN_MIN)) * 82 + 18));
+        const color = mins <= 22 * 60 + 30 ? 'var(--success)' : mins <= 24 * 60 ? 'var(--primary)' : mins <= 25 * 60 ? 'var(--warn)' : 'var(--danger)';
+        return `<div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+          <div style="font-size:11px;color:var(--text-mid);">${d.sleepTime}</div>
+          <div style="width:22px;height:${pct}%;border-radius:4px 4px 0 0;background:${color};"></div>
+          <div style="font-size:12px;color:var(--text-light);">${WEEK_CN[new Date(d.date + 'T00:00:00').getDay()]}</div>
+        </div>`;
+      }).join('');
+    }
+  }
+  const tip = document.getElementById('sleepTrendTip');
+  if (tip && days.length) {
+    const late = days.filter(d => sleepMinutes(d.sleepTime) > 24 * 60).length;
+    tip.innerHTML = late === 0
+      ? '\u{1F49A} 最近入睡很规律，肝胆得到充分休养，继续保持'
+      : `\u{1F56F} 近7天有 ${late} 天过了零点才睡，尽量在 23 点前躺下，养肝效果更好`;
+  }
+}
+
+// ============ 478 呼吸引导 ============
+let breathTimer = null;
+function breathingGuide() {
+  openModal(`
+    <div class="modal-head">
+      <div class="modal-title">478 疏肝呼吸</div>
+      <span class="modal-close" onclick="stopBreathing()">×</span>
+    </div>
+    <div class="modal-body" style="text-align:center;padding:24px 16px;">
+      <div class="breath-guide-circle" id="breathCircle"><span id="breathText">准备</span></div>
+      <div style="font-size:15px;margin-top:16px;" id="breathSub">鼻吸 4 秒 · 屏息 7 秒 · 嘴呼 8 秒</div>
+      <div style="font-size:13px;color:var(--text-light);margin-top:6px;" id="breathRound">第 1 / 4 轮</div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="stopBreathing()">结束引导</button>
+      <button class="btn btn-primary" id="breathStartBtn" onclick="runBreathRound(1)">开始</button>
+    </div>`);
+}
+function breathPhase(label, secs, cls, after) {
+  const circle = document.getElementById('breathCircle');
+  const text = document.getElementById('breathText');
+  const sub = document.getElementById('breathSub');
+  if (!circle) return;
+  circle.className = 'breath-guide-circle ' + cls;
+  if (text) text.textContent = secs;
+  if (sub) sub.textContent = label;
+  let left = secs;
+  breathTimer = setInterval(() => {
+    left -= 1;
+    if (text) text.textContent = left > 0 ? left : label;
+    if (left <= 0) {
+      clearInterval(breathTimer);
+      breathTimer = null;
+      after && after();
+    }
+  }, 1000);
+}
+function runBreathRound(round) {
+  const startBtn = document.getElementById('breathStartBtn');
+  if (startBtn) startBtn.style.display = 'none';
+  const roundEl = document.getElementById('breathRound');
+  if (roundEl) roundEl.textContent = `第 ${Math.min(round, 4)} / 4 轮`;
+  if (round > 4) {
+    const circle = document.getElementById('breathCircle');
+    if (circle) circle.className = 'breath-guide-circle';
+    const text = document.getElementById('breathText');
+    if (text) text.textContent = '完成';
+    const sub = document.getElementById('breathSub');
+    if (sub) sub.textContent = '4 轮完成，是否感觉放松了一些？';
+    if (roundEl) roundEl.textContent = '做得很好 🌿';
+    if (startBtn) { startBtn.textContent = '再来一轮'; startBtn.style.display = ''; startBtn.onclick = () => runBreathRound(1); }
+    return;
+  }
+  breathPhase('用鼻子慢慢吸气', 4, 'breath-in', () =>
+    breathPhase('屏住呼吸，放松肩膀', 7, 'breath-hold', () =>
+      breathPhase('噘嘴缓缓呼气', 8, 'breath-out', () => runBreathRound(round + 1))
+    )
+  );
+}
+function stopBreathing() {
+  if (breathTimer) { clearInterval(breathTimer); breathTimer = null; }
+  closeModal();
 }
 
 async function selectMood(el) {
@@ -464,16 +909,21 @@ async function selectMood(el) {
     method: 'POST',
     body: JSON.stringify({ mood }),
   });
-  if (!res.success) alert(res.message || '情绪记录失败，请稍后重试');
+  if (!res.success) {
+    toast(res.message || '情绪记录失败，请稍后重试', 'error');
+  } else {
+    toast(`已记录今天的心情：${mood}，继续照顾好自己 🌿`, 'success');
+  }
 }
 
 // ============ AI对话 ============
 let chatSessionId = null;
 
-function renderChatBubble(role, text) {
-  const avatar = role === 'user' ? '\u{1F9D1}' : '\u{1F33F}';
+function renderChatBubble(role, text, cardsHtml) {
+  const avatar = role === 'user' ? '🧑' : '🌿';
   const safeText = escapeHtml(text).replace(/\n/g, '<br>');
-  return `<div class="chat-msg ${role}"><div class="avatar">${avatar}</div><div class="bubble">${safeText}</div></div>`;
+  const extra = cardsHtml ? `<div class="ai-cards">${cardsHtml}</div>` : '';
+  return `<div class="chat-msg ${role}"><div class="avatar">${avatar}</div><div class="bubble">${safeText}${extra}</div></div>`;
 }
 
 async function sendMessage() {
@@ -500,7 +950,10 @@ async function sendMessage() {
 
   if (res.success && res.data) {
     chatSessionId = res.data.sessionId;
-    chatArea.innerHTML += renderChatBubble('ai', res.data.reply);
+    const cardsHtml = Array.isArray(res.data.cards) && res.data.cards.length
+      ? res.data.cards.map(renderChatCard).join('')
+      : '';
+    chatArea.innerHTML += renderChatBubble('ai', res.data.reply, cardsHtml);
   } else {
     chatArea.innerHTML += renderChatBubble('ai', res.message || '抱歉，我暂时无法回复，请稍后再试~');
   }
@@ -520,6 +973,202 @@ function scrollChatToBottom() {
   if (chat) chat.scrollTop = chat.scrollHeight;
 }
 
+// ============ AI 对话内卡片（函数调用结果渲染） ============
+
+const chatPending = new Map(); // 确认卡待提交 payload
+let chatPendingSeq = 0;
+
+function ccShell(title, icon, body, page) {
+  const nav = page ? `<button class="cc-link" onclick="showPage('${page}')">去板块查看 →</button>` : '';
+  return `<div class="cc-card"><div class="cc-head"><span class="cc-title">${icon} ${escapeHtml(title)}</span>${nav}</div><div class="cc-body">${body}</div></div>`;
+}
+
+function ccConfirmShell(kind, key, title, bodyHtml) {
+  return `<div class="cc-card cc-confirm" data-confirm="${kind}" data-key="${key}">
+    <div class="cc-head"><span class="cc-title">📝 ${escapeHtml(title)}</span></div>
+    <div class="cc-body">${bodyHtml}</div>
+    <div class="cc-actions">
+      <button class="cc-btn cc-btn-primary" onclick="chatConfirm(this)">✅ 确认</button>
+      <button class="cc-btn cc-btn-ghost" onclick="chatCancel(this)">取消</button>
+    </div>
+  </div>`;
+}
+
+function kvRow(label, value) {
+  if (value === null || value === undefined || value === '') return '';
+  return `<div class="cc-row"><span class="cc-label">${escapeHtml(label)}</span><span class="cc-value">${escapeHtml(value)}</span></div>`;
+}
+
+function renderChatCard(card) {
+  if (!card || !card.type) return '';
+  switch (card.type) {
+    case 'acupoint_list':
+      return ccShell('推荐穴位', '🦶',
+        (card.items || []).map(a =>
+          `<div class="cc-item"><span class="cc-item-icon">${escapeHtml(a.icon || '📍')}</span><span class="cc-item-main"><b>${escapeHtml(a.name)}</b><span class="cc-sub">${escapeHtml(a.tag)} · ${escapeHtml(a.effect)}</span></span></div>`
+        ).join('') || '<div class="cc-empty">暂无数据</div>', 'care');
+    case 'acupoint_detail': {
+      const a = card.item || {};
+      return ccShell(a.name || '穴位详情', a.icon || '📍',
+        kvRow('功效', a.effect) + kvRow('定位', a.location) + kvRow('手法', a.method)
+        + kvRow('时长', a.duration) + kvRow('频率', a.frequency), 'care');
+    }
+    case 'footbath': {
+      const r = card.recipe || {};
+      return ccShell('AI 定制泡脚方', '🪣',
+        `<div class="cc-recipe-name">${escapeHtml(r.name)}</div>`
+        + kvRow('药材', r.herbs) + kvRow('水温', r.temp) + kvRow('时长', r.duration), 'care');
+    }
+    case 'diet': {
+      const d = card.data || {};
+      const g = d.goodFoods || {};
+      const b = d.badFoods || {};
+      const section = (label, arr) => (arr && arr.length ? `<div class="cc-row"><span class="cc-label">${label}</span><span class="cc-value">${arr.map(escapeHtml).join('、')}</span></div>` : '');
+      return ccShell('今日饮食建议', '🍵',
+        `<div class="cc-principle">${escapeHtml((d.recommend || {}).principle || '')}</div>`
+        + section('推荐茶饮', g.tea) + section('推荐主食', g.staple) + section('推荐蔬菜', g.vegetable) + section('推荐水果', g.fruit)
+        + section('忌生冷', b.cold) + section('忌辛辣油炸', b.spicy) + section('忌过酸', b.sour), 'diet');
+    }
+    case 'clothing': {
+      const d = card.data || {};
+      return ccShell('实时天气 · 穿衣建议', d.weather || '🌤️',
+        `<div class="cc-weather-line"><b>${escapeHtml(d.city)}</b> ${escapeHtml(d.weatherText || '')} ${escapeHtml(d.temp)}°C　最高${escapeHtml(d.high)}° / 最低${escapeHtml(d.low)}°　温差${escapeHtml(d.diff)}°</div>`
+        + `<div class="cc-principle">${escapeHtml(d.principle)}</div>`
+        + kvRow('内搭', d.inner) + kvRow('外套', d.outer) + kvRow('鞋子', d.shoes)
+        + kvRow('风', d.wind) + kvRow('湿度', (d.humidity == null ? '' : d.humidity + '%')), 'clothing');
+    }
+    case 'exercise':
+      return ccShell('疏肝轻运动', '🧘',
+        (card.items || []).map(e =>
+          `<div class="cc-item"><span class="cc-item-icon">${escapeHtml(e.icon || '')}</span><span class="cc-item-main"><b>${escapeHtml(e.name)}</b><span class="cc-sub">${escapeHtml(e.duration)} · ${escapeHtml(e.tag)}</span></span></div>`
+        ).join(''), 'rhythm');
+    case 'practice':
+      return ccShell('八段锦 · 动作序列', '🤸',
+        (card.items || []).map((m, i) =>
+          `<div class="cc-item"><span class="cc-step">${i + 1}</span><span class="cc-item-main"><b>${escapeHtml(m.name)}</b><span class="cc-sub">${escapeHtml(m.duration || '')}</span></span></div>`
+        ).join(''), 'practice');
+    case 'overview': {
+      const todos = card.todos || [];
+      const done = todos.filter(t => t.done).length;
+      return ccShell('今日健康概览', '📊',
+        `<div class="cc-score-line">肝郁指数 <b>${card.score == null ? '未评估' : escapeHtml(card.score)}</b> <span class="cc-sub">${escapeHtml(card.level || '')}</span></div>`
+        + `<div class="cc-sub" style="margin:6px 0;">今日待办 ${done}/${todos.length}</div>`
+        + todos.map(t => `<div class="cc-row"><span class="cc-value">${t.done ? '✔️' : '⭕'} ${escapeHtml((t.time ? t.time + ' ' : '') + t.text)}</span></div>`).join(''), 'home');
+    }
+    case 'symptom_list':
+      return ccShell('我的历史症状', '🩺',
+        (card.items || []).map(s =>
+          `<div class="cc-row"><span class="cc-value">${escapeHtml(s.time)} ${escapeHtml(s.symptom)}（${escapeHtml(s.severity)}${s.cause ? '，' + escapeHtml(s.cause) : ''}）</span></div>`
+        ).join('') || '<div class="cc-empty">还没有症状记录</div>', 'record');
+    case 'medicine_list':
+      return ccShell('我的用药提醒', '💊',
+        (card.items || []).map(m =>
+          `<div class="cc-row"><span class="cc-value"><b>${escapeHtml(m.name)}</b> ${escapeHtml(m.dose)} · ${escapeHtml(m.time)}${m.note ? '（' + escapeHtml(m.note) + '）' : ''}</span></div>`
+        ).join('') || '<div class="cc-empty">还没有用药提醒</div>', 'record');
+    case 'todo_list':
+      return ccShell(card.date ? `${card.date} 待办` : '今日调理待办', '✅',
+        (card.items || []).map(t =>
+          `<div class="cc-row"><span class="cc-value">${t.done ? '✔️' : '⭕'} ${escapeHtml((t.time ? t.time + ' ' : '') + t.text)}</span></div>`
+        ).join('') || '<div class="cc-empty">暂无待办</div>', 'home');
+    case 'profile': {
+      const d = card.data || {};
+      return ccShell('我的健康档案', '👤',
+        kvRow('体质', d.constitution) + kvRow('过敏史', d.allergy) + kvRow('饮食偏好', d.dietPref)
+        + kvRow('运动习惯', d.exercisePref) + kvRow('作息规律', d.sleepPref) + kvRow('体感敏感度', d.bodySense)
+        + kvRow('肝郁指数', d.score == null ? '' : `${d.score}（${d.level || ''}）`), 'profile');
+    }
+    // ---- 写操作确认卡（不落库，等用户点击） ----
+    case 'confirm_symptom': {
+      const p = card.payload || {};
+      const key = ++chatPendingSeq;
+      chatPending.set(key, { kind: 'symptom', payload: p });
+      return ccConfirmShell('symptom', key, '确认记录这条症状？',
+        kvRow('症状', p.symptom) + kvRow('程度', p.severity) + kvRow('可能原因', p.cause));
+    }
+    case 'confirm_mood': {
+      const p = card.payload || {};
+      const key = ++chatPendingSeq;
+      chatPending.set(key, { kind: 'mood', payload: p });
+      return ccConfirmShell('mood', key, '确认今日情绪打卡？', kvRow('心情', p.mood));
+    }
+    case 'confirm_todo': {
+      const p = card.payload || {};
+      const key = ++chatPendingSeq;
+      chatPending.set(key, { kind: 'todo', payload: p });
+      return ccConfirmShell('todo', key, '确认添加这条提醒？',
+        kvRow('内容', p.content) + kvRow('提醒时间', p.time) + kvRow('日期', p.date || '今天'));
+    }
+    case 'confirm_profile': {
+      const p = card.payload || {};
+      const key = ++chatPendingSeq;
+      chatPending.set(key, { kind: 'profile', payload: p });
+      const labels = { constitution: '体质', allergy: '过敏史', dietPref: '饮食偏好', exercisePref: '运动习惯', sleepPref: '作息规律', bodySense: '体感敏感度' };
+      return ccConfirmShell('profile', key, '确认更新健康档案？',
+        Object.keys(p).map(k => kvRow(labels[k] || k, p[k])).join(''));
+    }
+    case 'confirm_medicine': {
+      const p = card.payload || {};
+      const key = ++chatPendingSeq;
+      chatPending.set(key, { kind: 'medicine', payload: p });
+      return ccConfirmShell('medicine', key, '确认用药打卡？', kvRow('药品', p.medicineName));
+    }
+    default:
+      return '';
+  }
+}
+
+// 确认卡：提交到现有 REST 接口落库
+async function chatConfirm(btn) {
+  const cardEl = btn.closest('.cc-confirm');
+  if (!cardEl) return;
+  const key = Number(cardEl.dataset.key);
+  const pending = chatPending.get(key);
+  if (!pending) return;
+  btn.disabled = true;
+  btn.textContent = '提交中…';
+  let res;
+  try {
+    if (pending.kind === 'symptom') {
+      res = await fetchAPI('/record/symptoms', { method: 'POST', body: JSON.stringify(pending.payload) });
+    } else if (pending.kind === 'mood') {
+      res = await fetchAPI('/rhythm/mood', { method: 'POST', body: JSON.stringify({ mood: pending.payload.mood }) });
+    } else if (pending.kind === 'todo') {
+      res = await fetchAPI('/todos', { method: 'POST', body: JSON.stringify(pending.payload) });
+    } else if (pending.kind === 'profile') {
+      res = await fetchAPI('/profile', { method: 'PUT', body: JSON.stringify(pending.payload) });
+    } else if (pending.kind === 'medicine') {
+      res = await fetchAPI('/record/medicines/' + encodeURIComponent(pending.payload.medicineId) + '/punch', { method: 'POST' });
+    }
+  } finally {
+    // fetchAPI 已内置异常兜底
+  }
+  if (res && res.success) {
+    chatPending.delete(key);
+    cardEl.classList.add('cc-done');
+    cardEl.innerHTML = '<div class="cc-done-text">✅ 已确认，' + escapeHtml(res.message || '操作成功') + '</div>';
+    refreshChatOverview();
+  } else {
+    btn.disabled = false;
+    btn.textContent = '✅ 确认';
+    const tip = cardEl.querySelector('.cc-error') || (() => {
+      const d = document.createElement('div');
+      d.className = 'cc-error';
+      cardEl.appendChild(d);
+      return d;
+    })();
+    tip.textContent = (res && res.message) || '提交失败，请稍后再试';
+  }
+}
+
+function chatCancel(btn) {
+  const cardEl = btn.closest('.cc-confirm');
+  if (!cardEl) return;
+  const key = Number(cardEl.dataset.key);
+  chatPending.delete(key);
+  cardEl.classList.add('cc-canceled');
+  cardEl.innerHTML = '<div class="cc-done-text cc-cancel-text">已取消，没有写入记录</div>';
+}
+
 async function refreshChatOverview() {
   const res = await fetchAPI('/health/dashboard');
   if (res.success && res.data) {
@@ -534,39 +1183,109 @@ async function refreshChatOverview() {
   }
 }
 
-async function generatePrescription() {
-  const res = await fetchAPI('/chat/prescription');
-  const area = document.getElementById('prescriptionArea');
-  if (res.success && res.data && area) {
-    const d = res.data;
-    area.innerHTML = `
-      <div style="background:var(--card-beige);border-radius:8px;padding:12px;margin-bottom:8px;">
-        <b>\u{1F33F} 情绪建议</b><br>${escapeHtml(d.emotion)}
-      </div>
-      <div style="background:var(--card-beige);border-radius:8px;padding:12px;margin-bottom:8px;">
-        <b>\u{1F450} 养生动作</b><br>${escapeHtml(d.action)}
-      </div>
-      <div style="background:var(--card-beige);border-radius:8px;padding:12px;">
-        <b>\u{1F49B} 暖心话</b><br>${escapeHtml(d.warm)}
-      </div>
-    `;
-  } else if (area) {
-    area.innerHTML = '<div style="color:var(--text-light);font-size:14px;">' + escapeHtml(res.message || '处方生成失败，请稍后重试') + '</div>';
-  }
+// ============ 功法带练 ============
+let currentPracticeGroup = 'baduanjin';
+let practiceMovesCache = [];
+let practiceTimer = null;
+const PRACTICE_META = {
+  baduanjin: { title: '八段锦 · 动作序列', hint: '每式约 30 秒，整套约 4 分钟，循序渐进、不憋气' },
+  stretch: { title: '疏肝拉伸序列', hint: '拉伸到有牵拉感即可，不要疼痛，每侧动作左右都做' },
+  office: { title: '办公室微运动', hint: '坐在工位上也能完成，每工作 1 小时起来做一组' },
+};
+
+async function switchPracticeTab(group, ev) {
+  document.querySelectorAll('#page-practice .tab-bar .tab').forEach(t => t.classList.remove('active'));
+  if (ev && ev.currentTarget) ev.currentTarget.classList.add('active');
+  currentPracticeGroup = group;
+  await loadPracticeMoves(group);
 }
 
-// ============ 功法带练 ============
-async function loadPracticeMoves() {
+async function loadPracticeMoves(group) {
+  group = group || currentPracticeGroup;
+  currentPracticeGroup = group;
+  stopPractice(false);
+  const [r1] = await Promise.all([
+    fetchAPI('/practice/moves?group=' + group),
+  ]);
+  const moves = r1.success && Array.isArray(r1.data) ? r1.data : [];
+  practiceMovesCache = moves;
   const list = document.getElementById('moveList');
-  if (!list) return;
-  const res = await fetchAPI('/practice/moves');
-  if (!res.success || !Array.isArray(res.data)) return;
-  list.innerHTML = res.data.map((m, i) => `
-    <div class="move-item${i === 0 ? ' active' : ''}">
-      <div class="num">${i === 0 ? '\u25B6' : i + 1}</div>
-      <div class="name">${escapeHtml(m.name)}</div>
-      <div class="duration">${escapeHtml(m.duration)}</div>
-    </div>`).join('');
+  if (list) {
+    list.innerHTML = moves.length ? moves.map((m, i) => `
+      <div class="move-item${i === 0 ? ' active' : ''}" onclick="seekPractice(${i})">
+        <div class="num">${i + 1}</div>
+        <div class="name">${escapeHtml(m.name)}</div>
+        <div class="duration">${escapeHtml(m.duration || '')}</div>
+      </div>`).join('') : '<div style="color:var(--text-light);font-size:13px;">动作加载失败</div>';
+  }
+  const explain = document.getElementById('practiceExplain');
+  if (explain) {
+    explain.innerHTML = moves.map((m, i) => `
+      <div class="card-beige" style="min-width:200px;text-align:center;">
+        <div style="font-size:28px;color:var(--accent);font-weight:600;">${i + 1}</div>
+        <div style="font-weight:500;">${escapeHtml(m.name)}</div>
+        <div style="font-size:13px;color:var(--text-light);">${escapeHtml(m.duration || '')}</div>
+        <div style="font-size:12px;color:var(--text-mid);margin-top:4px;line-height:1.5;">${escapeHtml(m.desc || '配合自然呼吸，动作缓慢舒展')}</div>
+      </div>`).join('');
+  }
+  const meta = PRACTICE_META[group];
+  const titleEl = document.getElementById('practiceSeqTitle');
+  if (titleEl && meta) titleEl.textContent = meta.title;
+  const hintEl = document.getElementById('practiceSeqHint');
+  if (hintEl && meta) hintEl.textContent = meta.hint;
+  const timeEl = document.getElementById('practiceTime');
+  if (timeEl) timeEl.textContent = moves.length ? `0:00 / ${fmtPracticeTime(moves.length * PRACTICE_STEP)}` : '0:00 / 0:00';
+  const bar = document.getElementById('practiceBar');
+  if (bar) bar.style.width = '0%';
+}
+
+const PRACTICE_STEP = 15; // 带练引导中每式停留 15 秒（原型节奏）
+function fmtPracticeTime(sec) {
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return m + ':' + String(s).padStart(2, '0');
+}
+function startPractice() {
+  if (!practiceMovesCache.length) { toast('动作还在加载，请稍候'); return; }
+  if (practiceTimer) { stopPractice(); return; }
+  const total = practiceMovesCache.length * PRACTICE_STEP;
+  let elapsed = 0;
+  highlightMove(0);
+  setPracticePlaying(true);
+  toast('开始跟练，配合呼吸慢慢来 🌿');
+  practiceTimer = setInterval(() => {
+    elapsed += 1;
+    const bar = document.getElementById('practiceBar');
+    if (bar) bar.style.width = Math.min(100, (elapsed / total) * 100) + '%';
+    const timeEl = document.getElementById('practiceTime');
+    if (timeEl) timeEl.textContent = fmtPracticeTime(Math.min(elapsed, total)) + ' / ' + fmtPracticeTime(total);
+    const idx = Math.min(practiceMovesCache.length - 1, Math.floor(elapsed / PRACTICE_STEP));
+    highlightMove(idx);
+    if (elapsed >= total) {
+      stopPractice();
+      toast('完成一遍，气血舒展，给自己点个赞 🌿', 'success');
+    }
+  }, 1000);
+}
+function seekPractice(i) {
+  if (!practiceTimer || !practiceMovesCache.length) return;
+  // 带练中点击动作：从该式重新计时较复杂，这里仅做高亮提示
+  highlightMove(i);
+  toast(`当前动作：${practiceMovesCache[i].name}`);
+}
+function highlightMove(i) {
+  document.querySelectorAll('#moveList .move-item').forEach((el, idx) => {
+    el.classList.toggle('active', idx === i);
+    const num = el.querySelector('.num');
+    if (num) num.textContent = idx === i ? '\u25B6' : (idx + 1);
+  });
+}
+function setPracticePlaying(on) {
+  document.querySelectorAll('#practicePlayer .play-btn').forEach(b => { b.textContent = on ? '\u23F8' : '\u25B6'; });
+}
+function stopPractice(withToast) {
+  if (practiceTimer) { clearInterval(practiceTimer); practiceTimer = null; setPracticePlaying(false); }
+  if (withToast !== false) toast('已停止带练');
 }
 
 // ============ 健康记录 ============
@@ -578,6 +1297,7 @@ function switchRecordTab(tab, ev) {
     const el = document.getElementById('recordTab' + (i + 1));
     if (el) el.style.display = tab === t ? 'block' : 'none';
   });
+  if (tab === 'chronic') switchChronic(currentChronic);
 }
 
 function quickSymptom(name) {
@@ -598,19 +1318,21 @@ async function submitSymptom() {
   const name = (document.getElementById('sfName').textContent || '').trim();
   const severity = document.getElementById('sfSeverity').value;
   const cause = (document.getElementById('sfCause').value || '').trim();
-  if (!name) { alert('请先选择症状'); return; }
+  if (!name) { toast('请先选择症状'); return; }
   const res = await fetchAPI('/record/symptoms', {
     method: 'POST',
     body: JSON.stringify({ symptom: name, severity, cause }),
   });
   if (!res.success) {
-    alert(res.message || '记录失败，请稍后重试');
+    toast(res.message || '记录失败，请稍后重试', 'error');
     return;
   }
+  toast('症状已记录，小松会持续帮你关注 🌿', 'success');
   hideSymptomForm();
   const causeEl = document.getElementById('sfCause');
   if (causeEl) causeEl.value = '';
   loadSymptomRecords();
+  loadSymptomStats();
 }
 
 async function loadSymptomRecords() {
@@ -640,12 +1362,63 @@ async function loadMedicines() {
   }
   list.innerHTML = res.data.map(m => `
     <div class="med-card">
-      <div class="mc-left"><div class="name">${escapeHtml(m.name)}</div><div class="dose">${escapeHtml(m.dose)}</div></div>
+      <div class="mc-left">
+        <div class="name">${escapeHtml(m.name)}${m.note ? `<span style="font-size:12px;color:var(--text-light);font-weight:400;"> · ${escapeHtml(m.note)}</span>` : ''}</div>
+        <div class="dose">${escapeHtml(m.dose || '按说明书服用')}${m.time ? ' · ' + escapeHtml(m.time) : ''}</div>
+        <div class="med-last">${m.lastPunch ? '上次打卡 ' + escapeHtml(m.lastPunch.slice(5)) : '今天还没打卡'}</div>
+      </div>
       <div class="mc-right">
-        <div style="font-size:13px;color:var(--text-light);margin-bottom:4px;">${escapeHtml(m.time)}</div>
-        <div class="punch" data-id="${m.id}" onclick="punchMed(this)" title="打卡">&nbsp;</div>
+        <div class="punch" data-id="${m.id}" onclick="punchMed(this)" title="服药打卡">&#10003;</div>
+        <div class="med-del" data-id="${m.id}" data-name="${escapeHtml(m.name)}" onclick="deleteMed(this)" title="删除提醒">&#128465;</div>
       </div>
     </div>`).join('');
+}
+
+function openMedForm() {
+  openModal(`
+    <div class="modal-head">
+      <div class="modal-title">添加用药提醒</div>
+      <span class="modal-close" onclick="closeModal()">×</span>
+    </div>
+    <div class="modal-body">
+      <label class="form-label">药品名称 *</label>
+      <input class="form-input" id="medFormName" placeholder="如：逍遥丸" maxlength="100">
+      <label class="form-label">剂量</label>
+      <input class="form-input" id="medFormDose" placeholder="如：一次8丸" maxlength="50">
+      <label class="form-label">提醒时间</label>
+      <input class="form-input" id="medFormTime" type="time">
+      <label class="form-label">备注</label>
+      <input class="form-input" id="medFormNote" placeholder="如：饭后温水送服" maxlength="200">
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="submitMedForm()">保存提醒</button>
+    </div>`);
+  setTimeout(() => { const n = document.getElementById('medFormName'); if (n) n.focus(); }, 50);
+}
+async function submitMedForm() {
+  const name = document.getElementById('medFormName').value.trim();
+  if (!name) { toast('请输入药品名称'); return; }
+  const payload = {
+    name,
+    dose: document.getElementById('medFormDose').value.trim(),
+    time: document.getElementById('medFormTime').value.trim(),
+    note: document.getElementById('medFormNote').value.trim(),
+  };
+  const res = await fetchAPI('/record/medicines', { method: 'POST', body: JSON.stringify(payload) });
+  if (!res.success) { toast(res.message || '添加失败', 'error'); return; }
+  closeModal();
+  toast('用药提醒已添加', 'success');
+  loadMedicines();
+}
+async function deleteMed(el) {
+  const id = el.dataset.id;
+  const name = el.dataset.name || '该用药提醒';
+  if (!confirm(`确定删除「${name}」的用药提醒吗？`)) return;
+  const res = await fetchAPI('/record/medicines/' + id, { method: 'DELETE' });
+  if (!res.success) { toast(res.message || '删除失败', 'error'); return; }
+  toast('已删除用药提醒');
+  loadMedicines();
 }
 
 async function punchMed(el) {
@@ -653,11 +1426,117 @@ async function punchMed(el) {
   if (!id) return;
   const res = await fetchAPI('/record/medicines/' + id + '/punch', { method: 'POST' });
   if (!res.success) {
-    alert(res.message || '打卡失败，请稍后重试');
+    toast(res.message || '打卡失败，请稍后重试', 'error');
     return;
   }
-  el.classList.add('done');
-  el.textContent = '\u2713';
+  toast('服药打卡成功，按时吃药很棒 🌿', 'success');
+  loadMedicines();
+}
+
+// 症状近 7 天柱状趋势
+async function loadSymptomStats() {
+  const el = document.getElementById('symptomTrend');
+  if (!el) return;
+  const res = await fetchAPI('/record/symptoms/stats');
+  if (!res.success || !res.data) return;
+  const days = res.data.days || [];
+  const max = Math.max(1, ...days.map(d => d.count));
+  const WEEK_CN = ['日', '一', '二', '三', '四', '五', '六'];
+  el.innerHTML = days.map(d => {
+    const pct = d.count ? Math.max(12, (d.count / max) * 90) : 4;
+    const color = d.count === 0 ? 'var(--border)' : d.count >= max && max >= 3 ? 'var(--danger)' : d.count >= 2 ? 'var(--warn)' : 'var(--primary)';
+    const dow = WEEK_CN[new Date(d.date + 'T00:00:00').getDay()];
+    return `<div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+      <div style="font-size:11px;color:var(--text-mid);">${d.count || ''}</div>
+      <div style="width:22px;height:${pct}%;border-radius:4px 4px 0 0;background:${color};"></div>
+      <div style="font-size:12px;color:var(--text-light);">${dow}</div>
+    </div>`;
+  }).join('');
+  const tip = document.getElementById('symptomTrendTip');
+  const total = days.reduce((a, b) => a + b.count, 0);
+  if (tip) {
+    tip.innerHTML = total === 0
+      ? '\u{1F49A} 近 7 天没有不适记录，状态保持得不错'
+      : `\u{1F9FE} 近 7 天共记录 ${total} 次，本月累计 ${res.data.monthCount} 次，留意发作当天的作息和饮食`;
+  }
+}
+
+// ============ 慢病养护（静态常识 + AI 计划） ============
+let currentChronic = '偏头痛';
+const CHRONIC_DATA = {
+  '偏头痛': {
+    methods: [
+      ['🧘 穴位', '风池、太阳、合谷，每个穴位轻柔按揉 2-3 分钟'],
+      ['🍵 饮食', '天麻炖鱼头、菊花茶；少红酒、奶酪、浓咖啡'],
+      ['🛌 作息', '尽量 23 点前入睡，午休 15-20 分钟，不睡太久'],
+    ],
+    signals: [
+      ['调理周期', '以 4 周为一个观察周期，记录发作频率与程度'],
+      ['加重信号', '发作频率增加、持续时间变长、疼痛程度加重'],
+      ['就医指征', '伴呕吐、视觉异常或肢体麻木，或“最严重的一次头痛”，请及时就诊'],
+    ],
+  },
+  '慢性咽炎': {
+    methods: [
+      ['🧘 穴位', '列缺、照海、天突（轻揉，勿重按），每日 2-3 次'],
+      ['🍵 饮食', '胖大海枸杞茶、百合银耳羹；忌辛辣油炸、烟酒'],
+      ['🗣️ 习惯', '少清嗓子、多喝温水，空调房注意加湿'],
+    ],
+    signals: [
+      ['调理周期', '养护以 4-8 周为周期，减少反复刺激最重要'],
+      ['加重信号', '咽痛明显、吞咽困难、反复清嗓带血'],
+      ['就医指征', '持续超过 2 周不缓解或伴发热、声音嘶哑，请耳鼻喉科就诊'],
+    ],
+  },
+  '月经不调': {
+    methods: [
+      ['🧘 穴位', '三阴交、太冲、血海，经前一周开始轻揉'],
+      ['🍵 饮食', '玫瑰枸杞茶、当归红枣蛋；经前忌生冷'],
+      ['🛌 作息', '规律睡眠、注意腰腹保暖，情绪波动时做 478 呼吸'],
+    ],
+    signals: [
+      ['调理周期', '连续观察 2-3 个月经周期，记录周期、经期、经量'],
+      ['加重信号', '周期紊乱加重、经量明显变化、经前情绪剧烈波动'],
+      ['就医指征', '停经、非经期出血、剧痛或周期长期紊乱，请妇科就诊'],
+    ],
+  },
+  '功能性消化不良': {
+    methods: [
+      ['🧘 穴位', '中脘、足三里、内关，饭后 1 小时轻揉'],
+      ['🍵 饮食', '山药小米粥、陈皮茶；少食多餐，细嚼慢咽'],
+      ['🚶 习惯', '饭后散步 10-15 分钟，避免立刻躺下'],
+    ],
+    signals: [
+      ['调理周期', '以 2-4 周为周期，观察腹胀、嗳气变化'],
+      ['加重信号', '餐后腹胀持续加重、食欲明显下降、体重减轻'],
+      ['就医指征', '黑便、持续呕吐、夜间痛醒或症状超过 4 周，请消化科就诊'],
+    ],
+  },
+};
+function switchChronic(name, ev) {
+  currentChronic = name;
+  const chips = document.querySelectorAll('#recordTab3 .tag-chip');
+  chips.forEach(c => c.classList.remove('active'));
+  if (ev && ev.currentTarget) {
+    ev.currentTarget.classList.add('active');
+  } else {
+    chips.forEach(c => { if (c.textContent.trim() === name) c.classList.add('active'); });
+  }
+  const d = CHRONIC_DATA[name];
+  if (!d) return;
+  const mEl = document.getElementById('chronicMethods');
+  const sEl = document.getElementById('chronicSignals');
+  if (mEl) {
+    mEl.innerHTML = d.methods.map(([k, v]) =>
+      `<div style="font-size:14px;margin-bottom:8px;line-height:1.6;"><b>${escapeHtml(k)}：</b>${escapeHtml(v)}</div>`).join('');
+  }
+  if (sEl) {
+    sEl.innerHTML = d.signals.map(([k, v], i) =>
+      `<div style="font-size:14px;margin-bottom:8px;line-height:1.6;"><b${i === 2 ? ' style="color:var(--danger);"' : ''}>${escapeHtml(k)}：</b>${escapeHtml(v)}</div>`).join('');
+  }
+}
+function genChronicPlan() {
+  askAIWith(`我最近在调理「${currentChronic}」，请结合疏肝解郁的思路，为我生成一份本周可执行的调理计划：每天 1 个养生动作、饮食注意和作息安排，并提醒我什么情况下需要就医。`);
 }
 
 // ============ 个人中心（健康档案，be-3） ============
@@ -685,6 +1564,55 @@ async function loadProfile() {
   set('pfExercise', p.exercisePref || '未设置');
   set('pfSleep', p.sleepPref || '未设置');
   set('pfBody', p.bodySense || '未设置');
+}
+
+// 我的-数据总览（真实统计）
+async function loadProfileStats() {
+  const res = await fetchAPI('/profile/stats');
+  if (!res.success || !res.data) return;
+  const d = res.data;
+  const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+  set('pfStatSleep', d.avgSleep || '--');
+  set('pfStatScore', d.score === null || d.score === undefined ? '未测评' : d.score);
+  set('pfStatSymptom', (d.monthSymptomCount || 0) + ' 次');
+  set('pfStatSleepDays', (d.sleepDays || 0) + ' 天');
+}
+
+// 我的：档案 / 收藏视图切换
+function switchProfileView(view, mi) {
+  document.querySelectorAll('.profile-menu .mi').forEach(m => m.classList.remove('active'));
+  if (mi) mi.classList.add('active');
+  const favCard = document.getElementById('viewFavorites');
+  const cards = document.querySelectorAll('.pf-view-card');
+  if (view === 'favorites') {
+    if (favCard) favCard.style.display = '';
+    cards.forEach(c => c.style.display = 'none');
+    renderFavList();
+  } else {
+    if (favCard) favCard.style.display = 'none';
+    cards.forEach(c => c.style.display = '');
+  }
+}
+function renderFavList() {
+  const el = document.getElementById('favList');
+  if (!el) return;
+  const favs = getFavs();
+  if (!favs.length) {
+    el.innerHTML = '<div style="color:var(--text-light);font-size:14px;">还没有收藏，去「饮食调理」点亮食谱的收藏吧</div>';
+    return;
+  }
+  el.innerHTML = '<div class="fav-grid">' + favs.map(f => `
+    <div class="fav-item">
+      <span class="time-tag">${escapeHtml(f.time || '')}</span>
+      <div style="font-weight:500;margin:6px 0 2px;">${escapeHtml(f.name)}</div>
+      <div style="font-size:13px;color:var(--text-light);">${escapeHtml(f.ingredients || '')}</div>
+      <span class="fav-del" onclick="removeFav('${escapeHtml(f.name)}')">移除收藏</span>
+    </div>`).join('') + '</div>';
+}
+function removeFav(name) {
+  saveFavs(getFavs().filter(f => f.name !== name));
+  toast('已移除收藏');
+  renderFavList();
 }
 
 // 卡片内编辑：点“编辑”把字段变为输入框，点“保存”提交 PUT /profile
