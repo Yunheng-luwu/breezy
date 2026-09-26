@@ -112,6 +112,71 @@ async function appendMessage(sessionId, role, content) {
   session.messages.push({ role, content });
 }
 
+/**
+ * 会话列表（按最新消息倒序，附最后一条消息预览）
+ */
+async function listSessions(user) {
+  if (dbReady) {
+    const [rows] = await pool.query(
+      `SELECT s.id, s.title,
+        (SELECT m.content FROM chat_messages m WHERE m.session_id = s.id ORDER BY m.id DESC LIMIT 1) AS lastMessage,
+        (SELECT m.created_at FROM chat_messages m WHERE m.session_id = s.id ORDER BY m.id DESC LIMIT 1) AS updatedAt
+       FROM chat_sessions s
+       WHERE s.user_id = ?
+       ORDER BY updatedAt DESC, s.id DESC
+       LIMIT 50`,
+      [user.id],
+    );
+    return rows;
+  }
+
+  const list = [];
+  for (const s of memoryDB.sessions.values()) {
+    if (s.userId !== user.id) continue;
+    const last = s.messages[s.messages.length - 1];
+    list.push({ id: s.id, title: s.title, lastMessage: last ? last.content : '', updatedAt: null });
+  }
+  return list.reverse();
+}
+
+/**
+ * 某个会话的完整消息（校验归属，按时间正序）
+ */
+async function loadMessages(sessionId, user) {
+  if (dbReady) {
+    const [sessions] = await pool.query(
+      'SELECT id, title FROM chat_sessions WHERE id = ? AND user_id = ?',
+      [sessionId, user.id],
+    );
+    if (!sessions[0]) return null;
+    const [rows] = await pool.query(
+      'SELECT role, content, created_at AS createdAt FROM chat_messages WHERE session_id = ? ORDER BY id ASC LIMIT 200',
+      [sessionId],
+    );
+    return { title: sessions[0].title, messages: rows };
+  }
+
+  const session = memoryDB.sessions.get(Number(sessionId));
+  if (!session || session.userId !== user.id) return null;
+  return { title: session.title, messages: session.messages.map(m => ({ role: m.role, content: m.content })) };
+}
+
+/**
+ * 首条消息时自动命名会话（仅当标题仍是默认名）
+ */
+async function renameSessionIfDefault(sessionId, title) {
+  if (dbReady) {
+    await pool.query(
+      "UPDATE chat_sessions SET title = ? WHERE id = ? AND title = '新的对话'",
+      [title, sessionId],
+    );
+    return;
+  }
+
+  const session = memoryDB.sessions.get(sessionId);
+  if (session && session.title === '新的对话') session.title = title;
+}
+
 module.exports = {
   init,
   getStorageMode,
@@ -119,4 +184,7 @@ module.exports = {
   resolveSession,
   loadHistory,
   appendMessage,
+  listSessions,
+  loadMessages,
+  renameSessionIfDefault,
 };

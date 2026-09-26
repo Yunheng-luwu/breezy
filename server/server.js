@@ -10,6 +10,7 @@ const path = require('path');
 const config = require('./config');
 const apiRoutes = require('./routes/api');
 const chatRoutes = require('./routes/chat');
+const adminRoutes = require('./routes/admin');
 const chatStore = require('./agent/chatStore');
 
 const app = express();
@@ -23,6 +24,7 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // 路由
 app.use('/api/chat', chatRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api', apiRoutes);
 
 // 默认路由 - 返回首页

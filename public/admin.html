@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>松序 · 管理后台</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: "PingFang SC", "Microsoft YaHei", sans-serif; background: #f4f6f8; color: #2b333c; min-height: 100vh; }
+  .hidden { display: none !important; }
+
+  /* 登录 */
+  .login-wrap { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+  .login-box { background: #fff; border-radius: 16px; padding: 40px 36px; width: 340px; box-shadow: 0 8px 30px rgba(0,0,0,.08); }
+  .login-box h1 { font-size: 20px; margin-bottom: 4px; }
+  .login-box .sub { font-size: 13px; color: #98a2ad; margin-bottom: 24px; }
+  .login-box input { width: 100%; padding: 11px 14px; border: 1px solid #dde3e8; border-radius: 10px; font-size: 14px; margin-bottom: 14px; outline: none; }
+  .login-box input:focus { border-color: #5b8c7a; }
+  .login-box button { width: 100%; padding: 11px; border: none; border-radius: 10px; background: #5b8c7a; color: #fff; font-size: 15px; cursor: pointer; }
+  .login-box button:hover { background: #4c7a69; }
+  .login-err { color: #d4654f; font-size: 13px; margin-bottom: 10px; min-height: 18px; }
+
+  /* 看板 */
+  .topbar { background: #fff; padding: 14px 28px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+  .topbar h1 { font-size: 17px; }
+  .topbar .right { display: flex; align-items: center; gap: 14px; font-size: 13px; color: #98a2ad; }
+  .topbar button { border: 1px solid #dde3e8; background: #fff; border-radius: 8px; padding: 6px 14px; font-size: 13px; cursor: pointer; color: #5a6672; }
+  .topbar button:hover { color: #d4654f; border-color: #d4654f; }
+  .container { max-width: 1080px; margin: 24px auto; padding: 0 20px; }
+
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; margin-bottom: 22px; }
+  .stat-card { background: #fff; border-radius: 14px; padding: 18px; box-shadow: 0 2px 8px rgba(0,0,0,.04); }
+  .stat-card .num { font-size: 26px; font-weight: 700; color: #3f6b5c; }
+  .stat-card .label { font-size: 12px; color: #98a2ad; margin-top: 4px; }
+
+  .panel { background: #fff; border-radius: 14px; padding: 20px 22px; box-shadow: 0 2px 8px rgba(0,0,0,.04); margin-bottom: 22px; }
+  .panel h2 { font-size: 15px; margin-bottom: 16px; color: #2b333c; }
+  .panel-row { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+  @media (max-width: 760px) { .panel-row { grid-template-columns: 1fr; } }
+
+  /* 柱状图（纯 CSS） */
+  .bar-chart { display: flex; align-items: flex-end; gap: 10px; height: 140px; padding-top: 10px; }
+  .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+  .bar-val { font-size: 11px; color: #5a6672; margin-bottom: 4px; }
+  .bar { width: 60%; max-width: 34px; border-radius: 6px 6px 0 0; background: #8fb5a7; min-height: 2px; transition: height .3s; }
+  .bar-label { font-size: 11px; color: #98a2ad; margin-top: 6px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid #eef1f3; }
+  th { color: #98a2ad; font-weight: 500; font-size: 12px; }
+  .err-banner { background: #fdf0ee; color: #d4654f; border-radius: 10px; padding: 12px 16px; font-size: 13px; margin-bottom: 16px; }
+</style>
+</head>
+<body>
+
+<!-- 登录视图 -->
+<div class="login-wrap" id="loginView">
+  <div class="login-box">
+    <h1>松序 · 管理后台</h1>
+    <div class="sub">请使用管理员账号登录</div>
+    <div class="login-err" id="loginErr"></div>
+    <input id="account" placeholder="账号" autocomplete="username">
+    <input id="password" type="password" placeholder="密码" autocomplete="current-password">
+    <button onclick="doLogin()">登 录</button>
+  </div>
+</div>
+
+<!-- 看板视图 -->
+<div id="dashView" class="hidden">
+  <div class="topbar">
+    <h1>松序 · 数据看板</h1>
+    <div class="right">
+      <span id="adminName"></span>
+      <button onclick="logout()">退出</button>
+    </div>
+  </div>
+  <div class="container">
+    <div id="errBox"></div>
+    <div class="card-grid" id="cardGrid"></div>
+    <div class="panel-row">
+      <div class="panel">
+        <h2>近 7 天新增用户</h2>
+        <div class="bar-chart" id="userChart"></div>
+      </div>
+      <div class="panel">
+        <h2>近 7 天打卡记录（作息/情绪/症状）</h2>
+        <div class="bar-chart" id="checkinChart"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>最新注册用户</h2>
+      <table>
+        <thead><tr><th>ID</th><th>账号</th><th>昵称</th><th>注册时间</th></tr></thead>
+        <tbody id="userTable"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+const TOKEN_KEY = 'songxu_admin_token';
+
+function getToken() { return localStorage.getItem(TOKEN_KEY) || ''; }
+
+async function api(path, options = {}) {
+  const res = await fetch('/api' + path, {
+    method: options.method || 'GET',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + getToken() },
+    body: options.body ? JSON.stringify(options.body) : undefined,
+  });
+  const json = await res.json().catch(() => ({}));
+  return { status: res.status, json };
+}
+
+async function doLogin() {
+  const account = document.getElementById('account').value.trim();
+  const password = document.getElementById('password').value;
+  const errEl = document.getElementById('loginErr');
+  errEl.textContent = '';
+  if (!account || !password) { errEl.textContent = '请输入账号和密码'; return; }
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ account, password }),
+    });
+    const json = await res.json();
+    if (!json.success) { errEl.textContent = json.message || '登录失败'; return; }
+    localStorage.setItem(TOKEN_KEY, json.token);
+    const ok = await loadDashboard();
+    if (!ok) {
+      localStorage.removeItem(TOKEN_KEY);
+      errEl.textContent = '该账号无管理员权限';
+    }
+  } catch (e) {
+    errEl.textContent = '网络异常，请稍后再试';
+  }
+}
+
+function logout() {
+  localStorage.removeItem(TOKEN_KEY);
+  location.reload();
+}
+
+const CARD_DEFS = [
+  ['totalUsers', '注册用户'],
+  ['todayNewUsers', '今日新增'],
+  ['todayActiveUsers', '今日活跃'],
+  ['totalChatMessages', 'AI 对话消息'],
+  ['totalTodos', '待办总数'],
+  ['doneTodos', '已完成待办'],
+  ['totalSymptoms', '症状记录'],
+  ['totalSleepCheckins', '作息打卡'],
+  ['totalMoodCheckins', '情绪打卡'],
+];
+
+function renderChart(el, data) {
+  const max = Math.max(1, ...data.map(d => d.count));
+  el.innerHTML = data.map(d => `
+    <div class="bar-col">
+      <div class="bar-val">${d.count || ''}</div>
+      <div class="bar" style="height:${Math.round(d.count / max * 100)}%"></div>
+      <div class="bar-label">${d.date}</div>
+    </div>`).join('');
+}
+
+async function loadDashboard() {
+  const { status, json } = await api('/admin/overview');
+  if (status !== 200 || !json.success) return false;
+  const d = json.data;
+
+  document.getElementById('cardGrid').innerHTML = CARD_DEFS.map(([key, label]) => `
+    <div class="stat-card"><div class="num">${d.cards[key] ?? 0}</div><div class="label">${label}</div></div>`).join('');
+  renderChart(document.getElementById('userChart'), d.newUserTrend);
+  renderChart(document.getElementById('checkinChart'), d.checkinTrend);
+  document.getElementById('userTable').innerHTML = d.recentUsers.map(u => `
+    <tr><td>${u.id}</td><td>${u.username || '-'}</td><td>${u.name || '-'}</td><td>${u.createdAt || '-'}</td></tr>`).join('');
+
+  document.getElementById('loginView').classList.add('hidden');
+  document.getElementById('dashView').classList.remove('hidden');
+  document.getElementById('adminName').textContent = '管理员';
+  return true;
+}
+
+// 已有 token 直接进入看板；无效则回登录页
+(async () => {
+  document.getElementById('password').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  if (getToken()) {
+    const ok = await loadDashboard();
+    if (!ok) localStorage.removeItem(TOKEN_KEY);
+  }
+})();
+</script>
+</body>
+</html>

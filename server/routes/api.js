@@ -8,6 +8,10 @@ const router = express.Router();
 const { pool } = require('../db/pool');
 const { signToken, optionalAuth, requireAuth, hashPassword, verifyPassword } = require('../middleware/auth');
 const { getClothingByWeather } = require('../services/weather');
+const {
+  dietData, clothingData, exerciseData,
+  practiceStretchData, practiceOfficeData,
+} = require('../services/contentData');
 
 // 所有路由先做可选认证（有 token 解析出 req.userId，无 token 按演示用户处理）
 router.use(optionalAuth);
@@ -21,48 +25,7 @@ const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).cat
 const getUserId = (req) => req.userId || 1;
 
 // ============ 静态内容（与数据库无关） ============
-
-const dietData = {
-  recommend: {
-    principle: '今日阴雨湿重，宜喝陈皮红枣茶，忌冰饮',
-    foods: ['陈皮', '红枣', '玫瑰花', '山药', '枸杞'],
-  },
-  goodFoods: {
-    tea: ['玫瑰花茶', '陈皮茶', '菊花茶', '枸杞茶'],
-    staple: ['山药粥', '小米粥', '红枣饭', '薏米饭'],
-    vegetable: ['菠菜', '芹菜', '西兰花', '胡萝卜'],
-    fruit: ['苹果', '橙子', '葡萄', '猕猴桃'],
-  },
-  badFoods: {
-    cold: ['冰饮', '冰淇淋', '生鱼片', '凉拌菜'],
-    spicy: ['辣椒', '花椒', '烧烤', '炸鸡'],
-    sour: ['柠檬', '醋', '酸梅', '山楂(过量)'],
-  },
-  recipes: [
-    { time: '早餐', name: '红枣山药粥', ingredients: '山药100g, 红枣5颗, 大米50g' },
-    { time: '午餐', name: '芹菜炒香干', ingredients: '芹菜200g, 香干100g, 木耳适量' },
-    { time: '晚餐', name: '菠菜猪肝汤', ingredients: '菠菜150g, 猪肝100g, 姜片3片' },
-    { time: '加餐', name: '玫瑰花茶', ingredients: '玫瑰花5朵, 枸杞10粒, 蜂蜜适量' },
-  ],
-};
-
-const clothingData = {
-  temp: 18, weather: '\u{1F327}', city: '杭州',
-  high: 22, low: 14, diff: 8, wind: '北风3级', humidity: 65,
-  principle: '今日降温大风，重点护住颈肩脚踝',
-  inner: '薄长袖纯棉打底，透气吸汗',
-  outer: '薄羽绒或风衣，防风为主',
-  shoes: '运动鞋或短靴，不露脚踝',
-};
-
-const exerciseData = [
-  { name: '八段锦·两手托天', duration: '3分钟', tag: '舒肝理气', icon: '\u{1F9D8}' },
-  { name: '梳头功', duration: '2分钟', tag: '疏肝明目', icon: '\u{1F48E}' },
-  { name: '扩胸运动', duration: '2分钟', tag: '宽胸理气', icon: '\u{1F4AA}' },
-  { name: '侧腰拉伸', duration: '3分钟', tag: '疏通胆经', icon: '\u{1F9D5}' },
-  { name: '搓胁肋', duration: '2分钟', tag: '疏肝解郁', icon: '\u{1F9B6}' },
-  { name: '深呼吸478', duration: '4分钟', tag: '安神定志', icon: '\u{1F33F}' },
-];
+// 静态数据统一放在 services/contentData.js，供本路由与 AI 工具层共用
 
 const aiReplies = {
   '睡不着': '建议睡前按揉神门穴和三阴交各3分钟，配合478呼吸法（吸气4秒、屏息7秒、呼气8秒），重复4轮。另外23点前放下手机，让肝胆经正常排毒。',
@@ -149,7 +112,7 @@ router.get('/diet/foods', (req, res) => {
 });
 
 router.get('/diet/recipes', (req, res) => {
-  res.json({ success: true, data: dietData.recipes });
+  res.json({ success: true, data: { items: dietData.recipes, pool: dietData.recipePool } });
 });
 
 // 穿衣建议（be-7：真实天气，失败回退默认数据）
@@ -165,9 +128,45 @@ router.get('/rhythm/exercise', (req, res) => {
 
 // 情绪打卡（落库）
 router.post('/rhythm/mood', wrap(async (req, res) => {
-  const mood = req.body.mood || '未知';
+  const mood = (req.body.mood || '未知').toString().trim().slice(0, 20) || '未知';
   await pool.query('INSERT INTO mood_checkins (user_id, mood) VALUES (?, ?)', [getUserId(req), mood]);
   res.json({ success: true, message: '情绪已记录: ' + mood });
+}));
+
+// 作息打卡：查近 7 天 + 今日记录
+router.get('/rhythm/sleep', wrap(async (req, res) => {
+  const [rows] = await pool.query(
+    `SELECT DATE_FORMAT(checkin_date, '%Y-%m-%d') AS date, sleep_time AS sleepTime, wake_time AS wakeTime
+       FROM sleep_checkins
+      WHERE user_id = ? AND checkin_date >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+      ORDER BY checkin_date`,
+    [getUserId(req)],
+  );
+  const [todayRows] = await pool.query(
+    `SELECT sleep_time AS sleepTime, wake_time AS wakeTime
+       FROM sleep_checkins WHERE user_id = ? AND checkin_date = CURDATE()`,
+    [getUserId(req)],
+  );
+  res.json({ success: true, data: { week: rows, today: todayRows[0] || null } });
+}));
+
+// 作息打卡：当天 upsert（HH:mm 校验）
+router.post('/rhythm/sleep', wrap(async (req, res) => {
+  const sleepTime = (req.body.sleepTime || '').trim();
+  const wakeTime = (req.body.wakeTime || '').trim();
+  if (!sleepTime || !TIME_RE.test(sleepTime)) {
+    return res.status(400).json({ success: false, message: '请选择入睡时间（HH:mm）' });
+  }
+  if (!wakeTime || !TIME_RE.test(wakeTime)) {
+    return res.status(400).json({ success: false, message: '请选择起床时间（HH:mm）' });
+  }
+  await pool.query(
+    `INSERT INTO sleep_checkins (user_id, checkin_date, sleep_time, wake_time)
+     VALUES (?, CURDATE(), ?, ?)
+     ON DUPLICATE KEY UPDATE sleep_time = VALUES(sleep_time), wake_time = VALUES(wake_time)`,
+    [getUserId(req), sleepTime, wakeTime],
+  );
+  res.json({ success: true, message: '今日作息已打卡' });
 }));
 
 // ============ 待办事项（be-4） ============
@@ -307,7 +306,8 @@ router.post('/record/symptoms', wrap(async (req, res) => {
 // 用药提醒（读库 + 打卡落库）
 router.get('/record/medicines', wrap(async (req, res) => {
   const [rows] = await pool.query(
-    `SELECT id, name, dose, med_time AS time, note
+    `SELECT id, name, dose, med_time AS time, note,
+            DATE_FORMAT(last_punch_at, '%Y-%m-%d %H:%i') AS lastPunch
        FROM medicines WHERE user_id = ? ORDER BY id`, [getUserId(req)],
   );
   res.json({ success: true, data: rows });
@@ -322,6 +322,65 @@ router.post('/record/medicines/:id/punch', wrap(async (req, res) => {
     return res.status(404).json({ success: false, message: '用药提醒不存在' });
   }
   res.json({ success: true, message: '已打卡' });
+}));
+
+// 新增用药提醒
+router.post('/record/medicines', wrap(async (req, res) => {
+  const name = (req.body.name || '').trim();
+  if (!name) {
+    return res.status(400).json({ success: false, message: '请输入药品名称' });
+  }
+  const dose = (req.body.dose || '').trim().slice(0, 50);
+  const medTime = (req.body.time || '').trim().slice(0, 50);
+  const note = (req.body.note || '').trim().slice(0, 255);
+  const [result] = await pool.query(
+    'INSERT INTO medicines (user_id, name, dose, med_time, note) VALUES (?, ?, ?, ?, ?)',
+    [getUserId(req), name.slice(0, 100), dose, medTime, note],
+  );
+  res.json({ success: true, data: { id: result.insertId }, message: '用药提醒已添加' });
+}));
+
+// 删除用药提醒
+router.delete('/record/medicines/:id', wrap(async (req, res) => {
+  const [result] = await pool.query(
+    'DELETE FROM medicines WHERE id = ? AND user_id = ?',
+    [req.params.id, getUserId(req)],
+  );
+  if (!result.affectedRows) {
+    return res.status(404).json({ success: false, message: '用药提醒不存在' });
+  }
+  res.json({ success: true, message: '用药提醒已删除' });
+}));
+
+// 症状近 7 天统计（供周趋势图）
+router.get('/record/symptoms/stats', wrap(async (req, res) => {
+  const [rows] = await pool.query(
+    `SELECT DATE(created_at) AS day, COUNT(*) AS cnt
+       FROM symptoms
+      WHERE user_id = ? AND created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+      GROUP BY DATE(created_at)`,
+    [getUserId(req)],
+  );
+  const map = new Map(rows.map(r => [String(r.day).slice(0, 10), Number(r.cnt)]));
+  const localDate = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = localDate(d);
+    days.push({ date: key, count: map.get(key) || 0 });
+  }
+  const [[{ monthCount }]] = await pool.query(
+    `SELECT COUNT(*) AS monthCount FROM symptoms
+      WHERE user_id = ? AND created_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01')`,
+    [getUserId(req)],
+  );
+  res.json({ success: true, data: { days, monthCount } });
 }));
 
 // ============ 注册 / 登录（账号 + 密码，be-10） ============
@@ -404,8 +463,15 @@ router.get('/auth/me', requireAuth, wrap(async (req, res) => {
   res.json({ success: true, data: rows[0] });
 }));
 
-// 功法动作（读库）
+// 功法动作：group=baduanjin 查库（默认），stretch/office 返回静态动作
 router.get('/practice/moves', wrap(async (req, res) => {
+  const group = req.query.group || 'baduanjin';
+  if (group === 'stretch') {
+    return res.json({ success: true, data: practiceStretchData.map((m, i) => ({ id: 100 + i, name: m.name, duration: m.duration, desc: m.desc })) });
+  }
+  if (group === 'office') {
+    return res.json({ success: true, data: practiceOfficeData.map((m, i) => ({ id: 200 + i, name: m.name, duration: m.duration, desc: m.desc })) });
+  }
   const [rows] = await pool.query(
     'SELECT id, name, duration FROM practice_moves ORDER BY sort_order',
   );
@@ -494,6 +560,39 @@ router.put('/profile', wrap(async (req, res) => {
       merged.exercise_pref, merged.sleep_pref, merged.body_sense],
   );
   res.json({ success: true, message: '健康档案已保存' });
+}));
+
+// 个人中心数据总览：本月症状数、近7天作息打卡天数与平均入睡时间、当前肝郁指数
+router.get('/profile/stats', wrap(async (req, res) => {
+  const userId = getUserId(req);
+  const [[sym]] = await pool.query(
+    `SELECT COUNT(*) AS monthCount FROM symptoms
+      WHERE user_id = ? AND created_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01')`, [userId],
+  );
+  const [sleepRows] = await pool.query(
+    `SELECT sleep_time AS sleepTime FROM sleep_checkins
+      WHERE user_id = ? AND checkin_date >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)`, [userId],
+  );
+  // 平均入睡时间：凌晨 0-12 点的时刻按前一夜 +24h 计算后再回转
+  let avgSleep = '';
+  if (sleepRows.length) {
+    const mins = sleepRows.map(r => {
+      const [h, m] = r.sleepTime.split(':').map(Number);
+      return h < 12 ? h * 60 + m + 24 * 60 : h * 60 + m;
+    });
+    const avg = Math.round(mins.reduce((a, b) => a + b, 0) / mins.length) % (24 * 60);
+    avgSleep = String(Math.floor(avg / 60)).padStart(2, '0') + ':' + String(avg % 60).padStart(2, '0');
+  }
+  const [users] = await pool.query('SELECT score FROM users WHERE id = ?', [userId]);
+  res.json({
+    success: true,
+    data: {
+      avgSleep,
+      sleepDays: sleepRows.length,
+      monthSymptomCount: sym.monthCount,
+      score: users[0] ? users[0].score : null,
+    },
+  });
 }));
 
 // 统一错误处理（异步路由抛错时返回 JSON 而非 HTML 错误页）

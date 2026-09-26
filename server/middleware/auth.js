@@ -53,4 +53,21 @@ function requireAuth(req, res, next) {
   next();
 }
 
-module.exports = { signToken, optionalAuth, requireAuth, hashPassword, verifyPassword };
+// 强制管理员：需先经 optionalAuth 解析 token，再查库校验 role
+async function requireAdmin(req, res, next) {
+  if (!req.userId) {
+    return res.status(401).json({ success: false, message: '请先登录' });
+  }
+  try {
+    const { pool } = require('../db/pool');
+    const [rows] = await pool.query('SELECT role FROM users WHERE id = ?', [req.userId]);
+    if (!rows[0] || rows[0].role !== 'admin') {
+      return res.status(403).json({ success: false, message: '无管理员权限' });
+    }
+    next();
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { signToken, optionalAuth, requireAuth, requireAdmin, hashPassword, verifyPassword };
