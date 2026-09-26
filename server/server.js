@@ -43,10 +43,10 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
 });
 
-app.listen(config.port, async () => {
+app.listen(config.port, config.host, async () => {
   const mode = await chatStore.init();
   console.log('\n  松序服务器已启动');
-  console.log('  地址: http://localhost:' + config.port);
+  console.log('  地址: http://' + config.host + ':' + config.port);
   console.log('  存储模式: ' + (mode ? 'MySQL 数据库' : '内存（未连接到 MySQL）'));
   console.log('  大模型: DeepSeek ' + config.deepseek.model);
   console.log('\n  在浏览器中打开以上地址即可访问\n');
