@@ -5,15 +5,11 @@
 const express = require('express');
 const router = express.Router();
 const { pool } = require('../db/pool');
-const { optionalAuth, requireAdmin } = require('../middleware/auth');
+const { requireAdmin } = require('../middleware/auth');
+const { wrap } = require('../utils/http');
 
-router.use(optionalAuth, requireAdmin);
-
-// 统一错误处理包装
-const wrap = fn => (req, res) => fn(req, res).catch(err => {
-  console.error('[admin]', err);
-  res.status(500).json({ success: false, message: '服务暂时不可用' });
-});
+// optionalAuth 已在 server.js 全局挂载，这里只需管理员校验
+router.use(requireAdmin);
 
 // 近 N 天日期序列（含今天），yyyy-mm-dd
 function lastDays(n) {

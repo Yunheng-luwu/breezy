@@ -126,7 +126,7 @@ async function doLogin() {
     });
     const json = await res.json();
     if (!json.success) { errEl.textContent = json.message || '登录失败'; return; }
-    localStorage.setItem(TOKEN_KEY, json.token);
+    localStorage.setItem(TOKEN_KEY, json.data.token);
     const ok = await loadDashboard();
     if (!ok) {
       localStorage.removeItem(TOKEN_KEY);
