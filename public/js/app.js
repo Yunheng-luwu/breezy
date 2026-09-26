@@ -2035,6 +2035,12 @@ function switchProfileView(view, mi) {
   } else {
     if (favCard) favCard.style.display = 'none';
     cards.forEach(c => c.style.display = '');
+    if (view === 'stats') {
+      setTimeout(() => {
+        const statCard = document.getElementById('pfStatCard');
+        if (statCard) statCard.scrollIntoView({ behavior: 'smooth' });
+      }, 60);
+    }
   }
 }
 async function renderFavList() {
