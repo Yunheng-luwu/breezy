@@ -277,7 +277,8 @@ const TOOL_DEFS = [
         'SELECT name, score, level FROM users WHERE id = ?', [ctx.userId],
       );
       const [rows] = await pool.query(
-        `SELECT constitution, allergy, diet_pref, exercise_pref, sleep_pref, body_sense
+        `SELECT constitution, allergy, diet_pref, exercise_pref, sleep_pref, body_sense,
+                wake_time, nap_time, bed_time
            FROM health_profiles WHERE user_id = ?`, [ctx.userId],
       );
       const u = users[0] || {};
@@ -287,7 +288,11 @@ const TOOL_DEFS = [
         constitution: p.constitution, allergy: p.allergy,
         dietPref: p.diet_pref, exercisePref: p.exercise_pref,
         sleepPref: p.sleep_pref, bodySense: p.body_sense,
+        wakeTime: p.wake_time, napTime: p.nap_time, bedTime: p.bed_time,
       };
+      const targetRhythm = (p.wake_time || p.nap_time || p.bed_time)
+        ? `目标起床${p.wake_time || '未设'} / 午憩${p.nap_time || '未设'} / 入睡${p.bed_time || '未设'}`
+        : '未设置目标作息时间';
       return {
         card: { type: 'profile', data },
         summary: [
@@ -295,6 +300,7 @@ const TOOL_DEFS = [
           `体质：${data.constitution || '未填'}；过敏史：${data.allergy || '未填'}`,
           `饮食偏好：${data.dietPref || '未填'}；运动习惯：${data.exercisePref || '未填'}`,
           `作息规律：${data.sleepPref || '未填'}；体感敏感度：${data.bodySense || '未填'}`,
+          targetRhythm,
         ].join('\n'),
       };
     },
