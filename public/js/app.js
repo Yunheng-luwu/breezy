@@ -642,8 +642,23 @@ function showShoppingList() {
 
 // ============ 穿衣建议 ============
 // 接口失败时保留页面默认静态内容，不影响浏览
+// 城市选择优先级：用户手动选择(localStorage) > IP 定位 > 后端默认城市
+const CITY_STORE_KEY = 'songxu_weather_city';
+
+function getSavedCity() {
+  try { return JSON.parse(localStorage.getItem(CITY_STORE_KEY) || 'null'); }
+  catch (e) { return null; }
+}
+function saveCity(city) {
+  localStorage.setItem(CITY_STORE_KEY, JSON.stringify(city));
+}
+
 async function loadClothing() {
-  const res = await fetchAPI('/clothing');
+  const saved = getSavedCity();
+  const qs = saved && saved.adcode
+    ? '/clothing?adcode=' + encodeURIComponent(saved.adcode) + '&city=' + encodeURIComponent(saved.name || '')
+    : '/clothing';
+  const res = await fetchAPI(qs);
   if (!res.success || !res.data) return;
   const d = res.data;
   const set = (id, text) => {
@@ -652,7 +667,9 @@ async function loadClothing() {
   };
   set('wcEmoji', weatherEmoji(d.weatherText || d.weather));
   set('wcTemp', d.temp + '°C');
-  set('wcCity', d.city + ' · ' + (d.weatherText || d.weather || ''));
+  // located=false 表示 IP 定位失败走了默认城市，提示用户可手动切换
+  const locatedTag = (d.located === false && !saved) ? '（定位失败，可手动切换）' : '';
+  set('wcCity', d.city + ' · ' + (d.weatherText || d.weather || '') + locatedTag);
   set('wcHighLow', '\u{1F321} 最高' + d.high + '°C / 最低' + d.low + '°C');
   set('wcDiff', '\u{1F4CF} 温差' + d.diff + '°C');
   set('wcWind', '\u{1F32A} ' + d.wind);
@@ -661,7 +678,107 @@ async function loadClothing() {
   set('caInner', d.inner);
   set('caOuter', d.outer);
   set('caShoes', d.shoes);
+  const btn = document.getElementById('wcCityBtn');
+  if (btn) btn.style.display = 'inline-block';
+  initCityPickerSearch();
   initBodySensePrefs();
+}
+
+// ---- 手动切换城市 ----
+function toggleCityPicker(event) {
+  if (event) event.stopPropagation();
+  const panel = document.getElementById('cityPicker');
+  if (!panel) return;
+  const opening = panel.style.display === 'none';
+  panel.style.display = opening ? 'block' : 'none';
+  if (opening) {
+    const input = document.getElementById('cpInput');
+    if (input) { input.value = ''; setTimeout(() => input.focus(), 0); }
+    const tip = document.getElementById('cpTip');
+    if (tip) tip.textContent = '';
+    const results = document.getElementById('cpResults');
+    if (results) results.innerHTML = '';
+  }
+}
+
+let cpSearchTimer = null;
+function initCityPickerSearch() {
+  const input = document.getElementById('cpInput');
+  if (!input || input.dataset.bound) return;
+  input.dataset.bound = '1';
+  input.addEventListener('input', () => {
+    clearTimeout(cpSearchTimer);
+    const kw = input.value.trim();
+    const tip = document.getElementById('cpTip');
+    const results = document.getElementById('cpResults');
+    if (kw.length === 0) {
+      results.innerHTML = '';
+      if (tip) tip.textContent = '';
+      return;
+    }
+    if (tip) tip.textContent = '搜索中…';
+    cpSearchTimer = setTimeout(() => doCitySearch(kw), 350);
+  });
+}
+
+async function doCitySearch(keyword) {
+  const results = document.getElementById('cpResults');
+  const tip = document.getElementById('cpTip');
+  try {
+    const res = await fetchAPI('/weather/cities?keyword=' + encodeURIComponent(keyword));
+    const items = (res.success && res.data && res.data.items) || [];
+    if (!items.length) {
+      results.innerHTML = '';
+      if (tip) tip.textContent = '没找到这个城市，换个名称试试（如：杭州、西安）';
+      return;
+    }
+    if (tip) tip.textContent = '';
+    results.innerHTML = items.map(c =>
+      '<div class="cp-item" data-adcode="' + escapeHtml(c.adcode) + '" data-name="' + escapeHtml(c.name) + '">'
+      + '<span class="cp-name">📍 ' + escapeHtml(c.name) + '</span><span class="cp-code">' + c.adcode + '</span></div>'
+    ).join('');
+    results.querySelectorAll('.cp-item').forEach(el => {
+      el.addEventListener('click', () => pickCity(el.dataset.adcode, el.dataset.name));
+    });
+  } catch (e) {
+    if (tip) tip.textContent = '城市搜索失败，请稍后再试';
+  }
+}
+
+function pickCity(adcode, name) {
+  saveCity({ adcode, name });
+  document.getElementById('cityPicker').style.display = 'none';
+  loadClothing();
+  toast('已切换到 ' + name);
+}
+
+// 浏览器精确定位（需用户授权；非 HTTPS / 拒绝授权时提示用手动搜索）
+function locateByBrowser() {
+  const tip = document.getElementById('cpTip');
+  if (!navigator.geolocation) {
+    if (tip) tip.textContent = '当前浏览器不支持定位，请直接输入城市名';
+    return;
+  }
+  if (tip) tip.textContent = '正在获取定位，请在浏览器弹窗中点「允许」…';
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    try {
+      const qs = '/weather/locate?lng=' + pos.coords.longitude + '&lat=' + pos.coords.latitude;
+      const res = await fetchAPI(qs);
+      if (res.success && res.data && res.data.adcode) {
+        pickCity(res.data.adcode, res.data.city);
+      } else if (tip) {
+        tip.textContent = res.message || '定位失败，请直接输入城市名';
+      }
+    } catch (e) {
+      if (tip) tip.textContent = '定位失败，请直接输入城市名';
+    }
+  }, (err) => {
+    if (tip) {
+      tip.textContent = err.code === 1
+        ? '你拒绝了定位授权，可直接输入城市名搜索'
+        : '定位不可用，请直接输入城市名';
+    }
+  }, { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 });
 }
 
 // ---- 冷暖偏好 / 天气提醒（本地存储）----

@@ -6,7 +6,8 @@
 const config = require('../config');
 
 const CACHE_TTL = 5 * 60 * 1000; // 5 分钟
-let cache = { at: 0, key: '', data: null };
+// 按 key（IP / adcode）分别缓存，互不覆盖
+const cacheMap = new Map();
 
 const AMAP_IP_URL = 'https://restapi.amap.com/v3/ip';
 const AMAP_WEATHER_URL = 'https://restapi.amap.com/v3/weather/weatherInfo';
@@ -49,6 +50,147 @@ async function locateByIp(ip) {
     || (Array.isArray(json.province) ? '' : json.province)
     || '未知城市';
   return { city: city.replace(/市$/, ''), adcode };
+}
+
+// ============ 用户手动选城市 ============
+
+/**
+ * 城市/区县/街道搜索
+ * 双数据源合并：
+ *   ① 高德行政区划接口：保证直辖市、地级市准确命中（北京/上海等）
+ *   ② 高德输入提示接口：覆盖区县、乡镇街道，结果按热度排序，显示完整归属路径
+ * 返回 [{ name, adcode }]，name 形如「长沙」「长沙市芙蓉区」「长沙市芙蓉区定王台」
+ */
+// 直辖市省级编码 → 市辖区编码（天气查询不接受省级编码）
+const MUNICIPALITIES = {
+  '110000': { name: '北京', adcode: '110100' },
+  '310000': { name: '上海', adcode: '310100' },
+  '120000': { name: '天津', adcode: '120100' },
+  '500000': { name: '重庆', adcode: '500100' },
+};
+
+// 去掉名称里的省级前缀，如「湖南省长沙市芙蓉区」→「长沙市芙蓉区」；直辖市（北京市…）保留
+function stripProvince(path) {
+  return String(path || '').replace(/^.*?(?:省|壮族自治区|回族自治区|维吾尔自治区|自治区|特别行政区)/, '');
+}
+// 去掉结尾的「市」，「西安市」→「西安」（区/县名保留）
+function stripCitySuffix(name) {
+  return String(name || '').replace(/市$/, '');
+}
+
+async function searchCity(keyword) {
+  const kw = String(keyword || '').trim();
+  if (!kw) return [];
+
+  // ① 行政区划：取名字命中的市/区（省级编码的直辖市映射到市辖区）
+  let adminItems = [];
+  try {
+    const dj = await amapGet('https://restapi.amap.com/v3/config/district', {
+      keywords: kw, subdistrict: '0', extensions: 'base',
+    });
+    for (const d of (dj.districts || [])) {
+      if (!d.adcode || !/^\d{6}$/.test(d.adcode)) continue;
+      if (d.level === 'province') {
+        const m = MUNICIPALITIES[d.adcode];
+        if (m) adminItems.push({ name: m.name, adcode: m.adcode });
+        continue; // 普通省不进城市候选
+      }
+      if (d.level === 'city') {
+        adminItems.push({ name: stripCitySuffix(d.name), adcode: d.adcode });
+      } else if (d.level === 'district') {
+        const full = [d.province, d.city, d.name].filter(s => s && !Array.isArray(s)).join('');
+        adminItems.push({ name: stripProvince(full), adcode: d.adcode });
+      }
+    }
+  } catch (e) {
+    // 行政区划失败不影响 inputtips 结果
+  }
+
+  // ② 输入提示：行政类结果（190102直辖市 / 190104地级市 / 190105区县 / 1907xx乡镇街道）
+  let tipItems = [];
+  try {
+    const tj = await amapGet('https://restapi.amap.com/v3/assistant/inputtips', {
+      keywords: kw, datatype: 'all',
+    });
+    for (const t of (tj.tips || [])) {
+      if (!t.adcode || !/^\d{6}$/.test(t.adcode) || !t.name || Array.isArray(t.name)) continue;
+      const tc = String(t.typecode || '');
+      const path = Array.isArray(t.district) ? '' : t.district;
+      let name;
+      let town = false;
+      // 直辖市的区级编码（110101 等）归一到市辖区编码，避免与「北京 110100」重复
+      let adcode = t.adcode;
+      const munPrefix = { '11': '110100', '31': '310100', '12': '120100', '50': '500100' };
+      if (tc === '190102' && munPrefix[adcode.slice(0, 2)]) {
+        adcode = munPrefix[adcode.slice(0, 2)];
+      }
+      if (tc === '190102') {
+        // 直辖市
+        name = stripCitySuffix(t.name);
+      } else if (tc === '190104') {
+        name = stripCitySuffix(t.name);
+        // 地级市：inputtips 常给市辖区码（如 140403 潞州区），归一到城市码 140400
+        adcode = adcode.slice(0, 4) + '00';
+      } else if (tc === '190105') {
+        // 区县：展示完整「市+区」
+        name = stripProvince(path) || t.name;
+      } else if (tc.startsWith('1907')) {
+        // 乡镇/街道：展示完整「市+区+街道名」，如 长沙市芙蓉区定王台
+        name = stripProvince(path) + t.name;
+        town = true;
+      } else {
+        continue; // 排除景点、道路、车站等 POI
+      }
+      tipItems.push({ name, adcode, town });
+    }
+  } catch (e) {
+    // inputtips 失败则仅用行政区划结果
+  }
+
+  // ③ 合并：以 inputtips 热度序为主序列；行政区结果只补其缺失的城市（如北京）；
+  //    城市/区县级按 adcode 去重，乡镇街道按 adcode+名称去重
+  const cityAdcodes = new Set();
+  const seenKeys = new Set();
+  const out = [];
+  const pushItem = (item, isTown) => {
+    const key = isTown ? String(item.adcode) + '|' + item.name : String(item.adcode);
+    if (seenKeys.has(key)) return false;
+    seenKeys.add(key);
+    if (!isTown) cityAdcodes.add(String(item.adcode));
+    out.push(item);
+    return true;
+  };
+  // inputtips 结果（高德热度顺序）
+  for (const it of tipItems) pushItem(it, it.town);
+  // 行政区补缺（inputtips 没有该城市编码时才追加）
+  for (const it of adminItems) {
+    if (!cityAdcodes.has(String(it.adcode))) pushItem(it, false);
+  }
+
+  // 与输入完全同名的结果提到最前（如搜「西安」西安市优先于辽源西安区）
+  const target = stripCitySuffix(kw);
+  const exact = out.findIndex(it => it.name === target);
+  if (exact > 0) { const [hit] = out.splice(exact, 1); out.unshift(hit); }
+
+  return out.slice(0, 12).map(it => ({ name: it.name, adcode: it.adcode }));
+}
+
+/**
+ * 浏览器经纬度反查城市（高德逆地理编码），返回 { city, adcode }
+ */
+async function locateByLngLat(lng, lat) {
+  const json = await amapGet('https://restapi.amap.com/v3/geocode/regeo', {
+    location: `${lng},${lat}`,
+  });
+  const ac = json.regeocode?.addressComponent;
+  if (!ac) throw new Error('逆地理编码无结果');
+  const adcode = Array.isArray(ac.adcode) ? '' : ac.adcode;
+  if (!adcode || !/^\d{6}$/.test(adcode)) throw new Error('逆地理编码无 adcode');
+  const rawCity = (Array.isArray(ac.city) ? '' : ac.city)
+    || (Array.isArray(ac.district) ? '' : ac.district)
+    || (Array.isArray(ac.province) ? '' : ac.province)
+    || '未知城市';
+  return { city: rawCity.replace(/市$/, ''), adcode };
 }
 
 // ============ 天气查询 ============
@@ -153,40 +295,64 @@ function buildAdvice(w) {
 // ============ 对外入口 ============
 
 /**
+ * 按城市编码取天气并组装穿衣数据，带 5 分钟缓存
+ * @param adcode 高德 6 位城市编码
+ * @param city 城市名（手动选城时由调用方传入）
+ * @param located 是否真实定位（false=默认城市兜底，前端可提示用户手动切换）
+ */
+async function getClothingByAdcode(adcode, city, located = true) {
+  if (!config.amap.key) return null;
+  const cacheKey = `adcode:${adcode}`;
+  const hit = cacheMap.get(cacheKey);
+  if (hit && Date.now() - hit.at < CACHE_TTL) return hit.data;
+
+  const w = await fetchWeather(adcode);
+  const advice = buildAdvice(w);
+  const data = {
+    temp: w.temp,
+    weather: weatherEmoji(w.weatherText),
+    weatherText: w.weatherText,
+    city: city || '未知城市',
+    high: w.high,
+    low: w.low,
+    diff: w.high - w.low,
+    wind: `${w.windDir}风${w.windPower}级`,
+    humidity: w.humidity,
+    principle: advice.principle,
+    inner: advice.inner,
+    outer: advice.outer,
+    shoes: advice.shoes,
+    source: 'amap',
+    located,
+  };
+  cacheMap.set(cacheKey, { at: Date.now(), data });
+  return data;
+}
+
+/**
  * 根据来源 IP 获取穿衣建议数据；失败返回 null
- * 返回结构与旧 mock clothingData 保持一致，另附 weatherText/source
- * 工具层（无 req 对象）可直接调用本函数
+ * IP 定位失败时回退默认城市（真实天气，located=false）；天气也失败才返回 null
  */
 async function getClothingByIp(ip) {
   if (!config.amap.key) return null;
 
   const cleanIp = String(ip || '').replace(/^::ffff:/, '');
   const cacheKey = isPrivateIp(cleanIp) ? '_default' : cleanIp;
-  if (cache.data && cache.key === cacheKey && Date.now() - cache.at < CACHE_TTL) {
-    return cache.data;
-  }
+  const hit = cacheMap.get(cacheKey);
+  if (hit && Date.now() - hit.at < CACHE_TTL) return hit.data;
 
   try {
-    const { city, adcode } = await locateByIp(cleanIp);
-    const w = await fetchWeather(adcode);
-    const advice = buildAdvice(w);
-    const data = {
-      temp: w.temp,
-      weather: weatherEmoji(w.weatherText),
-      weatherText: w.weatherText,
-      city,
-      high: w.high,
-      low: w.low,
-      diff: w.high - w.low,
-      wind: `${w.windDir}风${w.windPower}级`,
-      humidity: w.humidity,
-      principle: advice.principle,
-      inner: advice.inner,
-      outer: advice.outer,
-      shoes: advice.shoes,
-      source: 'amap',
-    };
-    cache = { at: Date.now(), key: cacheKey, data };
+    let city, adcode, located = true;
+    try {
+      ({ city, adcode } = await locateByIp(cleanIp));
+    } catch (locErr) {
+      adcode = config.amap.defaultAdcode;
+      city = config.amap.defaultCity;
+      located = false;
+      console.warn('[weather] IP 定位失败，回退默认城市:', city, '-', locErr.message);
+    }
+    const data = await getClothingByAdcode(adcode, city, located);
+    if (data) cacheMap.set(cacheKey, { at: Date.now(), data });
     return data;
   } catch (err) {
     console.error('[weather] 获取天气失败:', err.message);
@@ -201,4 +367,10 @@ async function getClothingByWeather(req) {
   return getClothingByIp(getClientIp(req));
 }
 
-module.exports = { getClothingByWeather, getClothingByIp };
+module.exports = {
+  getClothingByWeather,
+  getClothingByIp,
+  getClothingByAdcode,
+  searchCity,
+  locateByLngLat,
+};

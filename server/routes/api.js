@@ -9,7 +9,7 @@ const express = require('express');
 const router = express.Router();
 const { pool } = require('../db/pool');
 const { signToken, requireAuth, hashPassword, verifyPassword } = require('../middleware/auth');
-const { getClothingByWeather } = require('../services/weather');
+const { getClothingByWeather, getClothingByAdcode, searchCity, locateByLngLat } = require('../services/weather');
 const {
   ApiError, ok, wrap, cleanStr, optionalDate, timeField, enumOr,
 } = require('../utils/http');
@@ -104,9 +104,38 @@ router.get('/diet/recipes', (req, res) => {
 });
 
 // 穿衣建议（be-7：真实天气，失败回退默认数据）
+// 支持用户手动选城：?adcode=330100；不传则按来源 IP 定位
 router.get('/clothing', wrap(async (req, res) => {
-  const data = await getClothingByWeather(req);
+  const adcode = cleanStr(req.query.adcode, 6);
+  let data;
+  if (adcode) {
+    if (!/^\d{6}$/.test(adcode)) throw new ApiError(400, '城市编码格式不正确');
+    const city = cleanStr(req.query.city, 20) || '';
+    data = await getClothingByAdcode(adcode, city, true);
+  } else {
+    data = await getClothingByWeather(req);
+  }
   ok(res, data || clothingData);
+}));
+
+// 城市搜索：用户输入城市名，返回高德候选城市（供手动切换城市）
+router.get('/weather/cities', wrap(async (req, res) => {
+  const keyword = cleanStr(req.query.keyword, 20);
+  if (!keyword) throw new ApiError(400, '请输入城市名');
+  const list = await searchCity(keyword);
+  ok(res, { items: list });
+}));
+
+// 浏览器定位反查：前端 navigator.geolocation 拿到经纬度后换城市编码
+router.get('/weather/locate', wrap(async (req, res) => {
+  const lng = parseFloat(req.query.lng);
+  const lat = parseFloat(req.query.lat);
+  if (!Number.isFinite(lng) || !Number.isFinite(lat)
+    || lng < 73 || lng > 136 || lat < 3 || lat > 54) {
+    throw new ApiError(400, '经纬度不在中国范围内');
+  }
+  const loc = await locateByLngLat(lng.toFixed(6), lat.toFixed(6));
+  ok(res, loc);
 }));
 
 // 运动建议
