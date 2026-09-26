@@ -19,8 +19,9 @@ async function handle({ userId, sessionId, message, clientIp }) {
   const user = await store.resolveUser(userId);
   const session = await store.resolveSession(user, sessionId);
 
-  // 先保存用户消息
+  // 先保存用户消息，并用首条消息自动命名会话
   await store.appendMessage(session.id, 'user', message);
+  await store.renameSessionIfDefault(session.id, message.slice(0, 20));
 
   // 安全预检
   const guard = safety.detect(message);

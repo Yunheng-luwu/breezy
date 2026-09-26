@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -9,43 +9,72 @@
 </head>
 <body>
 
-<!-- 导航栏 -->
-<nav class="navbar" id="navbar" style="display:none;">
-  <div class="nav-inner">
-    <div class="nav-brand"><div class="logo">松</div><span>松序</span></div>
-    <div class="nav-menu" id="navMenu">
-      <a data-page="chat" class="active">AI对话</a>
-      <a data-page="home">首页</a>
-      <a data-page="care">居家保健</a>
-      <a data-page="diet">饮食调理</a>
-      <a data-page="clothing">穿衣建议</a>
-      <a data-page="rhythm">生活节律</a>
-      <a data-page="practice">功法带练</a>
-      <a data-page="record">健康记录</a>
-      <a data-page="profile">我的</a>
+<!-- 登录后的应用外壳：左侧边栏 + 中央大对话区 -->
+<div class="app-shell" id="appShell" style="display:none;">
+  <aside class="app-sidebar" id="appSidebar">
+    <div class="sb-brand"><div class="logo">松</div><span>松序</span></div>
+    <button class="sb-new-chat" onclick="newChat()">＋ 新对话</button>
+    <div class="sb-section">功能板块</div>
+    <nav class="sb-nav">
+      <a data-page="home">🏠 首页</a>
+      <a data-page="care">🦶 居家保健</a>
+      <a data-page="diet">🍵 饮食调理</a>
+      <a data-page="clothing">🧥 穿衣建议</a>
+      <a data-page="rhythm">🌙 生活节律</a>
+      <a data-page="practice">🧘 功法带练</a>
+      <a data-page="record">📋 健康记录</a>
+      <a data-page="profile">👤 我的</a>
+    </nav>
+    <div class="sb-section">历史对话</div>
+    <div class="sb-sessions" id="sessionList"></div>
+    <div class="sb-footer">
+      <div class="avatar" id="sbAvatar">松</div>
+      <span class="sb-user" id="sbUserName">小松</span>
+      <button class="sb-logout" onclick="logout()" title="退出登录" aria-label="退出登录">⏻</button>
     </div>
-    <div class="nav-right">
-      <div class="icon-btn" onclick="toggleNotification(event)" role="button" aria-label="今日提醒">&#128276;<span class="dot"></span></div>
-      <div class="notif-panel" id="notifPanel"></div>
-      <div class="avatar" id="navAvatar">松</div>
-      <div class="nav-toggle" id="navToggle" role="button" aria-label="打开导航菜单">&#9776;</div>
-    </div>
-  </div>
-</nav>
+  </aside>
+  <div class="sb-mask" id="sbMask" onclick="document.body.classList.remove('sb-open')"></div>
 
-<!-- 移动端抽屉导航 -->
-<div class="drawer-mask" id="drawerMask"></div>
-<div class="mobile-drawer" id="mobileDrawer">
-  <div class="drawer-brand"><div class="logo">松</div><span>松序</span></div>
-  <a data-page="home">首页</a>
-  <a data-page="care">居家保健</a>
-  <a data-page="diet">饮食调理</a>
-  <a data-page="clothing">穿衣建议</a>
-  <a data-page="rhythm">生活节律</a>
-  <a data-page="practice">功法带练</a>
-  <a data-page="chat">AI对话</a>
-  <a data-page="record">健康记录</a>
-  <a data-page="profile">我的</a>
+  <main class="app-main">
+    <div class="chat-view">
+      <div class="chat-topbar">
+        <div class="sb-toggle" onclick="document.body.classList.add('sb-open')" role="button" aria-label="打开侧边栏">&#9776;</div>
+        <div class="chat-top-title">🌿 小松 · AI疏肝对话</div>
+        <div class="chat-top-actions">
+          <button class="top-btn" onclick="showPage('assistant')">✨ 今日处方</button>
+          <div class="icon-btn" onclick="toggleNotification(event)" role="button" aria-label="今日提醒">&#128276;<span class="dot"></span></div>
+          <div class="notif-panel" id="notifPanel"></div>
+        </div>
+      </div>
+      <div class="chat-messages" id="chatMessages">
+        <div class="chat-msg ai"><div class="avatar">&#127807;</div><div class="bubble">你好呀，我是小松 &#127807; 今天感觉怎么样？有什么不舒服可以跟我说~</div></div>
+      </div>
+      <div class="chat-quick">
+        <div class="qt" onclick="quickAsk('睡不着怎么办')">睡不着怎么办</div>
+        <div class="qt" onclick="quickAsk('生气了怎么疏解')">生气了怎么疏解</div>
+        <div class="qt" onclick="quickAsk('肩颈疼按哪')">肩颈疼按哪</div>
+        <div class="qt" onclick="quickAsk('今天吃什么好')">今天吃什么好</div>
+      </div>
+      <div class="chat-input-wrap">
+        <div class="chat-input-bar">
+          <div class="mic-btn" onclick="toast('语音输入即将上线，先用文字跟我说吧～')" role="button" aria-label="语音输入">&#127908;</div>
+          <input type="text" id="chatInput" placeholder="说说你的状态或问题…" onkeydown="if(event.key==='Enter') sendMessage()">
+          <div class="send-btn" onclick="sendMessage()">&#10148;</div>
+        </div>
+        <div class="chat-tip">养生建议仅供日常参考，不能替代医师诊疗</div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- 板块抽屉（从右侧滑出） -->
+<div class="panel-mask" id="panelMask" onclick="closePanel()"></div>
+<div class="side-panel" id="sidePanel">
+  <div class="panel-head">
+    <span class="panel-title" id="panelTitle"></span>
+    <button class="panel-close" onclick="closePanel()" aria-label="关闭">✕</button>
+  </div>
+  <div class="panel-body" id="panelBody"></div>
 </div>
 
 <!-- ============ 1. 注册页 ============ -->
@@ -108,51 +137,21 @@
   </div>
 </div>
 
-<!-- ============ 2. AI对话页 ============ -->
-<div class="page" id="page-chat">
-  <div class="container">
-    <div class="page-banner">
-      <img class="banner-img" src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Traditional%20Chinese%20medicine%20herbal%20tea%20brewing%20in%20a%20clay%20teapot%20with%20dried%20herbs%20scattered%20around%2C%20warm%20cozy%20atmosphere%2C%20soft%20lighting%2C%20wellness%20photography&image_size=landscape_16_9" alt="AI对话">
-      <div class="banner-content"><h2>AI疏肝对话</h2><p>述说你的状态 · 智能辨证调理</p></div>
+<!-- ============ 2. 处方与概览（抽屉面板） ============ -->
+<div class="page" id="page-assistant">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h3>今日疏肝处方</h3>
+      <button class="btn btn-primary btn-sm" onclick="askAIWith('请结合我今天的状态，生成一份今日疏肝处方：情绪怎么调、做什么养生动作，再给我一句鼓励')">一键生成</button>
     </div>
-    <div class="page-header"><div><h1>AI疏肝对话</h1><div class="sub">说说你的状态，我来帮你疏解</div></div></div>
-    <div class="chat-page">
-      <div class="chat-main">
-        <div class="chat-messages" id="chatMessages">
-          <div class="chat-msg ai"><div class="avatar">&#127807;</div><div class="bubble">你好呀，我是小松 &#127807; 今天感觉怎么样？有什么不舒服可以跟我说~</div></div>
-        </div>
-        <div class="chat-input-bar">
-          <div class="mic-btn" onclick="toast('语音输入即将上线，先用文字跟我说吧～')" role="button" aria-label="语音输入">&#127908;</div>
-          <input type="text" id="chatInput" placeholder="说说你的状态或问题…" onkeydown="if(event.key==='Enter') sendMessage()">
-          <div class="send-btn" onclick="sendMessage()">&#10148;</div>
-        </div>
-      </div>
-      <div class="chat-side">
-        <div class="card">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-            <h3>今日疏肝处方</h3>
-            <button class="btn btn-primary btn-sm" onclick="askAIWith('请结合我今天的状态，生成一份今日疏肝处方：情绪怎么调、做什么养生动作，再给我一句鼓励')">一键生成</button>
-          </div>
-          <div id="prescriptionArea"></div>
-        </div>
-        <div class="card">
-          <h3 style="margin-bottom:12px;">常用问题</h3>
-          <div class="quick-tags">
-            <div class="qt" onclick="quickAsk('睡不着怎么办')">睡不着怎么办</div>
-            <div class="qt" onclick="quickAsk('生气了怎么疏解')">生气了怎么疏解</div>
-            <div class="qt" onclick="quickAsk('肩颈疼按哪')">肩颈疼按哪</div>
-            <div class="qt" onclick="quickAsk('今天吃什么好')">今天吃什么好</div>
-          </div>
-        </div>
-        <div class="card">
-          <h3 style="margin-bottom:12px;">今日健康概览</h3>
-          <div style="display:flex;justify-content:space-around;text-align:center;">
-            <div><div style="font-size:24px;font-weight:600;color:var(--accent);" id="chScore">—</div><div style="font-size:12px;color:var(--text-light);">肝郁指数</div></div>
-            <div><div style="font-size:24px;font-weight:600;color:var(--success);" id="chTodos">—</div><div style="font-size:12px;color:var(--text-light);">已完成待办</div></div>
-            <div><div style="font-size:24px;font-weight:600;color:var(--warn);">8min</div><div style="font-size:12px;color:var(--text-light);">运动时长</div></div>
-          </div>
-        </div>
-      </div>
+    <div id="prescriptionArea"></div>
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <h3 style="margin-bottom:12px;">今日健康概览</h3>
+    <div style="display:flex;justify-content:space-around;text-align:center;">
+      <div><div style="font-size:24px;font-weight:600;color:var(--accent);" id="chScore">—</div><div style="font-size:12px;color:var(--text-light);">肝郁指数</div></div>
+      <div><div style="font-size:24px;font-weight:600;color:var(--success);" id="chTodos">—</div><div style="font-size:12px;color:var(--text-light);">已完成待办</div></div>
+      <div><div style="font-size:24px;font-weight:600;color:var(--warn);">8min</div><div style="font-size:12px;color:var(--text-light);">运动时长</div></div>
     </div>
   </div>
 </div>

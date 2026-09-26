@@ -74,7 +74,7 @@ function closeModal() {
   if (mask) mask.classList.remove('show');
 }
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') closeModal();
+  if (e.key === 'Escape') { closeModal(); closePanel(); }
 });
 
 // ============ 退出登录 ============
@@ -82,15 +82,15 @@ function logout() {
   if (!confirm('确定退出登录吗？')) return;
   clearLogin();
   chatSessionId = null;
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.getElementById('page-login').classList.add('active');
-  document.getElementById('navbar').style.display = 'none';
+  const list = document.getElementById('sessionList');
+  if (list) list.innerHTML = '';
+  showPage('login');
   toast('已退出登录');
 }
 
 // ============ 全局快捷：带问题进入 AI 对话 ============
 function askAIWith(text) {
-  showPage('chat');
+  closePanel();
   const input = document.getElementById('chatInput');
   if (input) input.value = text;
   sendMessage();
@@ -136,23 +136,52 @@ document.addEventListener('click', (e) => {
   if (!e.target.closest('#notifPanel') && !e.target.closest('.icon-btn')) closeNotification();
 });
 
-// ============ 页面切换 ============
+// ============ 页面切换（AI 对话常驻主区，其余板块走抽屉） ============
+const PANEL_TITLES = {
+  home: '首页', care: '居家保健', diet: '饮食调理', clothing: '穿衣建议',
+  rhythm: '生活节律', practice: '功法带练', record: '健康记录',
+  profile: '我的', assistant: '今日处方与概览',
+};
+
 function showPage(name) {
+  if (name === 'login') {
+    closePanel();
+    document.getElementById('appShell').style.display = 'none';
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-login').classList.add('active');
+    return;
+  }
+  if (name === 'chat') {
+    closePanel();
+    scrollChatToBottom();
+    return;
+  }
+  openPanel(name);
+}
+
+// 登录成功后进入应用外壳
+function enterApp() {
+  closePanel();
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('appShell').style.display = 'flex';
+  const name = (window.currentUser && window.currentUser.name) || '小松';
+  document.getElementById('sbAvatar').textContent = name.charAt(0);
+  document.getElementById('sbUserName').textContent = name;
+  newChat();
+  refreshChatOverview();
+}
+
+function openPanel(name) {
   const page = document.getElementById('page-' + name);
-  if (page) {
-    page.classList.add('active');
-  }
-  if (name !== 'login') {
-    document.getElementById('navbar').style.display = 'block';
-    const navAv = document.getElementById('navAvatar');
-    if (navAv) navAv.textContent = (window.currentUser && window.currentUser.name || '松').charAt(0);
-    const navItems = document.querySelectorAll(`#navMenu a[data-page="${name}"], #mobileDrawer a[data-page="${name}"]`);
-    document.querySelectorAll('#navMenu a, #mobileDrawer a').forEach(a => a.classList.remove('active'));
-    navItems.forEach(a => a.classList.add('active'));
-  }
-  document.body.classList.remove('drawer-open');
-  window.scrollTo(0, 0);
+  if (!page) return;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('panelBody').appendChild(page);
+  page.classList.add('active');
+  document.getElementById('panelTitle').textContent = PANEL_TITLES[name] || '';
+  document.getElementById('sidePanel').classList.add('open');
+  document.getElementById('panelMask').classList.add('show');
+  document.body.classList.remove('sb-open');
+  document.querySelectorAll('.sb-nav a').forEach(a => a.classList.toggle('active', a.dataset.page === name));
 
   if (name === 'home') loadHomeData();
   if (name === 'care') loadAcupoints();
@@ -160,9 +189,16 @@ function showPage(name) {
   if (name === 'clothing') loadClothing();
   if (name === 'rhythm') { loadExercise(); loadSleep(); }
   if (name === 'practice') loadPracticeMoves();
-  if (name === 'chat') { scrollChatToBottom(); refreshChatOverview(); }
   if (name === 'record') { loadSymptomRecords(); loadMedicines(); loadSymptomStats(); }
   if (name === 'profile') { loadProfile(); loadProfileStats(); }
+  if (name === 'assistant') refreshChatOverview();
+}
+
+function closePanel() {
+  const panel = document.getElementById('sidePanel');
+  if (panel) panel.classList.remove('open');
+  const mask = document.getElementById('panelMask');
+  if (mask) mask.classList.remove('show');
 }
 
 // ============ 注册 / 登录（账号 + 密码） ============
@@ -202,7 +238,7 @@ async function doLogin() {
   });
   if (res.success && res.token) {
     saveLogin(res.token, res.user);
-    showPage('home');
+    enterApp();
   } else {
     alert(res.message || '登录失败，请重试');
   }
@@ -242,7 +278,7 @@ async function doRegister() {
   });
   if (res.success && res.token) {
     saveLogin(res.token, res.user);
-    showPage('home');
+    enterApp();
   } else {
     alert(res.message || '注册失败，请重试');
   }
@@ -954,10 +990,54 @@ async function sendMessage() {
       ? res.data.cards.map(renderChatCard).join('')
       : '';
     chatArea.innerHTML += renderChatBubble('ai', res.data.reply, cardsHtml);
+    loadSessionList();
   } else {
     chatArea.innerHTML += renderChatBubble('ai', res.message || '抱歉，我暂时无法回复，请稍后再试~');
   }
   scrollChatToBottom();
+}
+
+// ============ 会话历史（新对话 / 列表 / 回看续聊） ============
+const WELCOME_HTML = '<div class="chat-msg ai"><div class="avatar">🌿</div><div class="bubble">你好呀，我是小松 🌿 今天感觉怎么样？有什么不舒服可以跟我说~</div></div>';
+
+function newChat() {
+  chatSessionId = null;
+  document.getElementById('chatMessages').innerHTML = WELCOME_HTML;
+  document.body.classList.remove('sb-open');
+  loadSessionList();
+  const input = document.getElementById('chatInput');
+  if (input) input.focus();
+}
+
+async function loadSessionList() {
+  const box = document.getElementById('sessionList');
+  if (!box) return;
+  const res = await fetchAPI('/chat/sessions');
+  if (!res.success || !Array.isArray(res.data)) return;
+  if (!res.data.length) {
+    box.innerHTML = '<div class="sb-empty">还没有对话，和小松聊聊吧</div>';
+    return;
+  }
+  box.innerHTML = res.data.map(s =>
+    `<div class="sb-session${s.id === chatSessionId ? ' active' : ''}" onclick="loadSession(${s.id})" title="${escapeHtml(s.lastMessage || '')}">
+      <span class="sb-session-title">${escapeHtml(s.title || '新的对话')}</span>
+    </div>`).join('');
+}
+
+async function loadSession(id) {
+  const res = await fetchAPI('/chat/sessions/' + id + '/messages');
+  if (!res.success || !res.data) {
+    toast(res.message || '会话加载失败', 'error');
+    return;
+  }
+  chatSessionId = id;
+  const chatArea = document.getElementById('chatMessages');
+  chatArea.innerHTML = res.data.messages.length
+    ? res.data.messages.map(m => renderChatBubble(m.role === 'user' ? 'user' : 'ai', m.content)).join('')
+    : WELCOME_HTML;
+  scrollChatToBottom();
+  document.body.classList.remove('sb-open');
+  loadSessionList();
 }
 
 function quickAsk(q) {
@@ -1684,35 +1764,14 @@ function initProfileMenu() {
   });
 }
 
-// ============ 移动端抽屉导航 ============
-function initMobileNav() {
-  const toggle = document.getElementById('navToggle');
-  const mask = document.getElementById('drawerMask');
-  const closeDrawer = () => document.body.classList.remove('drawer-open');
-
-  toggle?.addEventListener('click', () => {
-    document.body.classList.toggle('drawer-open');
-  });
-  mask?.addEventListener('click', closeDrawer);
-  document.querySelectorAll('#mobileDrawer a').forEach(a => {
-    a.addEventListener('click', () => {
-      closeDrawer();
-      showPage(a.dataset.page);
-    });
-  });
-}
-
 // ============ 初始化 ============
 document.addEventListener('DOMContentLoaded', async () => {
   initTagRows();
   initProfileMenu();
-  initMobileNav();
 
-  document.querySelectorAll('#navMenu a').forEach(a => {
-    a.addEventListener('click', (e) => {
-      e.preventDefault();
-      showPage(a.dataset.page);
-    });
+  // 侧边栏功能板块 → 抽屉打开
+  document.querySelectorAll('.sb-nav a').forEach(a => {
+    a.addEventListener('click', () => showPage(a.dataset.page));
   });
 
   // 登录态持久化：有 token 时自动恢复登录，失效则留在登录页
@@ -1720,7 +1779,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const res = await fetchAPI('/auth/me');
     if (res.success && res.data) {
       window.currentUser = res.data;
-      showPage('home');
+      enterApp();
     } else {
       clearLogin();
     }
