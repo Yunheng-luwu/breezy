@@ -17,6 +17,7 @@ const {
   dietData, clothingData, exerciseData,
   practiceStretchData, practiceOfficeData,
 } = require('../services/contentData');
+const kb = require('../services/knowledge');
 
 // 静态数据统一放在 services/contentData.js，供本路由与 AI 工具层共用
 
@@ -503,7 +504,7 @@ router.get('/auth/me', requireAuth, wrap(async (req, res) => {
   ok(res, rows[0]);
 }));
 
-// 功法动作：group=baduanjin 查库（默认），stretch/office 返回静态动作
+// 功法动作：group=baduanjin 读中医知识库（默认，含分步/呼吸/易错点），stretch/office 返回静态动作
 router.get('/practice/moves', wrap(async (req, res) => {
   const group = req.query.group || 'baduanjin';
   if (group === 'stretch') {
@@ -512,10 +513,7 @@ router.get('/practice/moves', wrap(async (req, res) => {
   if (group === 'office') {
     return ok(res, practiceOfficeData.map((m, i) => ({ id: 200 + i, name: m.name, duration: m.duration, desc: m.desc })));
   }
-  const [rows] = await pool.query(
-    'SELECT id, name, duration FROM practice_moves ORDER BY sort_order',
-  );
-  ok(res, rows);
+  ok(res, kb.getPracticeMoves());
 }));
 
 // ============ 健康档案（be-3） ============

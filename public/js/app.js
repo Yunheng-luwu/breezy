@@ -1642,6 +1642,16 @@ function renderChatCard(card) {
         (card.items || []).map((m, i) =>
           `<div class="cc-item"><span class="cc-step">${i + 1}</span><span class="cc-item-main"><b>${escapeHtml(m.name)}</b><span class="cc-sub">${escapeHtml(m.duration || '')}</span></span></div>`
         ).join(''), 'practice');
+    case 'practice_detail': {
+      const p = card.item || {};
+      const sec = (label, text) => text
+        ? `<div class="cc-sec"><div class="cc-sec-label">${escapeHtml(label)}</div><div class="cc-sec-text">${escapeHtml(text)}</div></div>`
+        : '';
+      return ccShell(p.name || '功法详解', '🤸',
+        sec('分步要领', p.steps) + sec('呼吸配合', p.breath) + sec('次数时长', p.duration)
+        + sec('常见错误', p.mistakes) + sec('功效', p.effect) + sec('注意事项', p.cautions)
+        + sec('练习轮次', p.rounds) + sec('不适应人群', p.unsuitable), 'practice');
+    }
     case 'overview': {
       const todos = card.todos || [];
       const done = todos.filter(t => t.done).length;
@@ -1810,63 +1820,117 @@ async function loadPracticeMoves(group) {
       <div class="move-item${i === 0 ? ' active' : ''}" onclick="seekPractice(${i})">
         <div class="num">${i + 1}</div>
         <div class="name">${escapeHtml(m.name)}</div>
-        <div class="duration">${escapeHtml(m.duration || '')}</div>
+        <div class="duration">${escapeHtml(fmtPracticeTime(m.secs || 30))}</div>
       </div>`).join('') : '<div style="color:var(--text-light);font-size:13px;">动作加载失败</div>';
   }
   const explain = document.getElementById('practiceExplain');
   if (explain) {
-    explain.innerHTML = moves.map((m, i) => `
-      <div class="card-beige" style="min-width:200px;text-align:center;">
+    explain.innerHTML = moves.length ? moves.map((m, i) => `
+      <div class="card-beige" style="min-width:210px;max-width:260px;text-align:center;cursor:pointer;" onclick="showPracticeDetail(${i})">
         <div style="font-size:28px;color:var(--accent);font-weight:600;">${i + 1}</div>
         <div style="font-weight:500;">${escapeHtml(m.name)}</div>
         <div style="font-size:13px;color:var(--text-light);">${escapeHtml(m.duration || '')}</div>
-        <div style="font-size:12px;color:var(--text-mid);margin-top:4px;line-height:1.5;">${escapeHtml(m.desc || '配合自然呼吸，动作缓慢舒展')}</div>
-      </div>`).join('');
+        <div style="font-size:12px;color:var(--text-mid);margin-top:4px;line-height:1.5;">${escapeHtml(m.breath || m.desc || '配合自然呼吸，动作缓慢舒展')}</div>
+        <div style="font-size:11px;color:var(--accent);margin-top:6px;">${m.steps ? '查看分步与易错点 →' : '查看动作说明 →'}</div>
+      </div>`).join('') : '';
   }
+  const total = moves.reduce((s, m) => s + (m.secs || 30), 0);
+  practiceTotal = total;
   const meta = PRACTICE_META[group];
   const titleEl = document.getElementById('practiceSeqTitle');
   if (titleEl && meta) titleEl.textContent = meta.title;
   const hintEl = document.getElementById('practiceSeqHint');
-  if (hintEl && meta) hintEl.textContent = meta.hint;
+  if (hintEl) {
+    hintEl.textContent = group === 'baduanjin' && moves.length
+      ? `每式练习 6 次、约 1-2 分钟，整套约 ${Math.round(total / 60)} 分钟，循序渐进、不憋气`
+      : (meta ? meta.hint : '');
+  }
   const timeEl = document.getElementById('practiceTime');
-  if (timeEl) timeEl.textContent = moves.length ? `0:00 / ${fmtPracticeTime(moves.length * PRACTICE_STEP)}` : '0:00 / 0:00';
+  if (timeEl) timeEl.textContent = moves.length ? `0:00 / ${fmtPracticeTime(total)}` : '0:00 / 0:00';
   const bar = document.getElementById('practiceBar');
   if (bar) bar.style.width = '0%';
 }
 
-const PRACTICE_STEP = 15; // 带练引导中每式停留 15 秒（原型节奏）
+let practiceTotal = 0;
 function fmtPracticeTime(sec) {
   const m = Math.floor(sec / 60);
   const s = sec % 60;
   return m + ':' + String(s).padStart(2, '0');
 }
-function startPractice() {
-  if (!practiceMovesCache.length) { toast('动作还在加载，请稍候'); return; }
-  if (practiceTimer) { stopPractice(); return; }
-  const total = practiceMovesCache.length * PRACTICE_STEP;
-  let elapsed = 0;
-  highlightMove(0);
+function practiceTotalSecs() {
+  return practiceTotal || practiceMovesCache.reduce((s, m) => s + (m.secs || 30), 0);
+}
+function practiceIndexAt(elapsed) {
+  let acc = 0;
+  for (let i = 0; i < practiceMovesCache.length; i++) {
+    acc += practiceMovesCache[i].secs || 30;
+    if (elapsed < acc) return i;
+  }
+  return practiceMovesCache.length - 1;
+}
+// 从指定秒数开始/继续带练
+function runPractice(elapsed) {
+  const total = practiceTotalSecs();
+  highlightMove(practiceIndexAt(elapsed));
   setPracticePlaying(true);
-  toast('开始跟练，配合呼吸慢慢来 🌿');
   practiceTimer = setInterval(() => {
     elapsed += 1;
     const bar = document.getElementById('practiceBar');
     if (bar) bar.style.width = Math.min(100, (elapsed / total) * 100) + '%';
     const timeEl = document.getElementById('practiceTime');
     if (timeEl) timeEl.textContent = fmtPracticeTime(Math.min(elapsed, total)) + ' / ' + fmtPracticeTime(total);
-    const idx = Math.min(practiceMovesCache.length - 1, Math.floor(elapsed / PRACTICE_STEP));
-    highlightMove(idx);
+    highlightMove(practiceIndexAt(elapsed));
     if (elapsed >= total) {
       stopPractice();
       toast('完成一遍，气血舒展，给自己点个赞 🌿', 'success');
     }
   }, 1000);
 }
+function startPractice() {
+  if (!practiceMovesCache.length) { toast('动作还在加载，请稍候'); return; }
+  if (practiceTimer) { stopPractice(); return; }
+  toast('开始跟练，配合呼吸慢慢来 🌿');
+  runPractice(0);
+}
 function seekPractice(i) {
-  if (!practiceTimer || !practiceMovesCache.length) return;
-  // 带练中点击动作：从该式重新计时较复杂，这里仅做高亮提示
-  highlightMove(i);
-  toast(`当前动作：${practiceMovesCache[i].name}`);
+  if (!practiceMovesCache.length) return;
+  if (practiceTimer) {
+    // 带练中点击动作：跳转到该式起点重新计时
+    clearInterval(practiceTimer);
+    practiceTimer = null;
+    let elapsed = 0;
+    for (let k = 0; k < i; k++) elapsed += practiceMovesCache[k].secs || 30;
+    runPractice(elapsed);
+    toast(`跳到：${practiceMovesCache[i].name}`);
+  } else {
+    showPracticeDetail(i);
+  }
+}
+// 动作详解弹窗（八段锦含分步/呼吸/易错点；拉伸与微动显示动作说明）
+function showPracticeDetail(i) {
+  const m = practiceMovesCache[i];
+  if (!m) return;
+  // 展示层优化：把连续的“（1）…（2）…”步骤拆成多行，缓解长段落拥挤
+  const fmtSteps = s => escapeHtml(String(s || '').replace(/（(\d+)）/g, '\n（$1）').replace(/^\n/, ''));
+  const sec = (label, text, multiline) => text
+    ? `<div class="pd-sec"><div class="pd-sec-label">${label}</div><div class="pd-sec-text${multiline ? ' pd-steps' : ''}">${multiline ? fmtSteps(text) : escapeHtml(text)}</div></div>`
+    : '';
+  openModal(`
+    <div class="pd-modal">
+      <div class="pd-head">
+        <h3>🤸 ${escapeHtml(m.name)}</h3>
+        <button class="pd-close" onclick="closeModal()" aria-label="关闭">✕</button>
+      </div>
+      <div class="pd-duration">${escapeHtml(m.duration || '')}</div>
+      ${sec('分步要领', m.steps, true)}
+      ${sec('呼吸配合', m.breath)}
+      ${sec('常见错误', m.mistakes)}
+      ${sec('功效', m.effect)}
+      ${sec('注意事项', m.cautions)}
+      ${sec('动作说明', m.desc)}
+      <div class="pd-foot"><button class="pd-ok" onclick="closeModal()">知道了</button></div>
+    </div>
+  `);
 }
 function highlightMove(i) {
   document.querySelectorAll('#moveList .move-item').forEach((el, idx) => {
