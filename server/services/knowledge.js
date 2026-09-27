@@ -76,8 +76,26 @@ function listMedicineNames() {
 }
 
 // ---------- 功法 ----------
+// 从“6次，1分40秒”“6次，2分”“左右交替进行，6次，1分30秒”等文本解析秒数，解析失败回退 30 秒
+function parseMoveSecs(text) {
+  const t = String(text || '');
+  const m = t.match(/(\d+)\s*分(?:\s*(\d+)\s*秒)?/);
+  if (m) return Number(m[1]) * 60 + (m[2] ? Number(m[2]) : 0);
+  const onlySec = t.match(/(\d+)\s*秒/);
+  return onlySec ? Number(onlySec[1]) : 30;
+}
 function getPracticeMoves() {
-  return practicesKb.baduanjin.map((m, i) => ({ id: i + 1, name: m.name, duration: m.duration }));
+  return practicesKb.baduanjin.map((m, i) => ({
+    id: i + 1,
+    name: m.name,
+    duration: m.duration,
+    secs: parseMoveSecs(m.duration),
+    breath: m.breath,
+    steps: m.steps,
+    mistakes: m.mistakes,
+    effect: m.effect,
+    cautions: m.cautions,
+  }));
 }
 function getPracticeDetail(name) {
   const kw = String(name || '');
