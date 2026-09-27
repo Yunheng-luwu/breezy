@@ -419,6 +419,10 @@ body.drawer-open .mobile-drawer { right:0; }
   font-size:12px; display:flex; align-items:center; justify-content:center;
 }
 .cc-sub { font-size:12px; color:var(--text-light); }
+.cc-sec { padding:7px 0; border-top:1px dashed rgba(0,0,0,.08); }
+.cc-sec:first-child { border-top:none; padding-top:2px; }
+.cc-sec-label { font-size:12px; font-weight:600; color:var(--accent); margin-bottom:3px; }
+.cc-sec-text { font-size:13px; color:var(--text-dark); line-height:1.65; white-space:pre-wrap; word-break:break-word; }
 .cc-empty { color:var(--text-light); font-size:13px; padding:4px 0; }
 .cc-recipe-name { font-size:15px; font-weight:600; color:var(--accent); margin-bottom:4px; }
 .cc-principle {
