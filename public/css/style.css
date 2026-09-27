@@ -644,3 +644,67 @@ body.drawer-open .mobile-drawer { right:0; }
   .chat-view .chat-msg .bubble { max-width:86%; }
 }
 
+/* ============ 移动端适配增补（手机浏览器/微信内） ============ */
+/* 动态视口高度：微信/手机浏览器地址栏伸缩时不遮挡底部输入区（不支持 dvh 的浏览器回退 vh） */
+.app-shell { height:100vh; height:100dvh; }
+.page { min-height:100vh; min-height:100dvh; }
+.side-panel { height:100vh; height:100dvh; }
+
+@media (max-width: 900px) {
+  /* 输入控件统一 16px，避免 iOS 聚焦输入时自动放大页面 */
+  input, select, textarea, .profile-input, .todo-add-row input, .form-input { font-size:16px !important; }
+
+  /* 顶栏收紧：标题省略号截断，「今日处方」收为图标按钮 */
+  .chat-topbar { padding:10px 12px; gap:8px; }
+  .chat-top-title { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:15px; }
+  .chat-top-actions { gap:8px; flex-shrink:0; }
+  .top-btn { font-size:0; padding:7px 11px; }
+  .top-btn::before { content:'\2728'; font-size:16px; }
+
+  /* 消息区与输入区贴边更舒展；底部避开 iPhone 横条 */
+  .chat-view .chat-messages { padding:16px 14px; }
+  .chat-quick { padding:4px 14px 8px; gap:6px; }
+  .chat-input-wrap { padding:0 12px calc(12px + env(safe-area-inset-bottom)); }
+
+  /* 抽屉内边距收窄，内容区底部避开安全区 */
+  .panel-head { padding:12px 16px; }
+  .panel-body { padding:16px 14px calc(28px + env(safe-area-inset-bottom)); }
+
+  /* 左侧抽屉占比控制 */
+  .app-sidebar { width:min(280px, 82vw); }
+}
+
+@media (max-width: 768px) {
+  /* 登录/注册页：隐藏桌面端竖排装饰大字（小屏会与登录卡重叠），卡片居中 */
+  .reg-left-text { display:none; }
+  #page-login.active { justify-content:center; padding-right:0; padding:16px; }
+  .reg-card { padding:24px 22px; max-width:100%; }
+
+  /* 生活节律时间轴：6 个节点改为横向滑动，不挤压 */
+  .timeline { flex-wrap:nowrap; justify-content:flex-start; overflow-x:auto; padding:12px 4px; -webkit-overflow-scrolling:touch; }
+  .tl-node { flex:0 0 auto; min-width:80px; padding:0 4px; }
+
+  /* 页头标题/卡片间距收紧 */
+  .page-header { margin-bottom:18px; gap:10px; }
+  .page-header h1 { font-size:21px; }
+  .card { padding:16px; }
+
+  /* 选项卡条空间不足时横向滑动 */
+  .tab-bar { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .tab { white-space:nowrap; flex:0 0 auto; padding:10px 16px; }
+
+  /* 弹窗留边 */
+  .modal-mask { padding:14px; }
+  .modal-head { padding:14px 16px 6px; }
+
+  /* 快捷问题标签略收紧 */
+  .qt { padding:6px 10px; font-size:13px; }
+
+  /* 播放器/进度条适配窄屏 */
+  .player-area { padding:28px 16px; }
+  .progress { width:120px; }
+
+  /* 用药打卡网格：小屏单列，避免药名+剂量被挤 */
+  .med-grid { grid-template-columns:1fr; }
+}
+
