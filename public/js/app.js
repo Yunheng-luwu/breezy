@@ -1910,22 +1910,26 @@ function seekPractice(i) {
 function showPracticeDetail(i) {
   const m = practiceMovesCache[i];
   if (!m) return;
-  const sec = (label, text) => text
-    ? `<div style="padding:8px 0;border-top:1px dashed rgba(0,0,0,.1);"><div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:3px;">${label}</div><div style="font-size:13px;line-height:1.7;color:var(--text-dark);white-space:pre-wrap;">${escapeHtml(text)}</div></div>`
+  // 展示层优化：把连续的“（1）…（2）…”步骤拆成多行，缓解长段落拥挤
+  const fmtSteps = s => escapeHtml(String(s || '').replace(/（(\d+)）/g, '\n（$1）').replace(/^\n/, ''));
+  const sec = (label, text, multiline) => text
+    ? `<div class="pd-sec"><div class="pd-sec-label">${label}</div><div class="pd-sec-text${multiline ? ' pd-steps' : ''}">${multiline ? fmtSteps(text) : escapeHtml(text)}</div></div>`
     : '';
   openModal(`
-    <div class="modal-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-      <h3 style="margin:0;">🤸 ${escapeHtml(m.name)}</h3>
-      <button onclick="closeModal()" style="border:none;background:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button>
+    <div class="pd-modal">
+      <div class="pd-head">
+        <h3>🤸 ${escapeHtml(m.name)}</h3>
+        <button class="pd-close" onclick="closeModal()" aria-label="关闭">✕</button>
+      </div>
+      <div class="pd-duration">${escapeHtml(m.duration || '')}</div>
+      ${sec('分步要领', m.steps, true)}
+      ${sec('呼吸配合', m.breath)}
+      ${sec('常见错误', m.mistakes)}
+      ${sec('功效', m.effect)}
+      ${sec('注意事项', m.cautions)}
+      ${sec('动作说明', m.desc)}
+      <div class="pd-foot"><button class="pd-ok" onclick="closeModal()">知道了</button></div>
     </div>
-    <div style="font-size:12px;color:var(--text-light);margin-bottom:4px;">${escapeHtml(m.duration || '')}</div>
-    ${sec('分步要领', m.steps)}
-    ${sec('呼吸配合', m.breath)}
-    ${sec('常见错误', m.mistakes)}
-    ${sec('功效', m.effect)}
-    ${sec('注意事项', m.cautions)}
-    ${sec('动作说明', m.desc)}
-    <div style="text-align:right;margin-top:12px;"><button class="btn-primary" onclick="closeModal()" style="border:none;border-radius:8px;padding:6px 18px;background:var(--primary);color:#fff;cursor:pointer;">知道了</button></div>
   `);
 }
 function highlightMove(i) {
