@@ -7,6 +7,7 @@
 const { pool } = require('../../db/pool');
 const { getClothingByIp } = require('../../services/weather');
 const { dietData, clothingData, exerciseData } = require('../../services/contentData');
+const kb = require('../../services/knowledge');
 
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -52,35 +53,46 @@ const TOOL_DEFS = [
       if (!['stress', 'neck', 'sleep', 'office'].includes(category)) {
         throw new ToolArgError('category 只能是 stress/neck/sleep/office');
       }
-      const [rows] = await pool.query(
-        'SELECT id, name, tag, effect, icon FROM acupoints WHERE category = ? ORDER BY id',
-        [category],
-      );
+      const rows = kb.listAcupoints(category);
       return {
-        card: { type: 'acupoint_list', category, items: rows },
-        summary: rows.map(r => `${r.id}.${r.name}（${r.tag}）：${r.effect}`).join('\n') || '该分组暂无穴位数据',
+        card: {
+          type: 'acupoint_list',
+          category,
+          items: rows.map(r => ({ id: r.id, name: r.name, tag: r.tag, effect: kb.firstSentence(r.effect), icon: r.icon })),
+        },
+        summary: rows.map(r => `${r.id}.${r.name}（${r.tag}）：${kb.firstSentence(r.effect, 50)}`).join('\n') || '该分组暂无穴位数据',
       };
     },
   },
   {
     name: 'get_acupoint_detail',
-    description: '查询单个穴位的定位、按揉手法、时长与频率。需先用 query_acupoints 拿到穴位 id。',
+    description: '查询单个穴位的归经、标准/简易定位、按揉手法、时长频率、适用症状与禁忌。需先用 query_acupoints 拿到穴位 id。',
     parameters: {
       type: 'object',
-      properties: { id: { type: 'integer', description: '穴位 id' } },
+      properties: { id: { type: 'integer', description: '穴位 id（来自 query_acupoints）' } },
       required: ['id'],
     },
     run: async (args) => {
       const id = toInt(args, 'id');
-      const [rows] = await pool.query(
-        `SELECT id, name, tag, effect, icon, location, method, duration, frequency
-           FROM acupoints WHERE id = ?`, [id],
-      );
-      if (!rows[0]) throw new ToolArgError(`穴位 id=${id} 不存在，请先用 query_acupoints 查询`);
-      const r = rows[0];
+      const r = kb.getAcupoint(id);
+      if (!r) throw new ToolArgError(`穴位 id=${id} 不存在，请先用 query_acupoints 查询`);
       return {
-        card: { type: 'acupoint_detail', item: r },
-        summary: `${r.name}｜定位：${r.location}｜手法：${r.method}｜时长：${r.duration}｜频率：${r.frequency}`,
+        card: {
+          type: 'acupoint_detail',
+          item: {
+            id: r.id, name: r.name, tag: r.tag, effect: kb.firstSentence(r.effect, 60), icon: r.icon,
+            location: r.location_easy, method: r.method, duration: r.duration, frequency: '',
+          },
+        },
+        summary: [
+          `${r.name}（${r.meridian}）`,
+          `标准定位：${r.location_std}`,
+          `简易找法：${r.location_easy}`,
+          `手法：${r.method}`,
+          `时长频率：${r.duration}`,
+          `适用症状：${r.indications}`,
+          `禁忌：${r.contraindication}`,
+        ].join('\n'),
       };
     },
   },
@@ -94,17 +106,19 @@ const TOOL_DEFS = [
     },
     run: async (args) => {
       const status = requireStr(args, 'status', 200);
-      const [rows] = await pool.query(
-        'SELECT name, herbs, water_temp AS temp, duration, keywords FROM footbath_recipes',
-      );
-      let recipe = rows.find(r => r.is_default) || rows[0];
-      const hit = rows.find(r => r.keywords && r.keywords.split(',').some(k => k && status.includes(k)));
-      if (hit) recipe = hit;
+      const recipe = kb.matchFootbath(status);
       if (!recipe) throw new ToolArgError('泡脚配方数据暂不可用');
       const payload = { name: recipe.name, herbs: recipe.herbs, temp: recipe.temp, duration: recipe.duration };
       return {
         card: { type: 'footbath', recipe: payload },
-        summary: `${payload.name}：${payload.herbs}；水温${payload.temp}；泡${payload.duration}`,
+        summary: [
+          `${payload.name}`,
+          `药材：${payload.herbs}`,
+          `煎法：${recipe.method}`,
+          `水温${payload.temp}，泡${payload.duration}`,
+          `功效：${recipe.effect}`,
+          `禁忌：${recipe.contraindication}`,
+        ].join('\n'),
       };
     },
   },
@@ -128,6 +142,64 @@ const TOOL_DEFS = [
         `食谱：${dietData.recipes.map(r => `${r.time}${r.name}（${r.ingredients}）`).join('；')}`,
       ].join('\n'),
     }),
+  },
+
+  // ---- 药膳食疗（知识库） ----
+  {
+    name: 'get_diet_therapy',
+    description: '按类别查询疏肝养生药膳食疗方：tea=茶饮方（5款），porridge=汤粥方（3款），dish=食疗菜（2款）。每款含材料用量、做法、功效、适用体质、禁忌、频率。用户问喝茶/养生茶/粥/汤/食疗菜时调用。',
+    parameters: {
+      type: 'object',
+      properties: {
+        type: { type: 'string', enum: ['tea', 'porridge', 'dish'], description: '茶饮/汤粥/食疗菜' },
+      },
+      required: ['type'],
+    },
+    run: async (args) => {
+      const type = requireStr(args, 'type', 10);
+      const list = kb.getDietTherapy(type);
+      if (!list) throw new ToolArgError('type 只能是 tea/porridge/dish');
+      const label = { tea: '茶饮方', porridge: '汤粥方', dish: '食疗菜' }[type];
+      const summary = list.map((r, i) => [
+        `${i + 1}.${r.name}`,
+        `材料：${r.ingredients}`,
+        `做法：${r.method}`,
+        `功效：${r.effect}`,
+        `适用：${r.suitable}`,
+        `禁忌：${r.contraindication}`,
+        `频率：${r.frequency}`,
+      ].join('\n')).join('\n\n');
+      return { summary: `【${label}】\n${summary}` };
+    },
+  },
+
+  // ---- 中成药说明书科普（知识库；只做说明书层面信息，不做用药决策） ----
+  {
+    name: 'query_medicine_info',
+    description: '查询逍遥丸、加味逍遥丸、柴胡疏肝散、越鞠丸、归脾丸、酸枣仁丸等中成药的说明书层面信息：成分、功能主治、适用证候、用法用量、禁忌慎用、相互作用。仅作科普。用户问某中成药是什么/成分/主治/禁忌/能否吃时调用；涉及停药、换药、调剂量时不要据此给方案，应建议咨询开方医生或药师。',
+    parameters: {
+      type: 'object',
+      properties: { name: { type: 'string', description: '中成药名称或关键词，如 逍遥丸/归脾丸/酸枣仁' } },
+      required: ['name'],
+    },
+    run: async (args) => {
+      const name = requireStr(args, 'name', 30);
+      const m = kb.findMedicine(name);
+      if (!m) {
+        throw new ToolArgError(`未找到与“${name}”相关的中成药，可选：${kb.listMedicineNames().join('、')}`);
+      }
+      return {
+        summary: [
+          `${m.name}（说明书层面科普，不构成用药建议）`,
+          `主要成分：${m.ingredients}`,
+          `功能主治：${m.effect}`,
+          `适用证候：${m.syndrome}`,
+          `用法用量：${m.dosage}`,
+          `禁忌与慎用：${m.caution}`,
+          `药物相互作用：${m.interaction}`,
+        ].join('\n'),
+      };
+    },
   },
 
   // ---- 穿衣建议 ----
@@ -163,13 +235,85 @@ const TOOL_DEFS = [
   // ---- 功法带练 ----
   {
     name: 'get_practice_moves',
-    description: '获取八段锦完整八式动作序列（名称、每式时长），用于带练或讲解。用户问八段锦、功法带练时调用。',
+    description: '获取八段锦完整八式动作序列（名称、每式时长），用于带练或讲解。用户问八段锦、功法带练、整套动作时调用。',
     parameters: { type: 'object', properties: {} },
     run: async () => {
-      const [rows] = await pool.query('SELECT id, name, duration FROM practice_moves ORDER BY sort_order');
+      const rows = kb.getPracticeMoves();
       return {
         card: { type: 'practice', items: rows },
-        summary: rows.map((m, i) => `${i + 1}.${m.name} ${m.duration}`).join('\n') || '功法数据暂不可用',
+        summary: rows.map(m => `${m.id}.${m.name} ${m.duration}`).join('\n') || '功法数据暂不可用',
+      };
+    },
+  },
+  {
+    name: 'get_practice_detail',
+    description: '查询八段锦某一式的分步要领、呼吸配合、次数时长、常见错误、功效与注意事项；传入“478/呼吸”可查 478 呼吸法（含不适应人群）。需先用 get_practice_moves 拿到式名。',
+    parameters: {
+      type: 'object',
+      properties: { name: { type: 'string', description: '八段锦式名（如 两手托天理三焦）或 478呼吸' } },
+      required: ['name'],
+    },
+    run: async (args) => {
+      const name = requireStr(args, 'name', 30);
+      const d = kb.getPracticeDetail(name);
+      if (!d) throw new ToolArgError(`未找到“${name}”，请用 get_practice_moves 查询八式名称，或传“478呼吸”`);
+      const lines = [`${d.name}`];
+      if (d.steps) lines.push(`分步要领：${d.steps}`);
+      if (d.breath) lines.push(`呼吸配合：${d.breath}`);
+      if (d.duration) lines.push(`次数时长：${d.duration}`);
+      if (d.mistakes) lines.push(`常见错误：${d.mistakes}`);
+      if (d.effect) lines.push(`功效：${d.effect}`);
+      if (d.cautions) lines.push(`注意事项：${d.cautions}`);
+      if (d.rounds) lines.push(`轮次：${d.rounds}`);
+      if (d.unsuitable) lines.push(`不适应人群：${d.unsuitable}`);
+      return { summary: lines.join('\n') };
+    },
+  },
+
+  // ---- 体质与高频症状（知识库，含就医红线） ----
+  {
+    name: 'get_constitution_guide',
+    description: '查询气郁质的体质特征、常见表现、与气虚/阴虚/痰湿的夹杂关系、核心疏肝调理方向（运动/心理/中医）与判断依据。用户问自己是不是气郁质、气郁怎么调理时调用。',
+    parameters: { type: 'object', properties: {} },
+    run: async () => {
+      const c = kb.getConstitution();
+      if (!c) throw new ToolArgError('体质数据暂不可用');
+      return {
+        summary: [
+          `${c.name}`,
+          `体质特征：${c.features}`,
+          `常见表现：${c.manifestations}`,
+          `夹杂关系：\n${c.mixed_relations}`,
+          `核心方法：${c.core_method}`,
+          `调理方向：${c.care_guide}`,
+          `判断依据：${c.diagnosis}`,
+        ].join('\n'),
+      };
+    },
+  },
+  {
+    name: 'query_symptom_guide',
+    description: '查询高频症状的权威调理与就医指引：胸闷、两胁胀痛、失眠多梦、易怒、头晕、咽喉异物感（梅核气）、肩颈僵硬、叹气、口苦。返回表现、常见诱因、可能关联证型、日常调理方向、何时必须就医（红线）。用户描述具体不适时优先调用，并把就医红线传达给用户。',
+    parameters: {
+      type: 'object',
+      properties: { name: { type: 'string', description: '症状名称，如 胸闷/失眠/梅核气/肩颈/口苦' } },
+      required: ['name'],
+    },
+    run: async (args) => {
+      const name = requireStr(args, 'name', 20);
+      const s = kb.findSymptom(name);
+      if (!s) {
+        throw new ToolArgError(`未收录症状“${name}”，目前支持：${kb.listSymptomNames().join('、')}`);
+      }
+      return {
+        summary: [
+          `${s.name}`,
+          `表现：${s.manifestation}`,
+          `常见诱因：${s.causes}`,
+          `可能关联证型：${s.syndromes}`,
+          `日常调理方向：${s.care_guide}`,
+          `何时异常需就医：${s.seek_doctor}`,
+        ].join('\n'),
       };
     },
   },
