@@ -732,3 +732,27 @@ body.drawer-open .mobile-drawer { right:0; }
   .med-grid { grid-template-columns:1fr; }
 }
 
+/* ============ 功法带练页：播放器 × 动作序列布局协调 ============ */
+/* 桌面端左右两列等高：播放器背景填满列高，不再出现左下大片留白 */
+.practice-row { margin-bottom:20px; align-items:stretch; }
+.practice-row > [class*="col-"] { display:flex; }
+.practice-row .player-area { flex:1; width:100%; }
+.practice-row .col-4 > .card { flex:1; }
+/* 动作名单行完整展示，杜绝“末字掉队”式折行；时长固定不被压缩 */
+.move-item .name { line-height:1.4; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.move-item .duration { flex:0 0 auto; margin-left:6px; }
+
+/* 平板及以下：改为上下堆叠，动作序列两列网格（8 项收为 4 行，高度减半） */
+@media (max-width:1024px) {
+  .practice-row { flex-direction:column; }
+  .practice-row > [class*="col-"] { width:100%; }
+  .practice-row .player-area { min-height:220px; }
+  .move-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); column-gap:20px; }
+}
+
+/* 窄手机：序列回到单列，给名称留足宽度 */
+@media (max-width:600px) {
+  .move-list { grid-template-columns:1fr; }
+  .practice-row .player-area { min-height:200px; }
+}
+
