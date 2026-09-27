@@ -266,7 +266,23 @@ const TOOL_DEFS = [
       if (d.cautions) lines.push(`注意事项：${d.cautions}`);
       if (d.rounds) lines.push(`轮次：${d.rounds}`);
       if (d.unsuitable) lines.push(`不适应人群：${d.unsuitable}`);
-      return { summary: lines.join('\n') };
+      return {
+        card: {
+          type: 'practice_detail',
+          item: {
+            name: d.name,
+            steps: d.steps || '',
+            breath: d.breath || '',
+            duration: d.duration || '',
+            mistakes: d.mistakes || '',
+            effect: d.effect || '',
+            cautions: d.cautions || '',
+            rounds: d.rounds || '',
+            unsuitable: d.unsuitable || '',
+          },
+        },
+        summary: lines.join('\n'),
+      };
     },
   },
 

@@ -1642,6 +1642,16 @@ function renderChatCard(card) {
         (card.items || []).map((m, i) =>
           `<div class="cc-item"><span class="cc-step">${i + 1}</span><span class="cc-item-main"><b>${escapeHtml(m.name)}</b><span class="cc-sub">${escapeHtml(m.duration || '')}</span></span></div>`
         ).join(''), 'practice');
+    case 'practice_detail': {
+      const p = card.item || {};
+      const sec = (label, text) => text
+        ? `<div class="cc-sec"><div class="cc-sec-label">${escapeHtml(label)}</div><div class="cc-sec-text">${escapeHtml(text)}</div></div>`
+        : '';
+      return ccShell(p.name || '功法详解', '🤸',
+        sec('分步要领', p.steps) + sec('呼吸配合', p.breath) + sec('次数时长', p.duration)
+        + sec('常见错误', p.mistakes) + sec('功效', p.effect) + sec('注意事项', p.cautions)
+        + sec('练习轮次', p.rounds) + sec('不适应人群', p.unsuitable), 'practice');
+    }
     case 'overview': {
       const todos = card.todos || [];
       const done = todos.filter(t => t.done).length;
