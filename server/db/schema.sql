@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS users (
   role          VARCHAR(10) NOT NULL DEFAULT 'user' COMMENT 'admin=管理员 user=普通用户',
   score         TINYINT UNSIGNED NOT NULL DEFAULT 62 COMMENT '肝郁指数 0-100',
   level         VARCHAR(20) NOT NULL DEFAULT '轻度肝郁',
+  avatar        VARCHAR(255) NULL COMMENT '头像：预设key p1-p10 或上传路径 /uploads/avatars/*',
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uk_phone (phone),

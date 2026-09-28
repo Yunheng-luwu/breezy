@@ -77,6 +77,106 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') { closeModal(); closePanel(); }
 });
 
+// ============ 头像（预设 + 上传） ============
+// 预设 key p1-p10 与后端正则保持一致；上传值为 /uploads/avatars/ 路径
+const AVATAR_PRESETS = ['🌿', '🍵', '☯️', '🎋', '🌸', '🍃', '🧘', '🌙', '🌼', '🍀'];
+
+// 头像内容 HTML：上传路径 → <img>；预设 key p1-p10 → emoji；空 → 昵称首字
+function avatarContentHtml(value, fallbackChar) {
+  if (value && value.indexOf('/uploads/') === 0) {
+    return '<img src="' + escapeHtml(value) + '" alt="头像">';
+  }
+  if (/^p(?:[1-9]|10)$/.test(value || '')) {
+    return AVATAR_PRESETS[Number(value.slice(1)) - 1];
+  }
+  return escapeHtml(fallbackChar || '松');
+}
+
+// 把当前用户头像渲染到固定元素（侧栏 / 个人页）
+function applyAvatar(elId, fallbackName, avatarValue) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const name = (window.currentUser && window.currentUser.name) || fallbackName || '小松';
+  const val = avatarValue !== undefined ? avatarValue : (window.currentUser && window.currentUser.avatar);
+  el.innerHTML = avatarContentHtml(val, name.charAt(0));
+}
+
+function openAvatarPicker() {
+  if (!window.currentUser) { toast('请先登录'); return; }
+  const cur = window.currentUser.avatar || '';
+  const cells = AVATAR_PRESETS.map((e, i) => {
+    const key = 'p' + (i + 1);
+    return '<div class="av-item' + (key === cur ? ' active' : '') + '" onclick="choosePresetAvatar(\'' + key + '\')">' + e + '</div>';
+  }).join('');
+  openModal(
+    '<div class="modal-head"><div class="modal-title">更换头像</div><span class="modal-close" onclick="closeModal()">×</span></div>' +
+    '<div class="modal-body">' +
+    '<div class="av-grid">' + cells + '</div>' +
+    '<div class="av-upload">' +
+    '<button class="btn btn-outline btn-sm" onclick="document.getElementById(\'avFile\').click()">上传图片</button>' +
+    '<input type="file" id="avFile" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="uploadAvatarFile(this)">' +
+    '</div>' +
+    '<div class="av-hint">上传图片会自动居中裁剪并压缩，仅支持 JPG / PNG / WebP</div>' +
+    '</div>'
+  );
+}
+
+async function choosePresetAvatar(key) {
+  const res = await fetchAPI('/user/avatar', { method: 'PUT', body: JSON.stringify({ avatar: key }) });
+  if (!res.success) { toast(res.message || '保存失败', 'error'); return; }
+  applyNewAvatar(res.data.avatar);
+}
+
+async function uploadAvatarFile(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  if (file.size > 10 * 1024 * 1024) { toast('图片不能超过 10MB', 'error'); input.value = ''; return; }
+  toast('正在处理图片…');
+  try {
+    const dataUrl = await squareCompressImage(file, 256);
+    const res = await fetchAPI('/user/avatar/upload', { method: 'POST', body: JSON.stringify({ data: dataUrl }) });
+    if (!res.success) { toast(res.message || '上传失败', 'error'); return; }
+    applyNewAvatar(res.data.avatar);
+  } catch (e) {
+    toast('图片处理失败，请换一张试试', 'error');
+  }
+}
+
+// 居中裁剪成正方形并缩放到 size×size 的 JPEG dataURL
+function squareCompressImage(file, size) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        const side = Math.min(img.naturalWidth, img.naturalHeight);
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        canvas.getContext('2d').drawImage(
+          img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, size, size,
+        );
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function applyNewAvatar(val) {
+  closeModal();
+  if (!window.currentUser) return;
+  window.currentUser.avatar = val;
+  localStorage.setItem(USER_KEY, JSON.stringify(window.currentUser));
+  applyAvatar('sbAvatar');
+  applyAvatar('pfAvatar');
+  toast('头像已更新', 'success');
+}
+
+
 // ============ 退出登录 ============
 function logout() {
   if (!confirm('确定退出登录吗？')) return;
@@ -236,7 +336,7 @@ function enterApp() {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('appShell').style.display = 'flex';
   const name = (window.currentUser && window.currentUser.name) || '小松';
-  document.getElementById('sbAvatar').textContent = name.charAt(0);
+  applyAvatar('sbAvatar', name);
   document.getElementById('sbUserName').textContent = name;
   newChat();
   refreshChatOverview();
@@ -1305,7 +1405,12 @@ let chatSessionId = null;
 let chatMsgSeq = 0;
 
 function renderChatBubble(role, text, cardsHtml) {
-  const avatar = role === 'user' ? '🧑' : '🌿';
+  let avatar = '🌿';
+  if (role === 'user') {
+    avatar = window.currentUser
+      ? avatarContentHtml(window.currentUser.avatar, (window.currentUser.name || '松').charAt(0))
+      : '🧑';
+  }
   const safeText = escapeHtml(text).replace(/\n/g, '<br>');
   const extra = cardsHtml ? `<div class="ai-cards">${cardsHtml}</div>` : '';
   if (role === 'user') {
@@ -2301,7 +2406,7 @@ async function loadProfile() {
   };
   set('pfNick', p.name || '小松');
   set('pfLevelTag', p.level || '未测评');
-  set('pfAvatar', (p.name || '松').charAt(0));
+  applyAvatar('pfAvatar', p.name || '松', p.avatar);
   set('pfName', p.name || '小松');
   set('pfUsername', p.username || '--');
   set('pfEmail', p.email || '--');
@@ -2432,7 +2537,7 @@ async function toggleProfileEdit(btn, fields) {
     window.currentUser.name = payload.name;
     localStorage.setItem(USER_KEY, JSON.stringify(window.currentUser));
     document.getElementById('sbUserName').textContent = payload.name;
-    document.getElementById('sbAvatar').textContent = payload.name.charAt(0);
+    applyAvatar('sbAvatar');
   }
 }
 
