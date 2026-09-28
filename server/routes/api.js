@@ -7,6 +7,8 @@
 
 const express = require('express');
 const router = express.Router();
+const fs = require('fs').promises;
+const path = require('path');
 const { pool } = require('../db/pool');
 const { signToken, requireAuth, hashPassword, verifyPassword } = require('../middleware/auth');
 const { getClothingByWeather, getClothingByAdcode, searchCity, locateByLngLat } = require('../services/weather');
@@ -480,7 +482,7 @@ router.post('/auth/login', wrap(async (req, res) => {
     throw new ApiError(400, '请输入账号和密码');
   }
   const [rows] = await pool.query(
-    'SELECT id, name, username, email, password_hash, score, level FROM users WHERE username = ? OR email = ? LIMIT 1',
+    'SELECT id, name, username, email, password_hash, score, level, avatar FROM users WHERE username = ? OR email = ? LIMIT 1',
     [account, account],
   );
   const u = rows[0];
@@ -489,14 +491,14 @@ router.post('/auth/login', wrap(async (req, res) => {
   }
   ok(res, {
     token: signToken(u.id),
-    user: { name: u.name, username: u.username, email: u.email, score: u.score, level: u.level },
+    user: { name: u.name, username: u.username, email: u.email, score: u.score, level: u.level, avatar: u.avatar },
   });
 }));
 
 // 当前登录用户信息（登录态持久化校验）
 router.get('/auth/me', requireAuth, wrap(async (req, res) => {
   const [rows] = await pool.query(
-    'SELECT name, username, email, score, level FROM users WHERE id = ?', [req.userId],
+    'SELECT name, username, email, score, level, avatar FROM users WHERE id = ?', [req.userId],
   );
   if (!rows[0]) {
     throw new ApiError(401, '用户不存在');
@@ -525,7 +527,7 @@ router.get('/profile', requireAuth, wrap(async (req, res) => {
     SELECT constitution, allergy, diet_pref, exercise_pref, sleep_pref, body_sense,
            wake_time, nap_time, bed_time, updated_at
       FROM health_profiles WHERE user_id = ?`;
-  const [users] = await pool.query('SELECT name, username, email, score, level FROM users WHERE id = ?', [userId]);
+  const [users] = await pool.query('SELECT name, username, email, score, level, avatar FROM users WHERE id = ?', [userId]);
   let [rows] = await pool.query(profileSql, [userId]);
   if (!rows[0]) {
     await pool.query('INSERT IGNORE INTO health_profiles (user_id) VALUES (?)', [userId]);
@@ -535,7 +537,7 @@ router.get('/profile', requireAuth, wrap(async (req, res) => {
   const p = rows[0] || {};
   ok(res, {
     name: u.name, username: u.username, email: u.email,
-    score: u.score, level: u.level,
+    score: u.score, level: u.level, avatar: u.avatar,
     constitution: p.constitution, allergy: p.allergy,
     dietPref: p.diet_pref, exercisePref: p.exercise_pref,
     sleepPref: p.sleep_pref, bodySense: p.body_sense,
@@ -626,6 +628,63 @@ router.put('/profile', requireAuth, wrap(async (req, res) => {
       merged.wake_time, merged.nap_time, merged.bed_time],
   );
   ok(res, undefined, '健康档案已保存');
+}));
+
+// ============ 头像（预设 + 上传） ============
+
+// 预设头像 key：p1-p10（emoji 映射在前端维护）；上传头像：/uploads/avatars/u{id}_{rand}.ext
+const AVATAR_PRESET_RE = /^p(?:[1-9]|10)$/;
+const AVATAR_UPLOAD_RE = /^\/uploads\/avatars\/[A-Za-z0-9_]+\.(jpg|png|webp)$/;
+const AVATAR_DIR = path.join(__dirname, '..', '..', 'public', 'uploads', 'avatars');
+const AVATAR_MAX_BYTES = 300 * 1024; // 前端 canvas 压缩后一般 < 50KB，这里留足余量
+
+// 替换头像后清理该用户旧的上传文件（预设切换不清理）
+async function removeOldUpload(userId, avatar) {
+  if (avatar && AVATAR_UPLOAD_RE.test(avatar) && avatar.includes('/u' + userId + '_')) {
+    try { await fs.unlink(path.join(__dirname, '..', '..', 'public', avatar)); } catch (e) { /* 文件不存在则忽略 */ }
+  }
+}
+
+// 选择预设头像，或绑定已上传的路径
+router.put('/user/avatar', requireAuth, wrap(async (req, res) => {
+  const avatar = String(req.body.avatar || '').trim();
+  if (!AVATAR_PRESET_RE.test(avatar) && !AVATAR_UPLOAD_RE.test(avatar)) {
+    throw new ApiError(400, '不支持的头像格式');
+  }
+  if (avatar.startsWith('/uploads/')) {
+    // 只能绑定自己上传的文件，且文件必须真实存在
+    if (!avatar.includes('/u' + req.userId + '_')) {
+      throw new ApiError(403, '不能使用其他用户的头像文件');
+    }
+    try { await fs.access(path.join(__dirname, '..', '..', 'public', avatar)); } catch (e) {
+      throw new ApiError(400, '头像文件不存在，请重新上传');
+    }
+  }
+  const [[cur]] = await pool.query('SELECT avatar FROM users WHERE id = ?', [req.userId]);
+  await pool.query('UPDATE users SET avatar = ? WHERE id = ?', [avatar, req.userId]);
+  await removeOldUpload(req.userId, cur && cur.avatar);
+  ok(res, { avatar }, '头像已更新');
+}));
+
+// 上传头像：前端已裁剪压缩（dataURL），落盘到 public/uploads/avatars 并直接生效
+router.post('/user/avatar/upload', requireAuth, wrap(async (req, res) => {
+  const m = String(req.body.data || '').match(/^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/);
+  if (!m) {
+    throw new ApiError(400, '仅支持 JPG/PNG/WebP 图片');
+  }
+  const buf = Buffer.from(m[2], 'base64');
+  if (!buf.length || buf.length > AVATAR_MAX_BYTES) {
+    throw new ApiError(400, '图片过大，请压缩后重试');
+  }
+  await fs.mkdir(AVATAR_DIR, { recursive: true });
+  const filename = 'u' + req.userId + '_' + Date.now().toString(36)
+    + Math.random().toString(36).slice(2, 6) + '.' + (m[1] === 'jpeg' ? 'jpg' : m[1]);
+  await fs.writeFile(path.join(AVATAR_DIR, filename), buf);
+  const avatar = '/uploads/avatars/' + filename;
+  const [[cur]] = await pool.query('SELECT avatar FROM users WHERE id = ?', [req.userId]);
+  await pool.query('UPDATE users SET avatar = ? WHERE id = ?', [avatar, req.userId]);
+  await removeOldUpload(req.userId, cur && cur.avatar);
+  ok(res, { avatar }, '头像已更新');
 }));
 
 // 个人中心数据总览：本月症状数、近7天作息打卡天数与平均入睡时间、当前肝郁指数
