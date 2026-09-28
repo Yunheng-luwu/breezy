@@ -8,6 +8,7 @@ const safety = require('./safety');
 const provider = require('./providers/deepseek');
 const { SYSTEM_PROMPT } = require('./prompts/system');
 const { TOOLS, execute } = require('./tools');
+const { buildHealthContext } = require('../services/chronicProfile');
 
 // 最多两轮工具调用，防止模型反复调工具拖慢响应
 const MAX_TOOL_ROUNDS = 2;
@@ -31,9 +32,14 @@ async function handle({ userId, sessionId, message, clientIp }) {
 
   if (guard.level === 'normal') {
     const history = await store.loadHistory(session.id);
+    // 用户慢病/孕哺/过敏背景：仅在有档案时追加到系统提示词，用于禁忌提醒
+    const healthCtx = await buildHealthContext(user.id);
+    const systemContent = healthCtx
+      ? SYSTEM_PROMPT + '\n\n' + healthCtx
+      : SYSTEM_PROMPT;
     // 工具调用过程只存在于本次请求内存，不写库，避免污染历史记忆
     const messages = [
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: systemContent },
       ...history,
       { role: 'user', content: message },
     ];

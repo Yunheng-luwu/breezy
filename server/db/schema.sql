@@ -50,6 +50,21 @@ CREATE TABLE IF NOT EXISTS health_profiles (
   CONSTRAINT fk_bp_profile_user FOREIGN KEY (user_id) REFERENCES users(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 慢病档案表（分步问卷采集，供 AI 安全提醒；JSON 字段以 TEXT 存储兼容 MariaDB 10.3）
+CREATE TABLE IF NOT EXISTS chronic_profiles (
+  id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id     BIGINT UNSIGNED NOT NULL,
+  has_disease TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否有已确诊慢病',
+  diseases    TEXT NULL COMMENT '慢病列表 JSON: [{name, years}]',
+  has_meds    TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否长期服药(3个月以上)',
+  meds        TEXT NULL COMMENT '长期用药 JSON: [{name, dose}]',
+  pregnancy   VARCHAR(12) NOT NULL DEFAULT 'none' COMMENT 'none/trying/pregnant/breastfeeding',
+  updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_chronic_user (user_id),
+  CONSTRAINT fk_chronic_user FOREIGN KEY (user_id) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- 会话表（内嵌 AI 使用）
 CREATE TABLE IF NOT EXISTS chat_sessions (
   id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
