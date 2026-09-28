@@ -2431,18 +2431,26 @@ async function loadProfileStats() {
   set('pfStatSleepDays', (d.sleepDays || 0) + ' 天');
 }
 
-// 我的：档案 / 收藏视图切换
+// 我的：档案 / 慢病 / 收藏视图切换
 function switchProfileView(view, mi) {
   document.querySelectorAll('.profile-menu .mi').forEach(m => m.classList.remove('active'));
   if (mi) mi.classList.add('active');
   const favCard = document.getElementById('viewFavorites');
+  const chronicCard = document.getElementById('viewChronic');
   const cards = document.querySelectorAll('.pf-view-card');
   if (view === 'favorites') {
     if (favCard) favCard.style.display = '';
+    if (chronicCard) chronicCard.style.display = 'none';
     cards.forEach(c => c.style.display = 'none');
     renderFavList();
+  } else if (view === 'chronic') {
+    if (favCard) favCard.style.display = 'none';
+    if (chronicCard) chronicCard.style.display = '';
+    cards.forEach(c => c.style.display = 'none');
+    loadChronicProfile();
   } else {
     if (favCard) favCard.style.display = 'none';
+    if (chronicCard) chronicCard.style.display = 'none';
     cards.forEach(c => c.style.display = '');
     if (view === 'stats') {
       setTimeout(() => {
@@ -2452,6 +2460,352 @@ function switchProfileView(view, mi) {
     }
   }
 }
+// ============ 慢病档案（分步问卷） ============
+let chronicCache = null;
+const CHRONIC_DISEASE_OPTS = [
+  '高血压', '糖尿病', '冠心病/心脏病', '胃病（胃炎/胃溃疡）', '肝病',
+  '甲状腺疾病（甲亢/甲减）', '哮喘/慢阻肺', '长期失眠', '焦虑/抑郁',
+  '颈椎病/腰椎病', '其他',
+];
+const CHRONIC_YEARS_OPTS = [
+  { v: 'lt1', t: '1年以内' }, { v: '1to3', t: '1-3年' },
+  { v: '3to5', t: '3-5年' }, { v: 'gt5', t: '5年以上' },
+];
+const CHRONIC_PREG_OPTS = [
+  { v: 'none', t: '无' }, { v: 'trying', t: '备孕中' },
+  { v: 'pregnant', t: '孕期' }, { v: 'breastfeeding', t: '哺乳期' },
+];
+const CHRONIC_YEARS_LABEL = Object.fromEntries(CHRONIC_YEARS_OPTS.map(o => [o.v, o.t]));
+const CHRONIC_PREG_LABEL = Object.fromEntries(CHRONIC_PREG_OPTS.map(o => [o.v, o.t]));
+
+async function loadChronicProfile() {
+  const box = document.getElementById('chronicBox');
+  if (!box) return;
+  if (!getToken()) {
+    box.innerHTML = '<div style="color:var(--text-light);font-size:14px;">登录后可建立慢病档案，获取更安全的调理建议</div>';
+    return;
+  }
+  box.innerHTML = '<div style="color:var(--text-light);font-size:14px;">正在加载慢病档案…</div>';
+  try {
+    const res = await fetchAPI('/chronic-profile');
+    if (!res.success) {
+      box.innerHTML = `<div style="color:var(--warn);font-size:14px;">${escapeHtml(res.message || '加载失败，请稍后重试')}</div>`;
+      return;
+    }
+    chronicCache = res.data;
+  } catch {
+    box.innerHTML = '<div style="color:var(--warn);font-size:14px;">网络异常，请稍后重试</div>';
+    return;
+  }
+  renderChronicBox();
+}
+
+function renderChronicBox() {
+  const box = document.getElementById('chronicBox');
+  if (!box) return;
+  const d = chronicCache;
+  if (!d) {
+    box.innerHTML = `
+      <h3 style="margin-bottom:12px;">慢病档案</h3>
+      <div class="cp-empty">
+        <div class="cp-emoji">🩺</div>
+        <div class="cp-title">花 1 分钟完成慢病问卷</div>
+        <div class="cp-sub">有高血压、糖尿病等情况时，小松会在泡脚水温、功法幅度、用药提醒上主动给你安全提示</div>
+        <button class="btn btn-primary" style="margin-top:16px;" onclick="openChronicSurvey()">开始问卷</button>
+        <div class="cp-privacy">🔒 信息仅你本人可见，仅用于调理安全提醒，不做诊断</div>
+      </div>`;
+    return;
+  }
+  const diseaseHtml = d.hasDisease && d.diseases.length
+    ? d.diseases.map(x => `<span class="cp-tag">${escapeHtml(x.name)}<i>${escapeHtml(CHRONIC_YEARS_LABEL[x.years] || '')}</i></span>`).join('')
+    : '<span class="cp-none">无已确诊慢病</span>';
+  const medHtml = d.hasMeds && d.meds.length
+    ? d.meds.map(x => `<span class="cp-tag">${escapeHtml(x.name)}${x.dose ? `<i>${escapeHtml(x.dose)}</i>` : ''}</span>`).join('')
+    : '<span class="cp-none">无长期用药</span>';
+  const updated = (d.updatedAt || '').replace('T', ' ').slice(0, 16);
+  box.innerHTML = `
+    <h3 style="margin-bottom:12px;">慢病档案</h3>
+    <div class="cp-note">信息仅你本人可见，小松会在泡脚、功法、穴位与食疗建议中参考它，主动规避风险，但不会据此做诊断。</div>
+    <div class="cp-sec">
+      <div class="cp-label">慢病情况</div>
+      <div class="cp-tags">${diseaseHtml}</div>
+    </div>
+    <div class="cp-sec">
+      <div class="cp-label">长期用药</div>
+      <div class="cp-tags">${medHtml}</div>
+    </div>
+    <div class="cp-sec">
+      <div class="cp-label">孕哺状态</div>
+      <div class="cp-tags"><span class="cp-tag">${escapeHtml(CHRONIC_PREG_LABEL[d.pregnancy] || '无')}</span></div>
+    </div>
+    <div class="cp-updated">更新于 ${escapeHtml(updated || '--')}</div>
+    <button class="btn btn-outline btn-sm" style="margin-top:14px;" onclick="openChronicSurvey()">重新填写</button>`;
+}
+
+// ---- 分步问卷状态机 ----
+let sv = null;
+
+function openChronicSurvey() {
+  const c = chronicCache;
+  const picked = {};
+  let otherText = '';
+  if (c && c.hasDisease) {
+    for (const x of c.diseases) {
+      const m = /^其他[:：]([\s\S]+)$/.exec(x.name);
+      if (m) { picked['其他'] = x.years; otherText = m[1]; }
+      else picked[x.name] = x.years;
+    }
+  }
+  sv = {
+    step: 0,
+    hasDisease: c ? c.hasDisease : null,
+    picked,
+    otherText,
+    hasMeds: c ? c.hasMeds : null,
+    meds: (c && c.hasMeds && c.meds.length)
+      ? c.meds.map(x => ({ name: x.name, dose: x.dose || '' }))
+      : [{ name: '', dose: '' }],
+    pregnancy: c ? (c.pregnancy || 'none') : 'none',
+    saving: false,
+  };
+  renderSurvey();
+}
+
+function svSetDisease(v) { sv.hasDisease = v; renderSurvey(); }
+function svSetMeds(v) {
+  sv.hasMeds = v;
+  if (v && !sv.meds.some(m => m.name.trim())) sv.meds = [{ name: '', dose: '' }];
+  renderSurvey();
+}
+function svToggleDisease(name) {
+  if (sv.picked[name]) delete sv.picked[name];
+  else sv.picked[name] = '';
+  renderSurvey();
+}
+function svSetYears(name, v) { sv.picked[name] = v; renderSurvey(); }
+function svSetPreg(v) { sv.pregnancy = v; renderSurvey(); }
+function svMedInput(i, key, val) { if (sv.meds[i]) sv.meds[i][key] = val; }
+function svAddMed() { sv.meds.push({ name: '', dose: '' }); renderSurvey(); }
+function svRemoveMed(i) {
+  sv.meds.splice(i, 1);
+  if (!sv.meds.length) sv.meds.push({ name: '', dose: '' });
+  renderSurvey();
+}
+
+function svPrev() {
+  const s = sv.step;
+  if (s === 1) sv.step = 0;
+  else if (s === 2) sv.step = 1;
+  else if (s === 3) sv.step = sv.hasDisease ? 2 : 1;
+  else if (s === 4) sv.step = 3;
+  else if (s === 5) sv.step = 4;
+  renderSurvey();
+}
+
+function svNext() {
+  const s = sv.step;
+  if (s === 0) { sv.step = 1; renderSurvey(); return; }
+  if (s === 1) {
+    if (sv.hasDisease === null) { toast('请选择一项', 'warn'); return; }
+    sv.step = sv.hasDisease ? 2 : 3;
+    renderSurvey();
+    return;
+  }
+  if (s === 2) {
+    const names = Object.keys(sv.picked);
+    if (!names.length) { toast('请至少选择一种慢病', 'warn'); return; }
+    if (sv.picked['其他'] && !sv.otherText.trim()) { toast('请填写其他慢病名称', 'warn'); return; }
+    if (names.some(n => !sv.picked[n])) { toast('请为每种慢病选择患病年限', 'warn'); return; }
+    sv.step = 3; renderSurvey(); return;
+  }
+  if (s === 3) {
+    if (sv.hasMeds === null) { toast('请选择一项', 'warn'); return; }
+    if (sv.hasMeds && !sv.meds.some(m => m.name.trim())) { toast('请填写至少一种长期药物，或选择“没有”', 'warn'); return; }
+    sv.step = 4; renderSurvey(); return;
+  }
+  if (s === 4) { sv.step = 5; renderSurvey(); return; }
+  if (s === 5) { svSubmit(); }
+}
+
+async function svSubmit() {
+  if (sv.saving) return;
+  sv.saving = true;
+  renderSurvey();
+  const body = {
+    hasDisease: sv.hasDisease === true,
+    diseases: sv.hasDisease
+      ? Object.entries(sv.picked).map(([name, years]) => ({
+        name: name === '其他' ? '其他：' + sv.otherText.trim() : name,
+        years,
+      }))
+      : [],
+    hasMeds: sv.hasMeds === true,
+    meds: sv.hasMeds
+      ? sv.meds.filter(m => m.name.trim()).map(m => ({ name: m.name.trim(), dose: (m.dose || '').trim() }))
+      : [],
+    pregnancy: sv.pregnancy || 'none',
+  };
+  let res;
+  try {
+    res = await fetchAPI('/chronic-profile', { method: 'PUT', body: JSON.stringify(body) });
+  } catch {
+    res = { success: false, message: '网络异常，请稍后重试' };
+  }
+  if (res.success) {
+    closeModal();
+    toast('慢病档案已保存', 'success');
+    chronicCache = null;
+    loadChronicProfile();
+  } else {
+    sv.saving = false;
+    renderSurvey();
+    toast(res.message || '保存失败，请重试', 'error');
+  }
+}
+
+function renderSurvey() {
+  const s = sv.step;
+  const progress = [0, 25, 25, 50, 75, 100][s];
+  let body = '';
+  let nextText = '下一步';
+  let showPrev = s > 0;
+
+  if (s === 0) {
+    body = `
+      <div class="sv-intro">
+        <div class="sv-emoji">🩺</div>
+        <h4>用 1 分钟，让调理建议更安全</h4>
+        <ul>
+          <li>了解慢病情况，泡脚与功法建议会主动控制水温和动作幅度</li>
+          <li>了解长期用药，规避中成药与西药相互作用的风险</li>
+          <li>了解孕哺状态，自动避开活血穴位与药材</li>
+        </ul>
+        <div class="sv-tip">共 4 个小问题，可随时修改；信息仅你本人可见，不做诊断。</div>
+      </div>`;
+    showPrev = false;
+    nextText = '开始填写';
+  } else if (s === 1) {
+    body = `
+      <h4 class="sv-q">是否有医生已确诊的慢性疾病？</h4>
+      <div class="sv-opts">
+        <button type="button" class="sv-opt ${sv.hasDisease === true ? 'active' : ''}" onclick="svSetDisease(true)">
+          <span class="sv-opt-ico">🩺</span><span>有</span>
+        </button>
+        <button type="button" class="sv-opt ${sv.hasDisease === false ? 'active' : ''}" onclick="svSetDisease(false)">
+          <span class="sv-opt-ico">🌿</span><span>没有</span>
+        </button>
+      </div>`;
+  } else if (s === 2) {
+    const chips = CHRONIC_DISEASE_OPTS.map(n =>
+      `<button type="button" class="sv-chip ${sv.picked[n] !== undefined ? 'active' : ''}" onclick="svToggleDisease('${n}')">${n}</button>`
+    ).join('');
+    const rows = Object.keys(sv.picked).map(n => `
+      <div class="sv-years-row">
+        <span class="sv-dname">${n}</span>
+        <div class="sv-segs">
+          ${CHRONIC_YEARS_OPTS.map(o =>
+            `<button type="button" class="sv-seg ${sv.picked[n] === o.v ? 'active' : ''}" onclick="svSetYears('${n}','${o.v}')">${o.t}</button>`
+          ).join('')}
+        </div>
+      </div>`).join('');
+    body = `
+      <h4 class="sv-q">选择已确诊的慢病（可多选）</h4>
+      <div class="sv-chips">${chips}</div>
+      ${sv.picked['其他'] !== undefined ? `
+        <input class="sv-input" id="svOtherInput" maxlength="14" placeholder="请填写其他慢病名称（14字内）"
+          value="${escapeHtml(sv.otherText)}">
+      ` : ''}
+      <div class="sv-years-wrap">
+        <div class="sv-years-hint">每种慢病患病多久了？</div>
+        ${rows || '<div class="sv-tip">先在上方选择慢病</div>'}
+      </div>`;
+    // 其他输入框直接写状态，避免重绘失焦
+    setTimeout(() => {
+      const inp = document.getElementById('svOtherInput');
+      if (inp) {
+        inp.focus();
+        inp.setSelectionRange(inp.value.length, inp.value.length);
+        inp.oninput = () => { sv.otherText = inp.value; };
+      }
+    }, 0);
+  } else if (s === 3) {
+    body = `
+      <h4 class="sv-q">是否长期服药（持续 3 个月以上）？</h4>
+      <div class="sv-opts">
+        <button type="button" class="sv-opt ${sv.hasMeds === true ? 'active' : ''}" onclick="svSetMeds(true)">
+          <span class="sv-opt-ico">💊</span><span>有</span>
+        </button>
+        <button type="button" class="sv-opt ${sv.hasMeds === false ? 'active' : ''}" onclick="svSetMeds(false)">
+          <span class="sv-opt-ico">🌿</span><span>没有</span>
+        </button>
+      </div>
+      ${sv.hasMeds === true ? `
+        <div class="sv-meds">
+          <div class="sv-years-hint">药物名称与剂量（剂量选填）</div>
+          ${sv.meds.map((m, i) => `
+            <div class="sv-med-row">
+              <input class="sv-input" maxlength="50" placeholder="如：硝苯地平" value="${escapeHtml(m.name)}"
+                oninput="svMedInput(${i},'name',this.value)">
+              <input class="sv-input sv-dose" maxlength="50" placeholder="剂量" value="${escapeHtml(m.dose)}"
+                oninput="svMedInput(${i},'dose',this.value)">
+              <button type="button" class="sv-med-del" onclick="svRemoveMed(${i})">✕</button>
+            </div>`).join('')}
+          <button type="button" class="sv-add" onclick="svAddMed()">＋ 添加一种</button>
+        </div>` : ''}`;
+  } else if (s === 4) {
+    body = `
+      <h4 class="sv-q">当前孕哺状态？</h4>
+      <div class="sv-opts sv-opts-4">
+        ${CHRONIC_PREG_OPTS.map(o => `
+          <button type="button" class="sv-opt ${sv.pregnancy === o.v ? 'active' : ''}" onclick="svSetPreg('${o.v}')">
+            <span>${o.t}</span>
+          </button>`).join('')}
+      </div>
+      <div class="sv-tip">孕期/备孕/哺乳期中，穴位与泡脚建议会自动规避活血类内容。</div>`;
+  } else {
+    const diseaseHtml = sv.hasDisease
+      ? Object.entries(sv.picked).map(([n, y]) => {
+          const name = n === '其他' ? '其他：' + sv.otherText.trim() : n;
+          return `<span class="cp-tag">${escapeHtml(name)}<i>${CHRONIC_YEARS_LABEL[y] || ''}</i></span>`;
+        }).join('')
+      : '<span class="cp-none">无已确诊慢病</span>';
+    const medHtml = sv.hasMeds
+      ? sv.meds.filter(m => m.name.trim()).map(m =>
+        `<span class="cp-tag">${escapeHtml(m.name.trim())}${m.dose ? `<i>${escapeHtml(m.dose.trim())}</i>` : ''}</span>`).join('')
+      : '<span class="cp-none">无长期用药</span>';
+    body = `
+      <h4 class="sv-q">确认你的慢病档案</h4>
+      <div class="cp-sec">
+        <div class="cp-label">慢病情况</div>
+        <div class="cp-tags">${diseaseHtml}</div>
+      </div>
+      <div class="cp-sec">
+        <div class="cp-label">长期用药</div>
+        <div class="cp-tags">${medHtml}</div>
+      </div>
+      <div class="cp-sec">
+        <div class="cp-label">孕哺状态</div>
+        <div class="cp-tags"><span class="cp-tag">${CHRONIC_PREG_LABEL[sv.pregnancy] || '无'}</span></div>
+      </div>
+      <div class="sv-tip">保存后，小松会在相关调理建议中自动参考这些信息。</div>`;
+    nextText = '确认保存';
+  }
+
+  openModal(`
+    <div class="sv-modal">
+      <div class="sv-head">
+        <h3>慢病档案问卷</h3>
+        <button class="pd-close" onclick="closeModal()" aria-label="关闭">✕</button>
+      </div>
+      <div class="sv-progress"><div class="sv-bar" style="width:${progress}%"></div></div>
+      <div class="sv-body">${body}</div>
+      <div class="sv-foot">
+        ${showPrev ? '<button type="button" class="btn btn-outline" style="flex:1;" onclick="svPrev()">上一步</button>' : '<span style="flex:1;"></span>'}
+        <button type="button" class="btn btn-primary" style="flex:1.4;" id="svNextBtn" onclick="svNext()">${sv.saving ? '保存中…' : nextText}</button>
+      </div>
+    </div>`);
+}
+
 async function renderFavList() {
   const el = document.getElementById('favList');
   if (!el) return;

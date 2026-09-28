@@ -630,6 +630,102 @@ router.put('/profile', requireAuth, wrap(async (req, res) => {
   ok(res, undefined, '健康档案已保存');
 }));
 
+// ============ 慢病档案问卷 ============
+
+const DISEASE_WHITELIST = new Set([
+  '高血压', '糖尿病', '冠心病/心脏病', '胃病（胃炎/胃溃疡）', '肝病',
+  '甲状腺疾病（甲亢/甲减）', '哮喘/慢阻肺', '长期失眠', '焦虑/抑郁',
+  '颈椎病/腰椎病', '其他',
+]);
+const YEARS_ENUM = new Set(['lt1', '1to3', '3to5', 'gt5']);
+const PREGNANCY_ENUM = new Set(['none', 'trying', 'pregnant', 'breastfeeding']);
+
+function parseJsonList(raw) {
+  if (raw == null) return [];
+  try {
+    const v = JSON.parse(raw);
+    return Array.isArray(v) ? v : [];
+  } catch {
+    return [];
+  }
+}
+
+// 查询慢病档案：未填写时 data 为 null
+router.get('/chronic-profile', requireAuth, wrap(async (req, res) => {
+  const [rows] = await pool.query(
+    'SELECT has_disease, diseases, has_meds, meds, pregnancy, updated_at FROM chronic_profiles WHERE user_id = ?',
+    [req.userId],
+  );
+  if (!rows[0]) { ok(res, null); return; }
+  const r = rows[0];
+  ok(res, {
+    hasDisease: !!r.has_disease,
+    diseases: parseJsonList(r.diseases),
+    hasMeds: !!r.has_meds,
+    meds: parseJsonList(r.meds),
+    pregnancy: r.pregnancy || 'none',
+    updatedAt: r.updated_at,
+  });
+}));
+
+// 保存慢病档案（整份问卷一次性提交，UPSERT）
+router.put('/chronic-profile', requireAuth, wrap(async (req, res) => {
+  const b = req.body || {};
+  const hasDisease = b.hasDisease === true;
+  const hasMeds = b.hasMeds === true;
+
+  let diseases = [];
+  if (hasDisease) {
+    if (!Array.isArray(b.diseases)) throw new ApiError(400, '慢病列表格式不正确');
+    if (b.diseases.length === 0) throw new ApiError(400, '请至少选择一种慢病，或选择“没有慢病”');
+    if (b.diseases.length > 10) throw new ApiError(400, '慢病数量超出限制');
+    const names = new Set();
+    for (const d of b.diseases) {
+      const name = cleanStr((d || {}).name, 20);
+      // 允许“其他：xxx”自填形式（冒号后内容 1-14 字）
+      const validName = name && (DISEASE_WHITELIST.has(name)
+        || /^其他[:：][\s\S]{1,14}$/.test(name));
+      if (!validName) throw new ApiError(400, '包含不支持的慢病选项');
+      if (names.has(name)) continue;
+      names.add(name);
+      const years = (d.years || '').trim();
+      if (!YEARS_ENUM.has(years)) throw new ApiError(400, '患病年限格式不正确');
+      diseases.push({ name, years });
+    }
+  }
+
+  let meds = [];
+  if (hasMeds) {
+    if (!Array.isArray(b.meds)) throw new ApiError(400, '用药列表格式不正确');
+    const names = new Set();
+    for (const m of b.meds.slice(0, 10)) {
+      const name = cleanStr((m || {}).name, 50);
+      if (!name) continue; // 空白行直接忽略
+      if (names.has(name)) continue;
+      names.add(name);
+      meds.push({ name, dose: cleanStr(m.dose, 50) || '' });
+    }
+    if (meds.length === 0) throw new ApiError(400, '请填写长期服用的药物，或选择“没有长期用药”');
+  }
+
+  const pregnancy = typeof b.pregnancy === 'string' ? b.pregnancy.trim() : 'none';
+  if (!PREGNANCY_ENUM.has(pregnancy)) throw new ApiError(400, '孕哺状态格式不正确');
+
+  await pool.query(
+    `INSERT INTO chronic_profiles (user_id, has_disease, diseases, has_meds, meds, pregnancy)
+     VALUES (?, ?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE
+       has_disease = VALUES(has_disease), diseases = VALUES(diseases),
+       has_meds = VALUES(has_meds), meds = VALUES(meds), pregnancy = VALUES(pregnancy)`,
+    [req.userId, hasDisease ? 1 : 0,
+      hasDisease ? JSON.stringify(diseases) : null,
+      hasMeds ? 1 : 0,
+      hasMeds ? JSON.stringify(meds) : null,
+      pregnancy],
+  );
+  ok(res, undefined, '慢病档案已保存');
+}));
+
 // ============ 头像（预设 + 上传） ============
 
 // 预设头像 key：p1-p10（emoji 映射在前端维护）；上传头像：/uploads/avatars/u{id}_{rand}.ext
