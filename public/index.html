@@ -1,10 +1,10 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>松序 - 顺气舒心，慢养日常</title>
-<link rel="stylesheet" href="css/style.css?v=20260928-1">
+<link rel="stylesheet" href="css/style.css?v=20260928-2">
 
 </head>
 <body>
@@ -741,6 +741,7 @@
           </div>
           <div class="menu-list">
             <div class="mi active" onclick="switchProfileView('profile', this)">我的健康档案 <span class="arrow">&rarr;</span></div>
+            <div class="mi" onclick="switchProfileView('chronic', this)">慢病档案 <span class="arrow">&rarr;</span></div>
             <div class="mi" onclick="switchProfileView('favorites', this)">我的收藏 <span class="arrow">&rarr;</span></div>
             <div class="mi" onclick="switchProfileView('stats', this)">健康数据总览 <span class="arrow">&rarr;</span></div>
             <div class="mi" onclick="toast('提醒设置即将上线，可先在「穿衣建议」页开启天气提醒')">提醒设置 <span class="arrow">&rarr;</span></div>
@@ -751,6 +752,9 @@
         </div>
       </div>
       <div class="profile-content" id="profileContent">
+        <div class="card" id="viewChronic" style="margin-bottom:20px;display:none;">
+          <div id="chronicBox"><div style="color:var(--text-light);font-size:14px;">正在加载慢病档案…</div></div>
+        </div>
         <div class="card" id="viewFavorites" style="margin-bottom:20px;display:none;">
           <h3 style="margin-bottom:12px;">我的收藏</h3>
           <div id="favList"><div style="color:var(--text-light);font-size:14px;">还没有收藏，去「饮食调理」点亮食谱的收藏吧</div></div>
@@ -796,7 +800,7 @@
 </div>
 <div class="toast-wrap" id="toastWrap"></div>
 
-<script src="js/app.js?v=20260928-1"></script>
+<script src="js/app.js?v=20260928-2"></script>
 
 </body>
 </html>
