@@ -2806,6 +2806,128 @@ function renderSurvey() {
     </div>`);
 }
 
+// ============ 肝郁指数测评问卷 ============
+const SCORE_QUESTIONS = [
+  { k: 'mood',    t: '最近两周，您是否感到情绪低落、闷闷不乐？' },
+  { k: 'sigh',    t: '您是否经常感到胸口发闷，想深呼吸或叹气才舒服？' },
+  { k: 'hypo',    t: '您是否两侧肋骨下方（胁肋）有胀闷或胀痛感？' },
+  { k: 'anger',   t: '您是否容易生气、烦躁，一点小事就发火？' },
+  { k: 'sleep',   t: '您的睡眠质量如何（入睡困难、多梦、早醒）？' },
+  { k: 'throat',  t: '您是否感到咽喉有异物感，吐之不出、咽之不下？' },
+  { k: 'neck',    t: '您是否经常感到肩颈僵硬、紧绷？' },
+  { k: 'bitter',  t: '您是否感到口苦、口干？' },
+  { k: 'fatigue', t: '您是否感到疲倦乏力、提不起精神？' },
+  { k: 'bloat',   t: '您是否感到腹部胀满、消化不畅？' },
+];
+const SCORE_OPTIONS = [
+  { v: 0, t: '从不' }, { v: 1, t: '偶尔' }, { v: 2, t: '有时' },
+  { v: 3, t: '经常' }, { v: 4, t: '总是' },
+];
+
+function scoreLevel(s) {
+  if (s <= 25) return '气机平和';
+  if (s <= 50) return '轻微肝郁';
+  if (s <= 75) return '轻度肝郁';
+  return '中度肝郁';
+}
+function scoreInterpret(s) {
+  if (s <= 25) return '气机调畅，状态不错～继续保持规律作息和心情舒畅。';
+  if (s <= 50) return '有轻微肝郁迹象，偶尔的情绪波动很常见，可以试试太冲穴按揉和玫瑰花茶。';
+  if (s <= 75) return '轻度肝郁，建议每天八段锦或散步 30 分钟，配合膻中穴按揉疏通气机。';
+  return '肝郁较明显，建议优先调整作息、减少熬夜；如胸闷、胁痛持续，请到中医科或心理科就诊。';
+}
+function scoreColor(s) {
+  if (s <= 25) return 'var(--success)';
+  if (s <= 50) return 'var(--primary)';
+  if (s <= 75) return 'var(--accent)';
+  return 'var(--warn)';
+}
+
+let scoreAnswers = null;
+
+function openScoreSurvey() {
+  if (!getToken()) { toast('登录后才能测评哦', 'warn'); return; }
+  scoreAnswers = {};
+  renderScoreSurvey();
+}
+function scorePick(k, v) { scoreAnswers[k] = v; renderScoreSurvey(); }
+
+function renderScoreSurvey() {
+  const answered = Object.keys(scoreAnswers).length;
+  const allDone = answered === SCORE_QUESTIONS.length;
+  const rows = SCORE_QUESTIONS.map((q, i) => {
+    const v = scoreAnswers[q.k];
+    const opts = SCORE_OPTIONS.map(o =>
+      `<button type="button" class="score-opt ${v === o.v ? 'active' : ''}" onclick="scorePick('${q.k}',${o.v})">${o.t}</button>`
+    ).join('');
+    return `
+      <div class="score-q">
+        <div class="score-qt"><span class="score-idx">${i + 1}</span>${escapeHtml(q.t)}</div>
+        <div class="score-opts">${opts}</div>
+      </div>`;
+  }).join('');
+  openModal(`
+    <div class="sv-modal">
+      <div class="sv-head">
+        <h3>肝郁指数测评</h3>
+        <button class="pd-close" onclick="closeModal()" aria-label="关闭">✕</button>
+      </div>
+      <div class="sv-progress"><div class="sv-bar" style="width:${Math.round(answered / SCORE_QUESTIONS.length * 100)}%"></div></div>
+      <div style="font-size:13px;color:var(--text-light);margin:10px 0 6px;">请根据最近两周的真实感受选择，共 ${SCORE_QUESTIONS.length} 题，已完成 ${answered} 题</div>
+      <div class="sv-body score-body">${rows}</div>
+      <div class="sv-foot">
+        <button type="button" class="btn btn-outline" style="flex:1;" onclick="closeModal()">取消</button>
+        <button type="button" class="btn btn-primary" style="flex:1.4;" onclick="scoreSubmit()" ${allDone ? '' : 'disabled'}>${allDone ? '查看结果' : `还有 ${SCORE_QUESTIONS.length - answered} 题`}</button>
+      </div>
+    </div>`);
+}
+
+async function scoreSubmit() {
+  const sum = Object.values(scoreAnswers).reduce((a, b) => a + b, 0);
+  const score = Math.round(sum / (SCORE_QUESTIONS.length * 4) * 100);
+  const level = scoreLevel(score);
+  const color = scoreColor(score);
+  const interp = scoreInterpret(score);
+
+  openModal(`
+    <div class="sv-modal">
+      <div class="sv-head">
+        <h3>测评结果</h3>
+        <button class="pd-close" onclick="closeModal()" aria-label="关闭">✕</button>
+      </div>
+      <div class="score-result">
+        <div class="score-ring" style="color:${color};border-color:${color};">
+          <div class="score-num">${score}</div>
+          <div class="score-sub">肝郁指数</div>
+        </div>
+        <div class="score-level" style="color:${color};">${escapeHtml(level)}</div>
+        <div class="score-interp">${escapeHtml(interp)}</div>
+      </div>
+      <div class="sv-foot">
+        <button type="button" class="btn btn-outline" style="flex:1;" onclick="openScoreSurvey()">重新测评</button>
+        <button type="button" class="btn btn-primary" style="flex:1.4;" id="scoreSaveBtn" onclick="scoreSave(${score})">保存到档案</button>
+      </div>
+    </div>`);
+}
+
+async function scoreSave(score) {
+  const btn = document.getElementById('scoreSaveBtn');
+  btn.disabled = true;
+  btn.textContent = '保存中…';
+  const level = scoreLevel(score);
+  const res = await fetchAPI('/profile', { method: 'PUT', body: JSON.stringify({ score, level }) });
+  if (res.success) {
+    closeModal();
+    toast('肝郁指数已更新为 ' + score + '（' + level + '）', 'success');
+    profileCache = null;
+    loadProfile();
+  } else {
+    btn.disabled = false;
+    btn.textContent = '保存到档案';
+    toast(res.message || '保存失败，请重试', 'error');
+  }
+}
+
 async function renderFavList() {
   const el = document.getElementById('favList');
   if (!el) return;
