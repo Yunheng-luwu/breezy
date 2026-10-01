@@ -2861,7 +2861,35 @@ function openScoreSurvey() {
   scoreAnswers = {};
   renderScoreSurvey();
 }
-function scorePick(k, v) { scoreAnswers[k] = v; renderScoreSurvey(); }
+function scorePick(k, v) {
+  scoreAnswers[k] = v;
+  // 记录滚动位置，避免局部更新后浏览器跳回顶部
+  const scoreBody = document.querySelector('.score-body');
+  const modalBox = document.getElementById('modalBox');
+  const stBody = scoreBody ? scoreBody.scrollTop : 0;
+  const stBox = modalBox ? modalBox.scrollTop : 0;
+  // 局部更新，避免重建整个模态框导致滚动跳回顶部
+  const answered = Object.keys(scoreAnswers).length;
+  const allDone = answered === SCORE_QUESTIONS.length;
+  const qWrap = document.querySelector(`.score-q[data-q="${k}"]`);
+  if (qWrap) {
+    qWrap.querySelectorAll('.score-opt').forEach(btn => {
+      btn.classList.toggle('active', Number(btn.dataset.v) === v);
+    });
+  }
+  const bar = document.getElementById('scoreBar');
+  if (bar) bar.style.width = Math.round(answered / SCORE_QUESTIONS.length * 100) + '%';
+  const cnt = document.getElementById('scoreCount');
+  if (cnt) cnt.textContent = answered;
+  const btn = document.getElementById('scoreSubmitBtn');
+  if (btn) {
+    btn.disabled = !allDone;
+    btn.textContent = allDone ? '查看结果' : `还有 ${SCORE_QUESTIONS.length - answered} 题`;
+  }
+  // 恢复滚动位置
+  if (scoreBody) scoreBody.scrollTop = stBody;
+  if (modalBox) modalBox.scrollTop = stBox;
+}
 
 function renderScoreSurvey() {
   const answered = Object.keys(scoreAnswers).length;
@@ -2869,10 +2897,10 @@ function renderScoreSurvey() {
   const rows = SCORE_QUESTIONS.map((q, i) => {
     const v = scoreAnswers[q.k];
     const opts = SCORE_OPTIONS.map(o =>
-      `<button type="button" class="score-opt ${v === o.v ? 'active' : ''}" onclick="scorePick('${q.k}',${o.v})">${o.t}</button>`
+      `<button type="button" class="score-opt ${v === o.v ? 'active' : ''}" data-v="${o.v}" onclick="scorePick('${q.k}',${o.v})">${o.t}</button>`
     ).join('');
     return `
-      <div class="score-q">
+      <div class="score-q" data-q="${q.k}">
         <div class="score-qt"><span class="score-idx">${i + 1}</span>${escapeHtml(q.t)}</div>
         <div class="score-opts">${opts}</div>
       </div>`;
@@ -2883,12 +2911,12 @@ function renderScoreSurvey() {
         <h3>肝郁指数测评</h3>
         <button class="pd-close" onclick="closeModal()" aria-label="关闭">✕</button>
       </div>
-      <div class="sv-progress"><div class="sv-bar" style="width:${Math.round(answered / SCORE_QUESTIONS.length * 100)}%"></div></div>
-      <div style="font-size:13px;color:var(--text-light);margin:10px 0 6px;">请根据最近两周的真实感受选择，共 ${SCORE_QUESTIONS.length} 题，已完成 ${answered} 题</div>
+      <div class="sv-progress"><div class="sv-bar" id="scoreBar" style="width:${Math.round(answered / SCORE_QUESTIONS.length * 100)}%"></div></div>
+      <div style="font-size:13px;color:var(--text-light);margin:10px 0 6px;">请根据最近两周的真实感受选择，共 ${SCORE_QUESTIONS.length} 题，已完成 <span id="scoreCount">${answered}</span> 题</div>
       <div class="sv-body score-body">${rows}</div>
       <div class="sv-foot">
         <button type="button" class="btn btn-outline" style="flex:1;" onclick="closeModal()">取消</button>
-        <button type="button" class="btn btn-primary" style="flex:1.4;" onclick="scoreSubmit()" ${allDone ? '' : 'disabled'}>${allDone ? '查看结果' : `还有 ${SCORE_QUESTIONS.length - answered} 题`}</button>
+        <button type="button" class="btn btn-primary" style="flex:1.4;" id="scoreSubmitBtn" onclick="scoreSubmit()" ${allDone ? '' : 'disabled'}>${allDone ? '查看结果' : `还有 ${SCORE_QUESTIONS.length - answered} 题`}</button>
       </div>
     </div>`);
 }
