@@ -351,7 +351,7 @@ function enterApp() {
 
 function openPanel(name) {
   const page = document.getElementById('page-' + name);
-  if (!page) return;
+  if (!page) { toast('该板块暂未开放', 'warn'); return; }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('panelBody').appendChild(page);
   page.classList.add('active');
@@ -3100,20 +3100,9 @@ function initTagRows() {
   });
 }
 
-// ============ 菜单切换 ============
-function initProfileMenu() {
-  document.querySelectorAll('.profile-menu .mi').forEach(mi => {
-    mi.addEventListener('click', () => {
-      document.querySelectorAll('.profile-menu .mi').forEach(m => m.classList.remove('active'));
-      mi.classList.add('active');
-    });
-  });
-}
-
 // ============ 初始化 ============
 document.addEventListener('DOMContentLoaded', async () => {
   initTagRows();
-  initProfileMenu();
 
   // 侧边栏功能板块 → 抽屉打开
   document.querySelectorAll('.sb-nav a').forEach(a => {
