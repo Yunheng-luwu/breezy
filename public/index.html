@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -194,7 +194,7 @@
       <div class="ts-right" style="position:relative;z-index:1;">
         <div class="info-item" id="homeWeather">&#127782; -- °C</div>
         <div class="info-item" id="homeCity">&#128205; --</div>
-        <div class="view-btn" onclick="showPage('record')">查看详细建议 &rarr;</div>
+        <div class="view-btn" onclick="showPage('assistant')">查看详细建议 &rarr;</div>
       </div>
     </div>
 
@@ -390,10 +390,10 @@
       </div>
     </div>
     <div class="recipe-grid" style="margin-bottom:20px;" id="recipeGrid">
-      <div class="recipe-card"><div class="time-tag">早餐</div><img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Red%20date%20and%20yam%20porridge%20in%20a%20white%20ceramic%20bowl%2C%20healthy%20Chinese%20breakfast%2C%20warm%20lighting%2C%20food%20photography&image_size=square" style="width:100%;height:110px;object-fit:cover;" alt="红枣山药粥"><div class="recipe-body"><h4>红枣山药粥</h4><div class="ingr">山药100g, 红枣5颗, 大米50g</div><div class="footer"><span>&#128293; 收藏</span><span>购物清单</span></div></div></div>
-      <div class="recipe-card"><div class="time-tag">午餐</div><img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Stir%20fried%20celery%20with%20dried%20tofu%2C%20Chinese%20home%20cooking%2C%20overhead%20shot%2C%20warm%20lighting&image_size=square" style="width:100%;height:110px;object-fit:cover;" alt="芹菜炒香干"><div class="recipe-body"><h4>芹菜炒香干</h4><div class="ingr">芹菜200g, 香干100g, 木耳</div><div class="footer"><span>&#128293; 收藏</span><span>购物清单</span></div></div></div>
-      <div class="recipe-card"><div class="time-tag">晚餐</div><img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Spinach%20pork%20liver%20soup%20in%20a%20ceramic%20bowl%2C%20Chinese%20healthy%20dinner%2C%20warm%20lighting%2C%20food%20photography&image_size=square" style="width:100%;height:110px;object-fit:cover;" alt="菠菜猪肝汤"><div class="recipe-body"><h4>菠菜猪肝汤</h4><div class="ingr">菠菜150g, 猪肝100g, 姜片</div><div class="footer"><span>&#128293; 收藏</span><span>购物清单</span></div></div></div>
-      <div class="recipe-card"><div class="time-tag">加餐</div><img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Rose%20petal%20tea%20with%20goji%20berries%20in%20a%20glass%20cup%2C%20herbal%20tea%20photography%2C%20warm%20afternoon%20light&image_size=square" style="width:100%;height:110px;object-fit:cover;" alt="玫瑰花茶"><div class="recipe-body"><h4>玫瑰花茶</h4><div class="ingr">玫瑰花5朵, 枸杞10粒, 蜂蜜</div><div class="footer"><span>&#128293; 收藏</span><span>购物清单</span></div></div></div>
+      <div class="recipe-card"><div class="time-tag">早餐</div><img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Red%20date%20and%20yam%20porridge%20in%20a%20white%20ceramic%20bowl%2C%20healthy%20Chinese%20breakfast%2C%20warm%20lighting%2C%20food%20photography&image_size=square" style="width:100%;height:110px;object-fit:cover;" alt="红枣山药粥"><div class="recipe-body"><h4>红枣山药粥</h4><div class="ingr">山药100g, 红枣5颗, 大米50g</div><div class="footer"><span class="recipe-action" onclick="toast('食谱加载中，请稍候…','info')">&#128293; 收藏</span><span class="recipe-action" onclick="toast('食谱加载中，请稍候…','info')">购物清单</span></div></div></div>
+      <div class="recipe-card"><div class="time-tag">午餐</div><img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Stir%20fried%20celery%20with%20dried%20tofu%2C%20Chinese%20home%20cooking%2C%20overhead%20shot%2C%20warm%20lighting&image_size=square" style="width:100%;height:110px;object-fit:cover;" alt="芹菜炒香干"><div class="recipe-body"><h4>芹菜炒香干</h4><div class="ingr">芹菜200g, 香干100g, 木耳</div><div class="footer"><span class="recipe-action" onclick="toast('食谱加载中，请稍候…','info')">&#128293; 收藏</span><span class="recipe-action" onclick="toast('食谱加载中，请稍候…','info')">购物清单</span></div></div></div>
+      <div class="recipe-card"><div class="time-tag">晚餐</div><img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Spinach%20pork%20liver%20soup%20in%20a%20ceramic%20bowl%2C%20Chinese%20healthy%20dinner%2C%20warm%20lighting%2C%20food%20photography&image_size=square" style="width:100%;height:110px;object-fit:cover;" alt="菠菜猪肝汤"><div class="recipe-body"><h4>菠菜猪肝汤</h4><div class="ingr">菠菜150g, 猪肝100g, 姜片</div><div class="footer"><span class="recipe-action" onclick="toast('食谱加载中，请稍候…','info')">&#128293; 收藏</span><span class="recipe-action" onclick="toast('食谱加载中，请稍候…','info')">购物清单</span></div></div></div>
+      <div class="recipe-card"><div class="time-tag">加餐</div><img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Rose%20petal%20tea%20with%20goji%20berries%20in%20a%20glass%20cup%2C%20herbal%20tea%20photography%2C%20warm%20afternoon%20light&image_size=square" style="width:100%;height:110px;object-fit:cover;" alt="玫瑰花茶"><div class="recipe-body"><h4>玫瑰花茶</h4><div class="ingr">玫瑰花5朵, 枸杞10粒, 蜂蜜</div><div class="footer"><span class="recipe-action" onclick="toast('食谱加载中，请稍候…','info')">&#128293; 收藏</span><span class="recipe-action" onclick="toast('食谱加载中，请稍候…','info')">购物清单</span></div></div></div>
     </div>
     <div class="season-banner">
       <img class="sb-img" src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=White%20dew%20season%20autumn%20morning%20with%20chrysanthemum%20and%20lily%20bulbs%2C%20traditional%20Chinese%20seasonal%20food%20ingredients%2C%20warm%20soft%20lighting&image_size=landscape_16_9" alt="白露节气">
@@ -800,7 +800,7 @@
 </div>
 <div class="toast-wrap" id="toastWrap"></div>
 
-<script src="js/app.js?v=20261001-3"></script>
+<script src="js/app.js?v=20261001-4"></script>
 
 </body>
 </html>
