@@ -1066,6 +1066,15 @@ const EXERCISE_SCENE = {
   '梳头功': 'office', '扩胸运动': 'office', '深呼吸478': 'office', '侧腰拉伸': 'office',
   '八段锦·两手托天': 'home', '搓胁肋': 'home',
 };
+// 轻动「跟着做」→ 功法带练页分组与组内动作匹配关键字
+const EXERCISE_TO_PRACTICE = {
+  '八段锦·两手托天': { group: 'baduanjin', match: '托天' },
+  '搓胁肋':           { group: 'stretch',   match: '搓胁肋' },
+  '侧腰拉伸':         { group: 'stretch',   match: '侧腰' },
+  '扩胸运动':         { group: 'stretch',   match: '扩胸' },
+  '梳头功':           { group: 'office',    match: '梳头' },
+};
+const PRACTICE_TAB_INDEX = { baduanjin: 0, stretch: 1, office: 2 };
 async function loadExercise() {
   const grid = document.getElementById('exerciseGrid');
   if (!grid) return;
@@ -1098,10 +1107,31 @@ function filterExercise(el, scene) {
   el.classList.add('active');
   renderExercise(scene);
 }
-function followExercise(name) {
+async function followExercise(name) {
   if (name.indexOf('478') >= 0) { breathingGuide(); return; }
+  const map = EXERCISE_TO_PRACTICE[name];
+  // 先设定目标分组，使 showPage 触发的自动加载也落在正确分组（幂等，避免竞态）
+  if (map) currentPracticeGroup = map.group;
   showPage('practice');
-  toast('跟着带练慢慢做，配合自然呼吸～');
+  if (!map) { toast('跟着带练慢慢做，配合自然呼吸～'); return; }
+  // 点亮对应分组 tab
+  const tabEls = document.querySelectorAll('#page-practice .tab-bar .tab');
+  tabEls.forEach(t => t.classList.remove('active'));
+  const ti = PRACTICE_TAB_INDEX[map.group];
+  if (tabEls[ti]) tabEls[ti].classList.add('active');
+  // 明确加载目标分组并等待完成
+  await loadPracticeMoves(map.group);
+  // 定位到组内对应动作：高亮 + 滚动可见 + 弹出动作详情
+  const idx = practiceMovesCache.findIndex(m => m.name && m.name.indexOf(map.match) >= 0);
+  if (idx >= 0) {
+    highlightMove(idx);
+    const item = document.querySelectorAll('#moveList .move-item')[idx];
+    if (item) item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    showPracticeDetail(idx);
+    toast('已为你定位到「' + name + '」，跟着慢慢做～');
+  } else {
+    toast('跟着带练慢慢做，配合自然呼吸～');
+  }
 }
 
 // ============ 作息打卡 ============

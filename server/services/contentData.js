@@ -93,6 +93,7 @@ const practiceStretchData = [
 ];
 
 const practiceOfficeData = [
+  { name: '梳头功', duration: '2分钟', desc: '十指微屈如梳，从前额发际梳到后颈，疏肝明目、缓解头胀' },
   { name: '按揉合谷', duration: '2分钟', desc: '左右手各按1分钟，通经活络' },
   { name: '耸肩绕颈', duration: '2分钟', desc: '耸肩10次+缓慢转颈，放松肩颈' },
   { name: '搓掌浴面', duration: '2分钟', desc: '搓热双手干洗脸，提神疏气' },
