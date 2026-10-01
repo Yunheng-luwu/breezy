@@ -203,6 +203,10 @@ function askAIWith(text) {
 }
 
 // ============ 顶部通知铃铛：今日未完成待办 + 用药提醒 ============
+function updateNotifDot(count) {
+  const dot = document.getElementById('notifDot');
+  if (dot) dot.style.display = count > 0 ? '' : 'none';
+}
 async function toggleNotification(ev) {
   ev.stopPropagation();
   const panel = document.getElementById('notifPanel');
@@ -233,6 +237,7 @@ async function toggleNotification(ev) {
     }
   }
   panel.innerHTML = html;
+  updateNotifDot(todos.length + medList.length);
 }
 function closeNotification() {
   const panel = document.getElementById('notifPanel');
@@ -467,9 +472,12 @@ function weatherEmoji(text) {
 }
 
 async function loadHomeData() {
-  const res = await fetchAPI('/health/dashboard');
-  if (res.success && res.data) {
-    const d = res.data;
+  const [dash, meds] = await Promise.all([
+    fetchAPI('/health/dashboard'),
+    fetchAPI('/record/medicines').catch(() => null),
+  ]);
+  if (dash.success && dash.data) {
+    const d = dash.data;
     const set = (id, text) => {
       const el = document.getElementById(id);
       if (el) el.textContent = text;
@@ -483,6 +491,9 @@ async function loadHomeData() {
     set('chScore', d.score !== undefined ? d.score : '--');
     const done = (d.todos || []).filter(t => t.done).length;
     set('chTodos', (d.todos || []).length ? done + '/' + d.todos.length : '0');
+    const pending = (d.todos || []).filter(t => !t.done).length;
+    const medCount = (meds && meds.success && Array.isArray(meds.data)) ? meds.data.length : 0;
+    updateNotifDot(pending + medCount);
   }
   loadTodos();
 }
