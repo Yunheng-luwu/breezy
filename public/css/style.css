@@ -859,3 +859,11 @@ body.drawer-open .mobile-drawer { right:0; }
   .practice-row .player-area { min-height:200px; }
 }
 
+/* ===== 功法简笔画带练动画 ===== */
+.pd-anim { margin-top:16px; background:var(--card-beige); border-radius:14px; padding:14px 14px 10px; }
+.pd-anim-stage svg { width:100%; max-width:230px; display:block; margin:0 auto; }
+.pd-anim-cap { min-height:40px; display:flex; align-items:center; justify-content:center; text-align:center; font-size:13.5px; color:var(--text-mid); line-height:1.6; padding:2px 10px; opacity:1; transition:opacity .18s; }
+.pd-anim-bar { display:flex; justify-content:center; gap:10px; padding:2px 0 4px; }
+.pd-anim-btn { border:none; background:rgba(107,78,46,.10); color:var(--primary); border-radius:16px; padding:5px 14px; font-size:12.5px; cursor:pointer; }
+.pd-anim-btn:active { transform:scale(.96); }
+

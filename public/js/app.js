@@ -2061,6 +2061,9 @@ function showPracticeDetail(i) {
   const sec = (label, text, multiline) => text
     ? `<div class="pd-sec"><div class="pd-sec-label">${label}</div><div class="pd-sec-text${multiline ? ' pd-steps' : ''}">${multiline ? fmtSteps(text) : escapeHtml(text)}</div></div>`
     : '';
+  // 简笔画带练动画：有对应动作则插入动画区
+  const animKey = window.getStickmanKey ? getStickmanKey(m.name) : null;
+  const animBlock = animKey ? '<div class="pd-anim" id="pdAnim"></div>' : '';
   openModal(`
     <div class="pd-modal">
       <div class="pd-head">
@@ -2068,6 +2071,7 @@ function showPracticeDetail(i) {
         <button class="pd-close" onclick="closeModal()" aria-label="关闭">✕</button>
       </div>
       <div class="pd-duration">${escapeHtml(m.duration || '')}</div>
+      ${animBlock}
       ${sec('分步要领', m.steps, true)}
       ${sec('呼吸配合', m.breath)}
       ${sec('常见错误', m.mistakes)}
@@ -2077,6 +2081,7 @@ function showPracticeDetail(i) {
       <div class="pd-foot"><button class="pd-ok" onclick="closeModal()">知道了</button></div>
     </div>
   `);
+  if (animKey && window.Stickman) Stickman.mount(document.getElementById('pdAnim'), animKey);
 }
 function highlightMove(i) {
   document.querySelectorAll('#moveList .move-item').forEach((el, idx) => {
