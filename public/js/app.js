@@ -1580,7 +1580,10 @@ document.addEventListener('click', (e) => {
   }
 });
 
+let chatSending = false; // 流式回答进行中，防止重复发送
+
 async function sendMessage() {
+  if (chatSending) return;
   const input = document.getElementById('chatInput');
   const msg = input.value.trim();
   if (!msg) return;
@@ -1589,31 +1592,140 @@ async function sendMessage() {
   input.value = '';
   scrollChatToBottom();
 
-  // 加载状态
-  const loadingId = 'chatLoading_' + Date.now();
-  chatArea.innerHTML += `<div class="chat-msg ai" id="${loadingId}"><div class="avatar">\u{1F33F}</div><div class="bubble">正在思考…</div></div>`;
+  // 空的 AI 气泡：思考提示 + 流式文本容器 + 卡片容器
+  const aiId = 'chatAI_' + (++chatMsgSeq);
+  chatArea.innerHTML += `<div class="chat-msg ai" id="${aiId}"><div class="avatar">\u{1F33F}</div>`
+    + '<div class="bubble">'
+    + '<span class="ai-thinking">正在思考…</span>'
+    + '<span class="ai-stream-text"></span>'
+    + '<div class="ai-cards" style="display:none"></div>'
+    + '</div></div>';
   scrollChatToBottom();
 
-  const res = await fetchAPI('/chat', {
-    method: 'POST',
-    body: JSON.stringify({ message: msg, sessionId: chatSessionId }),
-  });
+  const aiEl = document.getElementById(aiId);
+  const paintError = (text) => {
+    if (!aiEl) return;
+    aiEl.querySelector('.bubble').innerHTML = escapeHtml(text).replace(/\n/g, '<br>');
+  };
 
-  const loadingEl = document.getElementById(loadingId);
-  if (loadingEl) loadingEl.remove();
+  chatSending = true;
+  try {
+    const headers = { 'Content-Type': 'application/json' };
+    const token = getToken();
+    if (token) headers.Authorization = 'Bearer ' + token;
+    const res = await fetch(API_BASE + '/chat/stream', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ message: msg, sessionId: chatSessionId }),
+    });
 
-  if (res.success && res.data) {
-    chatSessionId = res.data.sessionId;
-    const cardsHtml = Array.isArray(res.data.cards) && res.data.cards.length
-      ? res.data.cards.map(renderChatCard).join('')
-      : '';
-    chatArea.innerHTML += renderChatBubble('ai', res.data.reply, cardsHtml);
-    buildChatQToc();
-    loadSessionList();
-  } else {
-    chatArea.innerHTML += renderChatBubble('ai', res.message || '抱歉，我暂时无法回复，请稍后再试~');
+    // 流建立前的错误（400/401 等）仍是普通 JSON
+    if (!res.ok || !res.body) {
+      let errMsg = '抱歉，我暂时无法回复，请稍后再试~';
+      try {
+        const j = await res.json();
+        errMsg = j.message || errMsg;
+      } catch { /* 忽略解析失败 */ }
+      if (res.status === 401) {
+        clearLogin();
+        showPage('login');
+      }
+      paintError(errMsg);
+      return;
+    }
+
+    const thinkEl = aiEl.querySelector('.ai-thinking');
+    const textEl = aiEl.querySelector('.ai-stream-text');
+    const cardsEl = aiEl.querySelector('.ai-cards');
+    let fullText = '';
+    const renderStreamText = () => {
+      if (fullText) {
+        thinkEl.style.display = 'none';
+        textEl.innerHTML = escapeHtml(fullText).replace(/\n/g, '<br>');
+      } else {
+        // reset 后回到思考态（工具执行中）
+        thinkEl.style.display = '';
+        textEl.innerHTML = '';
+      }
+      scrollChatToBottom();
+    };
+
+    // 解析一帧 SSE（event: xxx / data: {...}）
+    const handleFrame = (frame) => {
+      let event = 'message';
+      const dataLines = [];
+      frame.split('\n').forEach((line) => {
+        if (line.startsWith('event:')) event = line.slice(6).trim();
+        else if (line.startsWith('data:')) dataLines.push(line.slice(5).trimStart());
+      });
+      if (!dataLines.length) return null;
+      try {
+        return { event, data: JSON.parse(dataLines.join('\n')) };
+      } catch {
+        return null;
+      }
+    };
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let buf = '';
+    let doneData = null;
+    let errData = null;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      buf = buf.replace(/\r\n/g, '\n');
+      let idx;
+      while ((idx = buf.indexOf('\n\n')) !== -1) {
+        const frame = buf.slice(0, idx);
+        buf = buf.slice(idx + 2);
+        const parsed = handleFrame(frame);
+        if (!parsed) continue;
+        if (parsed.event === 'delta') {
+          fullText += parsed.data.text || '';
+          renderStreamText();
+        } else if (parsed.event === 'reset') {
+          fullText = '';
+          renderStreamText();
+        } else if (parsed.event === 'done') {
+          doneData = parsed.data;
+        } else if (parsed.event === 'error') {
+          errData = parsed.data;
+        }
+      }
+    }
+    if (buf.trim()) {
+      const parsed = handleFrame(buf);
+      if (parsed && parsed.event === 'done') doneData = parsed.data;
+      if (parsed && parsed.event === 'error') errData = parsed.data;
+    }
+
+    if (errData) {
+      paintError(errData.message || '抱歉，我暂时无法回复，请稍后再试~');
+      return;
+    }
+
+    if (doneData) {
+      chatSessionId = doneData.sessionId;
+      // 以服务端持久化的完整文本为准，再渲染一次（修正 trim/兜底差异）
+      fullText = doneData.reply || fullText;
+      renderStreamText();
+      if (Array.isArray(doneData.cards) && doneData.cards.length) {
+        cardsEl.innerHTML = doneData.cards.map(renderChatCard).join('');
+        cardsEl.style.display = '';
+      }
+      buildChatQToc();
+      loadSessionList();
+    }
+  } catch (err) {
+    console.error('chat stream error:', err);
+    paintError('网络开小差了，请稍后再试~');
+  } finally {
+    chatSending = false;
+    scrollChatToBottom();
   }
-  scrollChatToBottom();
 }
 
 // ============ 会话历史（新对话 / 列表 / 回看续聊 / 管理删除） ============
