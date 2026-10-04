@@ -62,16 +62,33 @@ function toast(msg, type) {
   }, 2400);
 }
 
-function openModal(html) {
+function openModal(html, opts) {
+  opts = opts || {};
   const mask = document.getElementById('modalMask');
   const box = document.getElementById('modalBox');
   if (!mask) return;
   box.innerHTML = html;
+  box.classList.remove('afm-fullscreen');
+  box.classList.toggle('modal-wide', !!opts.wide);
+  // 强制覆盖内联样式，确保弹窗宽度
+  if (opts.wide) {
+    box.style.width = '1400px';
+    box.style.maxWidth = '95vw';
+  } else {
+    box.style.width = '';
+    box.style.maxWidth = '';
+  }
   mask.classList.add('show');
+  // 弹窗打开后触发回调
+  if (opts.onOpen) requestAnimationFrame(() => opts.onOpen());
 }
 function closeModal() {
   const mask = document.getElementById('modalMask');
   if (mask) mask.classList.remove('show');
+  const box = document.getElementById('modalBox');
+  if (box) box.classList.remove('afm-fullscreen');
+  // 关闭 AI 跟练摄像头
+  stopAICamera();
 }
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') { closeModal(); closePanel(); }
@@ -316,7 +333,7 @@ document.addEventListener('click', function askNotifPerm() {
 const PANEL_TITLES = {
   home: '首页', care: '居家保健', diet: '饮食调理', clothing: '穿衣建议',
   rhythm: '生活节律', practice: '功法带练', record: '健康记录',
-  profile: '我的', assistant: '今日处方与概览',
+  profile: '我的', assistant: '今日处方与概览', aifollow: 'AI 跟练', rank: '排行榜',
 };
 
 function showPage(name) {
@@ -367,6 +384,8 @@ function openPanel(name) {
   if (name === 'clothing') loadClothing();
   if (name === 'rhythm') { loadExercise(); loadSleep(); loadRhythmPrefs(); }
   if (name === 'practice') loadPracticeMoves();
+  // AI 跟练已改为弹窗（openAIFollowModal），进入任何抽屉页时确保摄像头关闭
+  stopAICamera();
   if (name === 'record') { loadSymptomRecords(); loadMedicines(); loadSymptomStats(); }
   if (name === 'profile') { loadProfile(); loadProfileStats(); }
   if (name === 'assistant') refreshChatOverview();
@@ -377,6 +396,8 @@ function closePanel() {
   if (panel) panel.classList.remove('open');
   const mask = document.getElementById('panelMask');
   if (mask) mask.classList.remove('show');
+  // 关闭 AI 跟练摄像头
+  stopAICamera();
 }
 
 // ============ 注册 / 登录（账号 + 密码） ============
@@ -1421,7 +1442,16 @@ function runBreathRound(round) {
 }
 function stopBreathing() {
   if (breathTimer) { clearInterval(breathTimer); breathTimer = null; }
-  closeModal();
+  const circle = document.getElementById('breathCircle');
+  const text = document.getElementById('breathText');
+  const sub = document.getElementById('breathSub');
+  const round = document.getElementById('breathRound');
+  const startBtn = document.getElementById('breathStartBtn');
+  if (circle) circle.className = 'breath-guide-circle';
+  if (text) text.textContent = '准备';
+  if (sub) sub.textContent = '鼻吸 4 秒 · 屏息 7 秒 · 嘴呼 8 秒';
+  if (round) round.textContent = '第 1 / 4 轮';
+  if (startBtn) { startBtn.textContent = '开始'; startBtn.style.display = ''; startBtn.onclick = () => runBreathRound(1); }
 }
 
 async function selectMood(el) {
@@ -2055,6 +2085,16 @@ const PRACTICE_META = {
   stretch: { title: '疏肝拉伸序列', hint: '拉伸到有牵拉感即可，不要疼痛，每侧动作左右都做' },
   office: { title: '办公室微运动', hint: '坐在工位上也能完成，每工作 1 小时起来做一组' },
 };
+// 动作 → 视频文件映射（用户上传后补充路径）
+const VIDEO_MAP = {
+  '两手托天理三焦': 'img/anims/tuotian.mp4',
+};
+// 从 duration 字符串解析循环次数，如 "6次，1分40秒" → 6
+function parseReps(durationStr) {
+  const m = String(durationStr || '').match(/(\d+)\s*次/);
+  return m ? parseInt(m[1], 10) : 6;
+}
+let currentDetailIndex = -1;
 
 async function switchPracticeTab(group, ev) {
   document.querySelectorAll('#page-practice .tab-bar .tab').forEach(t => t.classList.remove('active'));
@@ -2071,6 +2111,31 @@ async function loadPracticeMoves(group) {
     fetchAPI('/practice/moves?group=' + group),
   ]);
   const moves = r1.success && Array.isArray(r1.data) ? r1.data : [];
+  // 对有视频的动作，预加载视频并用真实时长×次数覆盖 m.secs，随后刷新 DOM
+  const videoUpdates = [];
+  for (const m of moves) {
+    const vsrc = VIDEO_MAP[m.name];
+    if (vsrc) {
+      videoUpdates.push(new Promise((resolve) => {
+        const v = document.createElement('video');
+        v.preload = 'metadata';
+        v.muted = true;
+        v.src = vsrc;
+        const onMeta = () => {
+          const reps = parseReps(m.duration);
+          const newSecs = Math.round(v.duration * reps);
+          if (Number.isFinite(newSecs) && newSecs > 0) m.secs = newSecs;
+          resolve();
+        };
+        const onErr = () => resolve();
+        v.addEventListener('loadedmetadata', onMeta, { once: true });
+        v.addEventListener('error', onErr, { once: true });
+        setTimeout(onErr, 5000);
+      }));
+    }
+  }
+  if (videoUpdates.length) await Promise.all(videoUpdates);
+
   practiceMovesCache = moves;
   const list = document.getElementById('moveList');
   if (list) {
@@ -2129,7 +2194,6 @@ function practiceIndexAt(elapsed) {
 // 从指定秒数开始/继续带练
 function runPractice(elapsed) {
   const total = practiceTotalSecs();
-  highlightMove(practiceIndexAt(elapsed));
   setPracticePlaying(true);
   practiceTimer = setInterval(() => {
     elapsed += 1;
@@ -2137,7 +2201,6 @@ function runPractice(elapsed) {
     if (bar) bar.style.width = Math.min(100, (elapsed / total) * 100) + '%';
     const timeEl = document.getElementById('practiceTime');
     if (timeEl) timeEl.textContent = fmtPracticeTime(Math.min(elapsed, total)) + ' / ' + fmtPracticeTime(total);
-    highlightMove(practiceIndexAt(elapsed));
     if (elapsed >= total) {
       stopPractice();
       toast('完成一遍，气血舒展，给自己点个赞 🌿', 'success');
@@ -2151,21 +2214,13 @@ function startPractice() {
   runPractice(0);
 }
 function seekPractice(i) {
-  if (!practiceMovesCache.length) return;
-  if (practiceTimer) {
-    // 带练中点击动作：跳转到该式起点重新计时
-    clearInterval(practiceTimer);
-    practiceTimer = null;
-    let elapsed = 0;
-    for (let k = 0; k < i; k++) elapsed += practiceMovesCache[k].secs || 30;
-    runPractice(elapsed);
-    toast(`跳到：${practiceMovesCache[i].name}`);
-  } else {
-    showPracticeDetail(i);
-  }
+  // 右侧动作序列是独立目录，点击只打开详情弹窗，不控制左侧播放器
+  highlightMove(i);
+  showPracticeDetail(i);
 }
 // 动作详解弹窗（八段锦含分步/呼吸/易错点；拉伸与微动显示动作说明）
 function showPracticeDetail(i) {
+  currentDetailIndex = i;
   const m = practiceMovesCache[i];
   if (!m) return;
   // 展示层优化：把连续的“（1）…（2）…”步骤拆成多行，缓解长段落拥挤
@@ -2173,22 +2228,425 @@ function showPracticeDetail(i) {
   const sec = (label, text, multiline) => text
     ? `<div class="pd-sec"><div class="pd-sec-label">${label}</div><div class="pd-sec-text${multiline ? ' pd-steps' : ''}">${multiline ? fmtSteps(text) : escapeHtml(text)}</div></div>`
     : '';
+  // 深呼吸478：专属呼吸引导入口
+  if (m.name && m.name.indexOf('478') > -1) {
+    const navItems = practiceMovesCache.map((mv, idx) => `
+      <div class="move-item${idx === i ? ' active' : ''}" onclick="showPracticeDetail(${idx})">
+        <div class="num">${idx + 1}</div>
+        <div class="name">${escapeHtml(mv.name)}</div>
+        <div class="duration">${escapeHtml(fmtPracticeTime(mv.secs || 30))}</div>
+      </div>`).join('');
+    openModal(`
+      <div class="pd-modal pd-video-modal">
+        <div class="pd-head">
+          <h3>🤸 ${escapeHtml(m.name)}</h3>
+          <button class="pd-close" onclick="closeModal()" aria-label="关闭">✕</button>
+        </div>
+        <div class="pd-duration">${escapeHtml((m.duration || '').replace(/，?\d+分\d*秒?/g, '').replace(/，$/, ''))}，共${m.secs || 30}s</div>
+        <div class="pd-body">
+          <div class="pd-left">
+            <div class="move-list-modal">${navItems}</div>
+          </div>
+          <div class="pd-center" style="display:flex;align-items:center;justify-content:center;min-width:0;">
+            <div style="text-align:center;max-width:100%;">
+              <div class="breath-guide-circle" id="breathCircle"><span id="breathText">准备</span></div>
+              <div style="font-size:15px;margin-top:16px;white-space:nowrap;" id="breathSub">鼻吸 4 秒 · 屏息 7 秒 · 嘴呼 8 秒</div>
+              <div style="font-size:13px;color:var(--text-light);margin-top:6px;white-space:nowrap;" id="breathRound">第 1 / 4 轮</div>
+              <div style="margin-top:20px;display:flex;gap:10px;justify-content:center;">
+                <button class="btn btn-outline" onclick="stopBreathing()">结束引导</button>
+                <button class="btn btn-primary" id="breathStartBtn" onclick="runBreathRound(1)">开始</button>
+              </div>
+            </div>
+          </div>
+          <div class="pd-right">
+            <div class="pd-text">
+              ${sec('分步要领', m.steps, true)}
+              ${sec('呼吸配合', m.breath)}
+              ${sec('常见错误', m.mistakes)}
+              ${sec('功效', m.effect)}
+              ${sec('注意事项', m.cautions)}
+              ${sec('动作说明', m.desc)}
+            </div>
+          </div>
+        </div>
+      </div>
+    `, { wide: true });
+    return;
+  }
+  // 统一三段式弹窗：左目录 / 中视频或动画或占位图 / 右文字
+  const videoSrc = VIDEO_MAP[m.name];
+  const animKey = window.getStickmanKey ? getStickmanKey(m.name) : null;
+  const reps = parseReps(m.duration);
+  const navItems = practiceMovesCache.map((mv, idx) => `
+    <div class="move-item${idx === i ? ' active' : ''}" onclick="showPracticeDetail(${idx})">
+      <div class="num">${idx + 1}</div>
+      <div class="name">${escapeHtml(mv.name)}</div>
+      <div class="duration">${escapeHtml(fmtPracticeTime(mv.secs || 30))}</div>
+    </div>`).join('');
+
+  // 中栏内容：视频 > 简笔画 > 占位图
+  let centerContent = '';
+  if (videoSrc) {
+    centerContent = `
+      <div class="pd-video-wrap">
+        <video id="pdVideo" src="${videoSrc}" muted playsinline style="width:100%;display:block;border-radius:10px;background:#f8f5ef"></video>
+        <div class="pd-video-bar">
+          <button type="button" class="pd-anim-btn" id="pdVideoBtn">⏸ 暂停</button>
+          <span class="pd-video-info" id="pdVideoInfo">第 1 / ${reps} 次</span>
+        </div>
+      </div>`;
+  } else if (animKey) {
+    centerContent = `<div class="pd-anim" id="pdAnim" style="display:flex;align-items:center;justify-content:center;min-height:280px;"></div>`;
+  } else {
+    centerContent = `<div class="pd-placeholder" style="display:flex;align-items:center;justify-content:center;min-height:280px;background:#f8f5ef;border-radius:10px;"><span style="color:var(--text-light);font-size:14px;">视频制作中，敬请期待</span></div>`;
+  }
+
   openModal(`
-    <div class="pd-modal">
+    <div class="pd-modal pd-video-modal">
       <div class="pd-head">
         <h3>🤸 ${escapeHtml(m.name)}</h3>
         <button class="pd-close" onclick="closeModal()" aria-label="关闭">✕</button>
       </div>
-      <div class="pd-duration">${escapeHtml(m.duration || '')}</div>
-      ${sec('分步要领', m.steps, true)}
-      ${sec('呼吸配合', m.breath)}
-      ${sec('常见错误', m.mistakes)}
-      ${sec('功效', m.effect)}
-      ${sec('注意事项', m.cautions)}
-      ${sec('动作说明', m.desc)}
-      <div class="pd-foot"><button class="pd-ok" onclick="closeModal()">知道了</button></div>
+      <div class="pd-duration">${escapeHtml((m.duration || '').replace(/，?\d+分\d*秒?/g, '').replace(/，$/, ''))}，共${m.secs || 30}s</div>
+      <div class="pd-body">
+        <div class="pd-left">
+          <div class="move-list-modal">${navItems}</div>
+          <div class="pd-play-mode">
+            <button type="button" class="pd-mode-btn" id="pdModeBtn">🔂 单集循环</button>
+            <div class="pd-mode-drawer" id="pdModeDrawer">
+              <div class="pd-mode-option active" data-mode="single">🔂 单集循环</div>
+              <div class="pd-mode-option" data-mode="sequence">⏬ 顺序播放</div>
+              <div class="pd-mode-option" data-mode="reverse">⏫ 倒序播放</div>
+            </div>
+          </div>
+        </div>
+        <div class="pd-center">
+          ${centerContent}
+        </div>
+        <div class="pd-right">
+          <div class="pd-text">
+            ${sec('分步要领', m.steps, true)}
+            ${sec('呼吸配合', m.breath)}
+            ${sec('常见错误', m.mistakes)}
+            ${sec('功效', m.effect)}
+            ${sec('注意事项', m.cautions)}
+            ${sec('动作说明', m.desc)}
+          </div>
+        </div>
+      </div>
     </div>
-  `);
+  `, { wide: true, onOpen: () => {
+    if (videoSrc) initPracticeVideo(reps, i);
+    else if (animKey && window.Stickman) Stickman.mount(document.getElementById('pdAnim'), animKey);
+    // 播放模式按钮：无论有无视频都绑定
+    initPlayModeSelector();
+  }});
+}
+
+// AI 跟练摄像头
+let afCameraStream = null;
+function startAICamera() {
+  const video = document.getElementById('afCameraVideo');
+  const overlay = document.getElementById('afCameraOverlay');
+  if (!video) return;
+  const setTip = (main, sub) => {
+    if (overlay) overlay.innerHTML =
+      '<div class="ai-camera-icon">📷</div><div>' + main + '</div><div class="ai-camera-sub">' + sub + '</div>';
+  };
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    if (window.isSecureContext === false || location.protocol === 'http:') {
+      setTip('摄像头需在 HTTPS 下使用', '当前为 http 访问，请用 https 或 localhost 打开');
+    } else {
+      setTip('浏览器不支持摄像头', '请使用最新版 Chrome / Edge / Safari');
+    }
+    return;
+  }
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } } })
+    .then(stream => {
+      afCameraStream = stream;
+      video.srcObject = stream;
+      if (overlay) overlay.style.display = 'none';
+      video.play().then(() => startAIPoseEngine()).catch(() => startAIPoseEngine());
+    })
+    .catch(err => {
+      console.log('摄像头开启失败:', err);
+      if (err && (err.name === 'NotAllowedError' || err.name === 'SecurityError')) {
+        setTip('摄像头权限被拒绝', '请在浏览器地址栏允许摄像头后重试');
+      } else if (err && err.name === 'NotFoundError') {
+        setTip('未检测到摄像头', '请确认设备摄像头可用');
+      } else {
+        setTip('摄像头开启失败', (err && err.message) ? err.message : '请检查设备与权限');
+      }
+    });
+}
+function stopAICamera() {
+  if (window.AIPose) window.AIPose.stop();
+  if (afCameraStream) {
+    afCameraStream.getTracks().forEach(t => t.stop());
+    afCameraStream = null;
+  }
+}
+
+// 当前 AI 跟练选中的动作
+let aiCurrentAction = '两手托天理三焦';
+
+// 摄像头出画后启动 MediaPipe 姿态识别
+function startAIPoseEngine() {
+  const video = document.getElementById('afCameraVideo');
+  const canvas = document.getElementById('afPoseCanvas');
+  const statusEl = document.getElementById('afPoseStatus');
+  if (!video || !canvas || !window.AIPose) return;
+  window.AIPose.start(video, canvas, {
+    action: aiCurrentAction,
+    onScore: setAIScore,
+    onStatus: (msg) => { if (statusEl) statusEl.textContent = msg; },
+    onRep: (done, total, problems) => {
+      const repEl = document.getElementById('afReps');
+      if (repEl) repEl.textContent = Math.min(done, total) + ' / ' + total + ' 次';
+      if (done <= total && problems && problems.length) {
+        const s = document.getElementById('afPoseStatus');
+        if (s) s.textContent = '第 ' + done + ' 次：' + problems.join('、');
+      }
+    },
+  });
+}
+// ============ AI 跟练弹窗（左：演示+易错点 / 中：摄像头实时画面 / 右：选动作+文字提醒） ============
+const AI_ACTION_GROUPS = {
+  baduanjin: ['两手托天理三焦', '左右开弓似射雕', '调理脾胃须单举', '五劳七伤往后瞧', '摇头摆尾去心火', '两手攀足固肾腰', '攥拳怒目增气力', '背后七颠百病消'],
+  stretch: ['搓胁肋', '侧腰拉伸', '扩胸展肩', '旋腰转脊', '深呼吸478'],
+  office: ['颈部放松', '肩部环绕', '腰部扭转', '手腕伸展'],
+};
+const AI_GUIDE_MAP = {
+  '两手托天理三焦': { tip: '上托时吸气，手臂贴近耳侧垂直向上，掌根发力如托重物；下落时呼气，双肩下沉不耸肩。', mistakes: ['上托时手臂向前推，而非垂直向上', '手掌到顶后大拇指分开', '呼吸与动作脱节、憋气耸肩'] },
+  '左右开弓似射雕': { tip: '开弓展胸时吸气，沉肩坠肘，马步站稳；收回还原时呼气，切忌憋气。', mistakes: ['开弓时端肩、塌腰、重心偏移', '马步跪腿、收脚时脚擦地晃动', '拉弓手臂与肩部没有放松'] },
+};
+function aiGuide(name) {
+  return AI_GUIDE_MAP[name] || { tip: '请跟随左侧演示动作，保持呼吸均匀、缓慢到位，肩颈放松不要憋气。', mistakes: ['动作过快、幅度过小', '憋气或呼吸急促', '耸肩、身体僵硬代偿'] };
+}
+
+// 演示区内容：有视频用视频（静音循环自动播放），否则占位
+function aiDemoHtml(name) {
+  const src = VIDEO_MAP[name];
+  if (src) {
+    return '<video class="afm-demo-video" src="' + src + '" autoplay loop muted playsinline></video>';
+  }
+  return '<div class="afm-demo-ph">▶ 演示视频制作中</div>';
+}
+
+// 弹窗全屏切换
+function toggleAIFollowFullscreen() {
+  const box = document.getElementById('modalBox');
+  const btn = document.getElementById('afmFsBtn');
+  if (!box) return;
+  const fs = box.classList.toggle('afm-fullscreen');
+  if (btn) btn.innerHTML = fs ? '🗗 退出全屏' : '⛶ 全屏';
+}
+
+function openAIFollowModal() {
+  const itemsHtml = AI_ACTION_GROUPS.baduanjin.map((n, i) =>
+    `<div class="ai-action-item${i === 0 ? ' active' : ''}" onclick="selectAIAction('${n}', this)">${n}</div>`).join('');
+  const g = aiGuide('两手托天理三焦');
+  const demoHtml = aiDemoHtml('两手托天理三焦');
+  const html =
+    '<div class="afm">' +
+      '<div class="modal-head"><div class="modal-title">🤖 AI 跟练</div>' +
+        '<div class="afm-head-actions">' +
+          '<span class="afm-fullscreen-btn" id="afmFsBtn" title="全屏" onclick="toggleAIFollowFullscreen()">⛶ 全屏</span>' +
+          '<span class="modal-close" onclick="closeModal()">×</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="afm-body">' +
+        '<div class="afm-col afm-left">' +
+          '<div class="afm-block afm-block-demo"><div class="afm-label">动作演示</div>' +
+            '<div class="afm-demo" id="afmDemo">' + demoHtml + '</div>' +
+          '</div>' +
+          '<div class="afm-block afm-block-flex"><div class="afm-label">⚠️ 易错点</div>' +
+            '<ul class="afm-mistakes" id="afMistakes">' + g.mistakes.map(m => `<li>${m}</li>`).join('') + '</ul>' +
+          '</div>' +
+        '</div>' +
+        '<div class="afm-col afm-center">' +
+          '<div class="afm-camera-box">' +
+            '<video id="afCameraVideo" autoplay playsinline muted></video>' +
+            '<canvas id="afPoseCanvas" class="af-pose-canvas"></canvas>' +
+            '<div class="afm-pose-status" id="afPoseStatus">正在初始化…</div>' +
+            '<div class="ai-camera-overlay" id="afCameraOverlay">' +
+              '<div class="ai-camera-icon">📷</div><div>摄像头实时画面</div><div class="ai-camera-sub">正在开启…</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="afm-score"><span class="afm-score-label">实时得分</span>' +
+            '<span class="ai-score-value" id="afScore">100</span>' +
+            '<div class="ai-score-bar" style="flex:1;"><div class="ai-score-fill" id="afScoreFill" style="width:100%"></div></div>' +
+            '<span class="afm-reps" id="afReps">0 / 6 次</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="afm-col afm-right">' +
+          '<div class="afm-block afm-block-flex"><div class="afm-label">选择动作</div>' +
+            '<div class="ai-action-tabs">' +
+              '<div class="ai-action-tab active" onclick="switchAIFollowTab(\'baduanjin\', this)">八段锦</div>' +
+              '<div class="ai-action-tab" onclick="switchAIFollowTab(\'stretch\', this)">拉伸</div>' +
+              '<div class="ai-action-tab" onclick="switchAIFollowTab(\'office\', this)">办公室</div>' +
+            '</div>' +
+            '<div class="ai-action-items afm-action-items" id="aiActionItems">' + itemsHtml + '</div>' +
+          '</div>' +
+          '<div class="afm-block"><div class="afm-label">💡 文字提醒</div>' +
+            '<div class="afm-tip-text" id="afTipText">' + g.tip + '</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  openModal(html, { wide: true, onOpen: startAICamera });
+}
+
+// 切换动作分类
+function switchAIFollowTab(tab, el) {
+  document.querySelectorAll('.afm-body .ai-action-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  const items = document.getElementById('aiActionItems');
+  const list = AI_ACTION_GROUPS[tab] || [];
+  items.innerHTML = list.map((n, i) =>
+    `<div class="ai-action-item${i === 0 ? ' active' : ''}" onclick="selectAIAction('${n}', this)">${n}</div>`).join('');
+  selectAIAction(list[0], items.querySelector('.ai-action-item'));
+}
+
+// 选中某个动作：更新文字提醒、易错点与演示视频
+function selectAIAction(name, el) {
+  if (el) {
+    const box = document.getElementById('aiActionItems');
+    box.querySelectorAll('.ai-action-item').forEach(i => i.classList.remove('active'));
+    el.classList.add('active');
+  }
+  const g = aiGuide(name);
+  const tip = document.getElementById('afTipText');
+  const mis = document.getElementById('afMistakes');
+  const demo = document.getElementById('afmDemo');
+  if (tip) tip.textContent = g.tip;
+  if (mis) mis.innerHTML = g.mistakes.map(m => `<li>${m}</li>`).join('');
+  if (demo) demo.innerHTML = aiDemoHtml(name);
+  // 换动作后重置评分：默认 100，采用减分制
+  aiCurrentAction = name;
+  if (window.AIPose) window.AIPose.setAction(name);
+  else setAIScore(100);
+}
+
+// 更新实时得分（减分制：0-100）。后续 MediaPipe 识别到不标准动作时调用此函数扣分
+function setAIScore(score) {
+  score = Math.max(0, Math.min(100, Math.round(score)));
+  const val = document.getElementById('afScore');
+  const fill = document.getElementById('afScoreFill');
+  if (val) val.textContent = score;
+  if (fill) fill.style.width = score + '%';
+}
+
+// 播放模式选择器：独立绑定，有无视频都可用
+function initPlayModeSelector() {
+  const modeBtn = document.getElementById('pdModeBtn');
+  const modeDrawer = document.getElementById('pdModeDrawer');
+  if (!modeBtn || !modeDrawer) return;
+  const modeLabels = { single: '🔂 单集循环', sequence: '⏬ 顺序播放', reverse: '⏫ 倒序播放' };
+  const modeWrap = modeBtn.closest('.pd-play-mode');
+  modeBtn.textContent = modeLabels[videoPlayMode] || '🔂 单集循环';
+
+  // 抽屉改为 fixed 定位，显示在按钮上方空白处
+  function positionDrawer() {
+    const rect = modeBtn.getBoundingClientRect();
+    modeDrawer.style.position = 'fixed';
+    modeDrawer.style.bottom = (window.innerHeight - rect.top + 6) + 'px';
+    modeDrawer.style.left = rect.left + 'px';
+    modeDrawer.style.width = rect.width + 'px';
+    modeDrawer.style.top = 'auto';
+    modeDrawer.style.right = 'auto';
+    modeDrawer.style.marginTop = '0';
+  }
+
+  modeWrap.addEventListener('mouseenter', () => {
+    positionDrawer();
+    modeDrawer.classList.add('show');
+  });
+  modeWrap.addEventListener('mouseleave', () => modeDrawer.classList.remove('show'));
+  modeDrawer.querySelectorAll('.pd-mode-option').forEach(opt => {
+    opt.addEventListener('click', () => {
+      videoPlayMode = opt.dataset.mode;
+      modeBtn.textContent = modeLabels[videoPlayMode] || '🔂 单集循环';
+      modeDrawer.querySelectorAll('.pd-mode-option').forEach(o => o.classList.remove('active'));
+      opt.classList.add('active');
+      modeDrawer.classList.remove('show');
+      toast('已切换：' + modeLabels[videoPlayMode]);
+    });
+  });
+}
+// 视频带练弹窗：初始化循环播放 + 次数统计 + 播放模式
+let videoPlayMode = 'single'; // single | sequence | reverse
+function initPracticeVideo(reps, moveIndex) {
+  const video = document.getElementById('pdVideo');
+  const btn = document.getElementById('pdVideoBtn');
+  const info = document.getElementById('pdVideoInfo');
+  if (!video) return;
+
+  let repCount = 0;
+  video.play().catch(() => {});
+  video.addEventListener('ended', () => {
+    repCount++;
+    if (repCount < reps) {
+      video.currentTime = 0;
+      video.play().catch(() => {});
+      if (info) info.textContent = `第 ${repCount + 1} / ${reps} 次`;
+    } else {
+      // 已播完一轮 N 次
+      if (videoPlayMode === 'single') {
+        // 单集循环：重置次数，从头再来
+        repCount = 0;
+        video.currentTime = 0;
+        video.play().catch(() => {});
+        if (info) info.textContent = `第 1 / ${reps} 次`;
+      } else {
+        // 顺序或倒序：自动切换
+        let nextIndex;
+        // 找下一个有视频的动作
+        let found = false;
+        for (let k = 0; k < practiceMovesCache.length; k++) {
+          const idx = videoPlayMode === 'sequence'
+            ? (moveIndex + 1 + k) % practiceMovesCache.length
+            : (moveIndex - 1 - k + practiceMovesCache.length * 2) % practiceMovesCache.length;
+          if (VIDEO_MAP[practiceMovesCache[idx].name]) {
+            nextIndex = idx;
+            found = true;
+            break;
+          }
+        }
+        if (found) {
+          if (info) info.textContent = '即将播放：' + practiceMovesCache[nextIndex].name;
+          setTimeout(() => showPracticeDetail(nextIndex), 1500);
+        } else {
+          // 没找到下一个视频，停在当前
+          repCount = 0;
+          video.currentTime = 0;
+          video.play().catch(() => {});
+          if (info) info.textContent = `第 1 / ${reps} 次`;
+        }
+      }
+    }
+  });
+  if (btn) {
+    btn.onclick = () => {
+      if (video.paused) {
+        if (repCount >= reps) {
+          repCount = 0;
+          if (info) info.textContent = `第 1 / ${reps} 次`;
+        }
+        video.play().catch(() => {});
+        btn.textContent = '⏸ 暂停';
+      } else {
+        video.pause();
+        btn.textContent = '▶ 播放';
+      }
+    };
+  }
+  // 弹窗关闭时暂停视频
+  const mask = document.getElementById('modalMask');
+  const obs = new MutationObserver(() => {
+    if (!mask.classList.contains('show')) { video.pause(); obs.disconnect(); }
+  });
+  obs.observe(mask, { attributes: true, attributeFilter: ['class'] });
 }
 function highlightMove(i) {
   document.querySelectorAll('#moveList .move-item').forEach((el, idx) => {
@@ -2253,17 +2711,19 @@ function openSymptomModal(presetName) {
   const tags = SYMPTOM_QUICK.map(n =>
     `<div class="st${n === presetName ? ' selected' : ''}" onclick="pickSymptomSuggestion(this, '${n}')">${n}</div>`).join('');
   openModal(`
-    <h3 style="margin:0 0 12px;">记录症状</h3>
-    <label class="form-label">症状名称 *</label>
-    <input class="form-input" id="symModalName" maxlength="50" placeholder="直接输入症状，或点下方常用项" value="${escapeHtml(presetName || '')}">
-    <div class="symptom-tags" style="margin:8px 0 14px;">${tags}</div>
-    <label class="form-label">程度</label>
-    <select class="form-input" id="symModalSeverity"><option>轻度</option><option>中度</option><option>重度</option></select>
-    <label class="form-label" style="margin-top:12px;">可能原因</label>
-    <input class="form-input" id="symModalCause" maxlength="50" placeholder="如：熬夜、压力大（选填）">
-    <div style="display:flex;gap:10px;margin-top:20px;">
-      <button class="btn btn-outline" style="flex:1;" onclick="closeModal()">取消</button>
-      <button class="btn btn-primary" style="flex:1;" id="symModalSave">记录</button>
+    <div class="modal-head"><div class="modal-title">记录症状</div><span class="modal-close" onclick="closeModal()">×</span></div>
+    <div class="modal-body sym-modal-body">
+      <label class="form-label">症状名称 *</label>
+      <input class="form-input" id="symModalName" maxlength="50" placeholder="直接输入症状，或点下方常用项" value="${escapeHtml(presetName || '')}">
+      <div class="symptom-tags sym-modal-tags">${tags}</div>
+      <label class="form-label">程度</label>
+      <select class="form-input" id="symModalSeverity"><option>轻度</option><option>中度</option><option>重度</option></select>
+      <label class="form-label">可能原因</label>
+      <input class="form-input" id="symModalCause" maxlength="50" placeholder="如：熬夜、压力大（选填）">
+      <div class="sym-modal-btns">
+        <button class="btn btn-outline" style="flex:1;" onclick="closeModal()">取消</button>
+        <button class="btn btn-primary" style="flex:1;" id="symModalSave">记录</button>
+      </div>
     </div>`);
   setTimeout(() => {
     const input = document.getElementById('symModalName');

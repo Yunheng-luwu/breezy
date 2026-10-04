@@ -11,3 +11,6 @@ node_modules/
 
 # 用户上传文件（运行时数据，不入库）
 public/uploads/
+
+# MediaPipe 模型与 wasm 运行时（约 26MB，部署时手工上传或走 OSS/CDN）
+public/ai-models/

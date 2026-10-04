@@ -1,10 +1,10 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>松序 - 顺气舒心，慢养日常</title>
-<link rel="stylesheet" href="css/style.css?v=20261001-1">
+<link rel="stylesheet" href="css/style.css?v=20261004-1">
 
 </head>
 <body>
@@ -261,6 +261,7 @@
       <div class="qg-item" onclick="showPage('diet')"><div class="icon">&#127813;</div><div class="name">饮食调理</div><div class="desc">红黑榜·食谱</div></div>
       <div class="qg-item" onclick="showPage('clothing')"><div class="icon">&#128084;</div><div class="name">穿衣建议</div><div class="desc">天气·保暖</div></div>
       <div class="qg-item" onclick="showPage('practice')"><div class="icon">&#129492;</div><div class="name">功法带练</div><div class="desc">八段锦</div></div>
+      <div class="qg-item" onclick="openAIFollowModal()"><div class="icon">🤖</div><div class="name">AI 跟练</div><div class="desc">实时识别·打分</div></div>
       <div class="qg-item" onclick="showPage('chat')"><div class="icon">&#128172;</div><div class="name">AI对话</div><div class="desc">智能疏肝</div></div>
       <div class="qg-item" onclick="showPage('record')"><div class="icon">&#128221;</div><div class="name">健康记录</div><div class="desc">症状·用药</div></div>
     </div>
@@ -590,17 +591,26 @@
     </div>
     <div class="row practice-row">
       <div class="col-8">
-        <div class="player-area" id="practicePlayer">
-          <div class="play-btn" onclick="startPractice()">&#9658;</div>
-          <div class="player-controls">
-            <span onclick="startPractice()" style="cursor:pointer;">&#9658;</span>
-            <div class="progress"><div class="bar" id="practiceBar" style="width:0%;"></div></div>
-            <span style="font-size:12px;" id="practiceTime">0:00 / 4:00</span><span>引导</span><span>&#9974;</span>
+        <div class="ai-entry-card" onclick="openAIFollowModal()">
+          <div class="ai-entry-bg"></div>
+          <div class="ai-entry-content">
+            <div class="ai-entry-icon">🤖</div>
+            <h2 class="ai-entry-title">AI 跟练</h2>
+            <p class="ai-entry-desc">摄像头实时捕捉 · 动作标准度评分 · 全服排行榜</p>
+            <div class="ai-entry-btn">开始跟练 ›</div>
           </div>
+        </div>
+        <div class="rank-entry-card" onclick="showPage('rank')">
+          <div class="rank-entry-icon">🏆</div>
+          <div class="rank-entry-info">
+            <h3>排行榜</h3>
+            <p>查看全服动作评分排名</p>
+          </div>
+          <div class="rank-entry-arrow">›</div>
         </div>
       </div>
       <div class="col-4">
-        <div class="card" style="height:100%;">
+        <div class="card" style="margin-bottom:16px;">
           <h3 style="margin-bottom:4px;" id="practiceSeqTitle">八段锦 · 动作序列</h3>
           <div style="font-size:12px;color:var(--text-light);margin-bottom:10px;" id="practiceSeqHint">每式约 30 秒，整套约 4 分钟，循序渐进、不憋气</div>
           <div class="move-list" id="moveList">
@@ -619,6 +629,73 @@
     <div class="card">
       <h3 style="margin-bottom:16px;">动作分解讲解</h3>
       <div id="practiceExplain" style="display:flex;gap:20px;overflow-x:auto;padding-bottom:8px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 8.5 AI 跟练（弹窗，由 openAIFollowModal 动态生成） ============ -->
+
+<!-- ============ 8.6 排行榜页 ============ -->
+<div class="page" id="page-rank">
+  <div class="container">
+    <div class="page-banner">
+      <img class="banner-img" src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Golden%20trophy%20podium%20with%20soft%20warm%20light%2C%20champion%20ranking%20celebration%2C%20minimal%20beige%20and%20gold%20Chinese%20wellness%20style&image_size=landscape_16_9" alt="排行榜">
+      <div class="banner-content"><h2>排行榜</h2><p>全服动作评分 · 每日更新</p></div>
+    </div>
+    <div class="page-header"><div><h1>🏆 排行榜</h1><div class="sub">看看谁的动作最标准</div></div></div>
+    <div class="tab-bar">
+      <div class="tab active">总榜</div>
+      <div class="tab">八段锦</div>
+      <div class="tab">疏肝拉伸</div>
+      <div class="tab">办公室微动</div>
+    </div>
+    <div class="card">
+      <div class="ai-rank-table">
+        <div class="ai-rank-header">
+          <div class="ai-rank-col rank">排名</div>
+          <div class="ai-rank-col user">用户</div>
+          <div class="ai-rank-col action">动作</div>
+          <div class="ai-rank-col score">得分</div>
+          <div class="ai-rank-col date">日期</div>
+        </div>
+        <div class="ai-rank-body" id="aiRankBody">
+          <div class="ai-rank-row">
+            <div class="ai-rank-col rank"><span class="ai-rank-badge gold">1</span></div>
+            <div class="ai-rank-col user">松友_01</div>
+            <div class="ai-rank-col action">两手托天理三焦</div>
+            <div class="ai-rank-col score">98</div>
+            <div class="ai-rank-col date">2026-10-04</div>
+          </div>
+          <div class="ai-rank-row">
+            <div class="ai-rank-col rank"><span class="ai-rank-badge silver">2</span></div>
+            <div class="ai-rank-col user">松友_02</div>
+            <div class="ai-rank-col action">左右开弓似射雕</div>
+            <div class="ai-rank-col score">95</div>
+            <div class="ai-rank-col date">2026-10-04</div>
+          </div>
+          <div class="ai-rank-row">
+            <div class="ai-rank-col rank"><span class="ai-rank-badge bronze">3</span></div>
+            <div class="ai-rank-col user">松友_03</div>
+            <div class="ai-rank-col action">调理脾胃须单举</div>
+            <div class="ai-rank-col score">92</div>
+            <div class="ai-rank-col date">2026-10-03</div>
+          </div>
+          <div class="ai-rank-row">
+            <div class="ai-rank-col rank">4</div>
+            <div class="ai-rank-col user">松友_04</div>
+            <div class="ai-rank-col action">五劳七伤往后瞧</div>
+            <div class="ai-rank-col score">88</div>
+            <div class="ai-rank-col date">2026-10-03</div>
+          </div>
+          <div class="ai-rank-row">
+            <div class="ai-rank-col rank">5</div>
+            <div class="ai-rank-col user">松友_05</div>
+            <div class="ai-rank-col action">两手攀足固肾腰</div>
+            <div class="ai-rank-col score">85</div>
+            <div class="ai-rank-col date">2026-10-02</div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -801,6 +878,8 @@
 <div class="toast-wrap" id="toastWrap"></div>
 
 <script src="js/app.js?v=20261004-2"></script>
+<script src="js/stickman.js?v=20261003-54"></script>
+<script type="module" src="js/ai-pose.js?v=20261004-1"></script>
 
 </body>
 </html>
