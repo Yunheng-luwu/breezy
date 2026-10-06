@@ -56,6 +56,22 @@ router.get('/health/dashboard', requireAuth, wrap(async (req, res) => {
   });
 }));
 
+// 每日一穴智能推荐：节气 + 肝郁指数 + 近30天症状 融合打分，同一天结果稳定
+const { recommendDailyAcupoint } = require('../services/acuRecommend');
+router.get('/care/acupoint-of-day', requireAuth, wrap(async (req, res) => {
+  const [acus] = await pool.query('SELECT id, category, name, tag, effect, icon, location, method, duration, frequency FROM acupoints');
+  const [users] = await pool.query('SELECT score, level FROM users WHERE id = ?', [req.userId]);
+  const [syms] = await pool.query(
+    `SELECT symptom, COUNT(*) AS count FROM symptoms
+      WHERE user_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+      GROUP BY symptom ORDER BY count DESC LIMIT 6`, [req.userId],
+  );
+  const user = users[0] || null;
+  const r = recommendDailyAcupoint(acus, user, syms);
+  if (!r) throw new ApiError(404, '穴位库为空');
+  ok(res, r);
+}));
+
 // 穴位数据（按分类）
 router.get('/care/acupoints', wrap(async (req, res) => {
   const cat = req.query.category || 'stress';

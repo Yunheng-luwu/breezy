@@ -493,9 +493,10 @@ function weatherEmoji(text) {
 }
 
 async function loadHomeData() {
-  const [dash, meds] = await Promise.all([
+  const [dash, meds, acuDay] = await Promise.all([
     fetchAPI('/health/dashboard'),
     fetchAPI('/record/medicines').catch(() => null),
+    fetchAPI('/care/acupoint-of-day').catch(() => null),
   ]);
   if (dash.success && dash.data) {
     const d = dash.data;
@@ -515,6 +516,14 @@ async function loadHomeData() {
     const pending = (d.todos || []).filter(t => !t.done).length;
     const medCount = (meds && meds.success && Array.isArray(meds.data)) ? meds.data.length : 0;
     updateNotifDot(pending + medCount);
+  }
+  // 每日一穴智能推荐（节气+肝郁指数+近期症状）
+  if (acuDay && acuDay.success && acuDay.data && acuDay.data.acu) {
+    const a = acuDay.data.acu;
+    set('acuOfDayName', (a.icon ? a.icon + ' ' : '') + a.name);
+    set('acuOfDayDesc', acuDay.data.reason || a.effect);
+    const btn = document.getElementById('acuOfDayBtn');
+    if (btn) btn.onclick = () => openAcuDetail(a.id);
   }
   loadTodos();
 }
