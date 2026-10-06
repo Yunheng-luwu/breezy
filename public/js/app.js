@@ -1461,6 +1461,7 @@ function stopBreathing() {
   if (sub) sub.textContent = '鼻吸 4 秒 · 屏息 7 秒 · 嘴呼 8 秒';
   if (round) round.textContent = '第 1 / 4 轮';
   if (startBtn) { startBtn.textContent = '开始'; startBtn.style.display = ''; startBtn.onclick = () => runBreathRound(1); }
+  closeModal();
 }
 
 async function selectMood(el) {
@@ -2373,6 +2374,14 @@ function startAICamera() {
   navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } } })
     .then(stream => {
       afCameraStream = stream;
+      // 暗光环境下尝试连续自动曝光（不强制亮度值，避免部分摄像头偏色）
+      const track = stream.getVideoTracks && stream.getVideoTracks()[0];
+      if (track && track.applyConstraints) {
+        const caps = track.getCapabilities ? track.getCapabilities() : {};
+        if (caps.exposureMode && caps.exposureMode.includes('continuous')) {
+          track.applyConstraints({ advanced: [{ exposureMode: 'continuous' }] }).catch(() => {});
+        }
+      }
       video.srcObject = stream;
       if (overlay) overlay.style.display = 'none';
       video.play().then(() => startAIPoseEngine()).catch(() => startAIPoseEngine());
