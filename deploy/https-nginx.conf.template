@@ -1,0 +1,114 @@
+# 松序 Breezith HTTPS 配置模板（备案通过后启用）
+#
+# 启用步骤（约 10 分钟）：
+#   1. 替换域名占位符：
+#      sed -i 's/__DOMAIN__/你的域名/g' /opt/breezith/https-nginx.conf.template
+#   2. 申请证书（只申请，不改现有配置）：
+#      certbot certonly --nginx -d 你的域名
+#   3. 备份并替换配置：
+#      cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.http.bak
+#      cp /opt/breezith/https-nginx.conf.template /etc/nginx/nginx.conf
+#   4. 验证并重载：
+#      nginx -t && nginx -s reload
+#   5. 浏览器打开 https://你的域名 验证；摄像头等需安全上下文的 API 将直接可用
+#
+# 证书续期：certbot 自带 systemd timer 自动续期，可用 certbot renew --dry-run 验证
+# 注意：HSTS 一旦生效，浏览器将强制 HTTPS 访问一年；如需回退 HTTP 需清浏览器 HSTS 缓存
+
+user nginx;
+worker_processes auto;
+error_log /var/log/nginx/error.log;
+pid /run/nginx.pid;
+
+include /usr/share/nginx/modules/*.conf;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+
+    access_log  /var/log/nginx/access.log  main;
+
+    sendfile            on;
+    tcp_nopush          on;
+    tcp_nodelay         on;
+    keepalive_timeout   65;
+    types_hash_max_size 4096;
+
+    include             /etc/nginx/mime.types;
+    default_type        application/octet-stream;
+
+    include /etc/nginx/conf.d/*.conf;
+
+    # ---------- HTTP：强制跳转 HTTPS ----------
+    server {
+        listen       80 default_server;
+        listen       [::]:80 default_server;
+        server_name  __DOMAIN__;
+
+        # certbot HTTP-01 续期验证路径直连（不走跳转）
+        location /.well-known/acme-challenge/ {
+            root /var/www/certbot;
+        }
+
+        location / {
+            return 301 https://$host$request_uri;
+        }
+    }
+
+    # ---------- HTTPS 站点 ----------
+    server {
+        listen       443 ssl http2 default_server;
+        listen       [::]:443 ssl http2 default_server;
+        server_name  __DOMAIN__;
+
+        ssl_certificate     /etc/letsencrypt/live/__DOMAIN__/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/__DOMAIN__/privkey.pem;
+        ssl_session_cache   shared:SSL:10m;
+        ssl_session_timeout 1d;
+        ssl_protocols       TLSv1.2 TLSv1.3;
+        ssl_ciphers         HIGH:!aNULL:!MD5;
+        ssl_prefer_server_ciphers on;
+
+        # 如确认长期使用 HTTPS，可取消下行注释启用 HSTS
+        # add_header Strict-Transport-Security "max-age=31536000" always;
+
+        # 松序 Breezith 静态文件（仅 public 目录）
+        root         /opt/breezith/public;
+        index        index.html;
+
+        # /api 反代到本机 Node 服务（仅监听 127.0.0.1）
+        location /api/ {
+            proxy_pass http://127.0.0.1:3100;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            # AI 对话响应较慢，放宽超时
+            proxy_read_timeout 120s;
+        }
+
+        # HTML 入口页一律不缓存，避免更新后看到旧页面
+        location ~* \.html$ {
+            add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+            add_header Pragma "no-cache" always;
+            expires off;
+        }
+
+        # 带后缀的静态资源不存在时直接 404（避免把 index.html 当 JS/CSS 返回）
+        location ~* \.(js|css|png|jpg|jpeg|gif|webp|svg|ico|woff2?|ttf|map)$ {
+            try_files $uri =404;
+        }
+
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+
+        error_page 404 /404.html;
+        error_page 500 502 503 504 /50x.html;
+    }
+}
