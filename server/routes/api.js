@@ -20,6 +20,23 @@ const {
   practiceStretchData, practiceOfficeData,
 } = require('../services/contentData');
 const kb = require('../services/knowledge');
+const { recommendMeals, buildDietPrinciple, rankFoodGroups } = require('../services/dietRecommend');
+
+// 登录用户的个性化信号：肝郁指数 + 近30天症状（未登录/查库失败返回空，调用方降级为通用推荐）
+async function getUserSignals(req) {
+  if (!req.userId) return { user: null, symptoms: [] };
+  try {
+    const [users] = await pool.query('SELECT score, level FROM users WHERE id = ?', [req.userId]);
+    const [syms] = await pool.query(
+      `SELECT symptom, COUNT(*) AS count FROM symptoms
+        WHERE user_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+        GROUP BY symptom ORDER BY count DESC LIMIT 6`, [req.userId],
+    );
+    return { user: users[0] || null, symptoms: syms };
+  } catch (e) {
+    return { user: null, symptoms: [] };
+  }
+}
 
 // 静态数据统一放在 services/contentData.js，供本路由与 AI 工具层共用
 
@@ -110,16 +127,56 @@ router.post('/care/footbath', wrap(async (req, res) => {
 }));
 
 // 饮食推荐
-router.get('/diet/recommend', (req, res) => {
-  ok(res, dietData.recommend);
-});
+// 今日饮食原则：天气+肝郁指数动态生成；无天气时回退静态池按日期轮换
+router.get('/diet/recommend', wrap(async (req, res) => {
+  const { user } = await getUserSignals(req);
+  const weather = await getClothingByWeather(req).catch(() => null);
+  let principle = buildDietPrinciple(weather, user);
+  if (!principle) {
+    const list = dietData.recommend.principles;
+    const doy = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
+    principle = list[doy % list.length];
+  }
+  ok(res, { ...dietData.recommend, principle });
+}));
 
-router.get('/diet/foods', (req, res) => {
-  ok(res, { good: dietData.goodFoods, bad: dietData.badFoods });
-});
+router.get('/diet/foods', wrap(async (req, res) => {
+  const { user, symptoms } = await getUserSignals(req);
+  const weather = await getClothingByWeather(req).catch(() => null);
+  ok(res, rankFoodGroups(dietData.goodFoods, dietData.badFoods, user, symptoms, weather));
+}));
 
-router.get('/diet/recipes', (req, res) => {
-  ok(res, { items: dietData.recipes, pool: dietData.recipePool });
+// 食谱推荐：药膳汤谱（与 /diet/soups、AI 工具共用 knowledge 库）按性质并入各餐池，
+// 当日推荐按「一年中第几天」从池中确定性轮换——同一天所有人相同，次日自动更换
+const SOUP_MEAL = {
+  '白术陈皮粥': 'breakfast', '姜汁豆浆': 'breakfast',
+  '健脾山药汤': 'lunch', '人参滋补汤': 'lunch',
+  '当归生姜羊肉汤': 'dinner',
+  '龙眼红枣银耳炖鸡蛋': 'snack',
+};
+const MEAL_LABEL = { breakfast: '早餐', lunch: '午餐', dinner: '晚餐', snack: '加餐' };
+const RECIPE_POOL = (() => {
+  const pool = JSON.parse(JSON.stringify(dietData.recipePool));
+  for (const s of (kb.getDietTherapy('soup') || [])) {
+    const meal = SOUP_MEAL[s.name];
+    if (meal && pool[meal] && !pool[meal].some(r => r.name === s.name)) {
+      pool[meal].push({ name: s.name, ingredients: s.ingredients });
+    }
+  }
+  return pool;
+})();
+
+router.get('/diet/recipes', wrap(async (req, res) => {
+  // 个性化信号：登录才查（肝郁指数 + 近30天症状）；未登录/查库失败按通用推荐
+  const { user, symptoms } = await getUserSignals(req);
+  const weather = await getClothingByWeather(req).catch(() => null);
+  const { items } = recommendMeals(RECIPE_POOL, MEAL_LABEL, user, symptoms, weather);
+  ok(res, { items, pool: RECIPE_POOL });
+}));
+
+// 药膳汤谱（公开只读，供饮食调理页展示；与 AI 工具共用 knowledge 库）
+router.get('/diet/soups', (req, res) => {
+  ok(res, { items: kb.getDietTherapy('soup') || [] });
 });
 
 // 穿衣建议（be-7：真实天气，失败回退默认数据）

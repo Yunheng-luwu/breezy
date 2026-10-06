@@ -292,6 +292,41 @@ function buildAdvice(w) {
   return { principle, inner, outer, shoes };
 }
 
+// ============ 场景提醒（首页三条，随天气变化） ============
+// 复用 buildAdvice 的天气判断范式，从条件池按权重选 3 条；条件不足时用通用养生提醒兜底
+function getSceneReminders(w) {
+  const rainy = /雨|雷/.test(w.dayWeather);
+  const snowy = /雪/.test(w.dayWeather);
+  const windy = w.windLevel >= 5;
+  const sunny = /晴/.test(w.dayWeather) && !rainy && !snowy;
+  const diff = w.high - w.low;
+  const picked = [];
+  const add = (icon, text, weight) => picked.push({ icon, text, weight });
+
+  if (snowy) add('🌨️', '雪天路滑防摔倒，护住颈背脚踝', 9);
+  if (rainy) add('🌧️', '雨天湿重，出门带伞不露脚踝', 9);
+  if (windy && w.temp < 25) add('🌬️', '大风天戴围巾，护住颈部防受风', 8);
+  if (w.temp <= 8) add('🧣', '低温天护住颈背，寒从脚生', 8);
+  if (diff >= 10) add('🌡️', '早晚温差大，洋葱式穿搭方便增减', 7);
+  if (w.temp >= 28) add('❄️', '空调房披披肩，护住肩颈膝盖', 7);
+  if (w.humidity >= 80 && w.temp >= 20) add('💧', '湿气偏重，少贪生冷甜腻', 6);
+  if (sunny && w.temp >= 25) add('☀️', '晴晒紫外线强，出门做好防晒', 5);
+  if (sunny && w.temp >= 15 && w.temp < 25) add('☀️', '晴好天气，适合出门晒背散步', 4);
+
+  // 通用养生兜底：条件命中不足 3 条时按序补齐
+  const fallback = [
+    { icon: '💪', text: '出汗不马上脱衣，毛孔开时最怕风' },
+    { icon: '🦶', text: '睡前温水泡脚，微微发热就好' },
+    { icon: '🍵', text: '晨起一杯温水，唤醒脾胃' },
+  ];
+  const out = picked.sort((a, b) => b.weight - a.weight).slice(0, 3);
+  for (const f of fallback) {
+    if (out.length >= 3) break;
+    out.push(f);
+  }
+  return out.map(r => ({ icon: r.icon, text: r.text }));
+}
+
 // ============ 对外入口 ============
 
 /**
@@ -322,6 +357,7 @@ async function getClothingByAdcode(adcode, city, located = true) {
     inner: advice.inner,
     outer: advice.outer,
     shoes: advice.shoes,
+    reminders: getSceneReminders(w),
     source: 'amap',
     located,
   };

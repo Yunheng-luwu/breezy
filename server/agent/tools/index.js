@@ -147,19 +147,19 @@ const TOOL_DEFS = [
   // ---- 药膳食疗（知识库） ----
   {
     name: 'get_diet_therapy',
-    description: '按类别查询疏肝养生药膳食疗方：tea=茶饮方（5款），porridge=汤粥方（3款），dish=食疗菜（2款）。每款含材料用量、做法、功效、适用体质、禁忌、频率。用户问喝茶/养生茶/粥/汤/食疗菜时调用。',
+    description: '按类别查询疏肝养生药膳食疗方：tea=茶饮方（5款），porridge=汤粥方（3款），dish=食疗菜（2款），soup=药膳汤谱（6款，如当归生姜羊肉汤、健脾山药汤）。每款含材料用量、做法、功效、适用体质、禁忌、频率。用户问喝茶/养生茶/粥/汤/食疗菜/炖汤药膳时调用。',
     parameters: {
       type: 'object',
       properties: {
-        type: { type: 'string', enum: ['tea', 'porridge', 'dish'], description: '茶饮/汤粥/食疗菜' },
+        type: { type: 'string', enum: ['tea', 'porridge', 'dish', 'soup'], description: '茶饮/汤粥/食疗菜/药膳汤谱' },
       },
       required: ['type'],
     },
     run: async (args) => {
       const type = requireStr(args, 'type', 10);
       const list = kb.getDietTherapy(type);
-      if (!list) throw new ToolArgError('type 只能是 tea/porridge/dish');
-      const label = { tea: '茶饮方', porridge: '汤粥方', dish: '食疗菜' }[type];
+      if (!list) throw new ToolArgError('type 只能是 tea/porridge/dish/soup');
+      const label = { tea: '茶饮方', porridge: '汤粥方', dish: '食疗菜', soup: '药膳汤谱' }[type];
       const summary = list.map((r, i) => [
         `${i + 1}.${r.name}`,
         `材料：${r.ingredients}`,
@@ -168,7 +168,8 @@ const TOOL_DEFS = [
         `适用：${r.suitable}`,
         `禁忌：${r.contraindication}`,
         `频率：${r.frequency}`,
-      ].join('\n')).join('\n\n');
+        r.note ? `注意：${r.note}` : '',
+      ].filter(Boolean).join('\n')).join('\n\n');
       return { summary: `【${label}】\n${summary}` };
     },
   },
@@ -197,6 +198,35 @@ const TOOL_DEFS = [
           `用法用量：${m.dosage}`,
           `禁忌与慎用：${m.caution}`,
           `药物相互作用：${m.interaction}`,
+        ].join('\n'),
+      };
+    },
+  },
+
+  // ---- 调养方剂科普（知识库；科普层面，不做用药决策） ----
+  {
+    name: 'query_formula_info',
+    description: '查询四君子汤、玉屏风散、当归补血丸、六味地黄丸、麦门冬汤等经典调养方剂的科普信息：出处、组成、功效、适应证候、用法、禁忌注意。仅作养生科普，不做处方。用户问某方剂是什么/组成/功效/适不适合自己时调用；最终使用必须建议用户咨询中医师。',
+    parameters: {
+      type: 'object',
+      properties: { name: { type: 'string', description: '方剂名称或关键词，如 四君子汤/玉屏风/地黄丸' } },
+      required: ['name'],
+    },
+    run: async (args) => {
+      const name = requireStr(args, 'name', 30);
+      const f = kb.findFormula(name);
+      if (!f) {
+        throw new ToolArgError(`未找到与“${name}”相关的方剂，可选：${kb.listFormulaNames().join('、')}`);
+      }
+      return {
+        summary: [
+          `${f.name}（出自${f.source}；养生科普，使用前请咨询中医师）`,
+          `组成：${f.ingredients}`,
+          `功效：${f.effect}`,
+          `适应证候：${f.syndrome}`,
+          `用法：${f.dosage}`,
+          `禁忌与注意：${f.caution}`,
+          `提示：${f.note}`,
         ].join('\n'),
       };
     },
