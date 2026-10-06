@@ -165,7 +165,7 @@ input { font-family:inherit; outline:none; }
 .acu-card .acu-desc { font-size:13px; color:var(--text-light); margin-top:6px; }
 /* 中药文化展示区 */
 .herb-showcase { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:32px; }
-.herb-show-card { border-radius:var(--radius); overflow:hidden; border:1px solid var(--border); box-shadow:var(--shadow); background:var(--card); transition:all .2s; }
+.herb-show-card { border-radius:var(--radius); overflow:hidden; border:1px solid var(--border); box-shadow:var(--shadow); background:var(--card); transition:all .2s; cursor:pointer; }
 .herb-show-card:hover { transform:translateY(-3px); box-shadow:var(--shadow-lg); }
 .herb-show-card img { width:100%; height:160px; object-fit:cover; }
 .herb-show-card .body { padding:16px; }
@@ -195,13 +195,18 @@ input { font-family:inherit; outline:none; }
 .food-tag { display:inline-block; padding:4px 10px; border-radius:8px; font-size:13px; margin:2px; }
 .food-tag.good { background:rgba(122,155,110,0.15); color:var(--success); }
 .food-tag.bad { background:rgba(197,108,92,0.12); color:var(--danger); }
+.food-tag.top-pick { box-shadow:0 0 0 2px var(--accent) inset; font-weight:600; }
 .recipe-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
-.recipe-card { background:var(--card); border-radius:var(--radius); overflow:hidden; border:1px solid var(--border); box-shadow:var(--shadow); }
+.recipe-card { background:var(--card); border-radius:var(--radius); overflow:hidden; border:1px solid var(--border); box-shadow:var(--shadow); display:flex; flex-direction:column; }
 .recipe-card .time-tag { padding:6px 12px; background:var(--primary); color:#fff; font-size:13px; text-align:center; }
-.recipe-card .recipe-body { padding:14px; }
-.recipe-card h4 { font-size:15px; margin-bottom:6px; }
-.recipe-card .ingr { font-size:12px; color:var(--text-light); margin-bottom:8px; }
-.recipe-card .footer { display:flex; justify-content:space-between; font-size:12px; color:var(--text-mid); }
+.recipe-card .recipe-body { padding:14px; display:flex; flex-direction:column; flex:1; }
+.recipe-card h4 { font-size:15px; margin-bottom:6px; line-height:1.3; min-height:2.6em; }
+.recipe-card .ingr { font-size:12px; color:var(--text-light); margin-bottom:8px; max-height:90px; overflow-y:auto; padding-right:4px; }
+.recipe-card .ingr::-webkit-scrollbar { width:4px; }
+.recipe-card .ingr::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+.recipe-card .recipe-bottom { margin-top:auto; }
+.recipe-card .recipe-reason { font-size:12px; color:var(--accent); margin:0 0 8px; }
+.recipe-card .footer { display:flex; justify-content:space-between; font-size:12px; color:var(--text-mid); padding-top:8px; border-top:1px dashed var(--border); }
 .card-beige { background:var(--card-beige); border-radius:12px; padding:16px; }
 
 /* 穿衣建议 */
@@ -342,6 +347,15 @@ input { font-family:inherit; outline:none; }
 .herb-atlas-item .ha-body { padding:10px 12px; }
 .herb-atlas-item h5 { font-size:14px; color:var(--text-dark); margin-bottom:2px; }
 .herb-atlas-item .ha-tag { font-size:12px; color:var(--text-light); }
+/* 弹窗内图鉴：更宽松 */
+.herb-atlas-modal { gap:20px; }
+.herb-atlas-modal .herb-atlas-item img { height:150px; }
+.herb-atlas-modal .herb-atlas-item .ha-body { padding:12px 14px; }
+.herb-atlas-modal .herb-atlas-item h5 { font-size:15px; margin-bottom:4px; }
+.herb-atlas-modal .herb-atlas-item .ha-tag { font-size:13px; }
+/* 图加载中：米色占位 + 淡入 */
+.ha-img { background:var(--card-beige); opacity:0; transition:opacity .35s; }
+.ha-img.loaded, .ha-img.error { opacity:1; background:none; }
 
 /* 周节气 banner */
 .season-banner { height:120px; border-radius:var(--radius); overflow:hidden; position:relative; display:flex; align-items:center; padding:0 28px; margin-bottom:20px; }

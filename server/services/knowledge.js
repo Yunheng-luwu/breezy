@@ -12,6 +12,7 @@ function load(file) {
 const acupoints = load('acupoints.json').map((a, i) => ({ id: i + 1, ...a }));
 const dietKb = load('diet.json');
 const medicines = load('medicines.json');
+const formulas = load('formulas.json');
 const practicesKb = load('practices.json');
 const constitutionSymptoms = load('constitution_symptoms.json');
 
@@ -57,9 +58,21 @@ function matchFootbath(status) {
 
 // ---------- 药膳食疗 ----------
 function getDietTherapy(type) {
-  const map = { tea: 'teas', porridge: 'porridges', dish: 'dishes' };
+  const map = { tea: 'teas', porridge: 'porridges', dish: 'dishes', soup: 'soups' };
   const key = map[type];
   return key ? dietKb[key] : null;
+}
+
+// ---------- 调养方剂（科普层面） ----------
+function findFormula(keyword) {
+  const kw = String(keyword || '').trim();
+  if (!kw) return null;
+  return formulas.find(f => f.name.includes(kw) || kw.includes(f.name))
+    || formulas.find(f => [f.effect, f.syndrome, f.ingredients].some(x => String(x || '').includes(kw)))
+    || null;
+}
+function listFormulaNames() {
+  return formulas.map(f => f.name);
 }
 
 // ---------- 中成药 ----------
@@ -143,6 +156,8 @@ module.exports = {
   getDietTherapy,
   findMedicine,
   listMedicineNames,
+  findFormula,
+  listFormulaNames,
   getPracticeMoves,
   getPracticeDetail,
   getConstitution,

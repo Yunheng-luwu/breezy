@@ -1,10 +1,10 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>松序 - 顺气舒心，慢养日常</title>
-<link rel="stylesheet" href="css/style.css?v=20261004-1">
+<link rel="stylesheet" href="css/style.css?v=20261006-4">
 
 </head>
 <body>
@@ -200,15 +200,15 @@
 
     <!-- 中药文化展示 -->
     <div class="herb-showcase">
-      <div class="herb-show-card">
+      <div class="herb-show-card" onclick="showPage('diet')">
         <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Close-up%20photography%20of%20dried%20rose%20buds%20and%20goji%20berries%20on%20a%20white%20ceramic%20plate%2C%20soft%20natural%20light%2C%20traditional%20Chinese%20medicine%20herbs&image_size=landscape_4_3" alt="玫瑰花茶">
         <div class="body"><h4>疏肝理气</h4><div class="desc">玫瑰花茶 · 枸杞 · 菊花</div></div>
       </div>
-      <div class="herb-show-card">
+      <div class="herb-show-card" onclick="showPage('care');switchCareTab('acupoint',event)">
         <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Traditional%20Chinese%20medicine%20acupoint%20massage%20illustration%2C%20hands%20pressing%20foot%20acupoint%2C%20warm%20lighting%2C%20wellness%20photography&image_size=landscape_4_3" alt="穴位疏通">
         <div class="body"><h4>穴位疏通</h4><div class="desc">太冲穴 · 期门穴 · 合谷穴</div></div>
       </div>
-      <div class="herb-show-card">
+      <div class="herb-show-card" onclick="showPage('practice')">
         <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Eight%20Brocades%20Qigong%20practice%20in%20a%20serene%20park%20at%20sunrise%2C%20silhouette%20of%20a%20person%20doing%20stretching%20exercise%2C%20warm%20morning%20light&image_size=landscape_4_3" alt="八段锦">
         <div class="body"><h4>功法带练</h4><div class="desc">八段锦 · 疏肝拉伸操</div></div>
       </div>
@@ -218,42 +218,12 @@
     <div class="card" style="margin-bottom:24px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
         <h3>中药图鉴 · 疏肝养身</h3>
-        <span class="tag tag-primary">本周推荐</span>
-      </div>
-      <div class="herb-atlas">
-        <div class="herb-atlas-item">
-          <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Dried%20chrysanthemum%20flowers%20in%20a%20white%20ceramic%20bowl%20on%20wooden%20table%2C%20soft%20natural%20light%2C%20traditional%20Chinese%20medicine%20herb%20photography&image_size=square" alt="菊花">
-          <div class="ha-body"><h5>菊花</h5><div class="ha-tag">清肝明目 · 泡茶</div></div>
-        </div>
-        <div class="herb-atlas-item">
-          <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Goji%20berries%20in%20a%20small%20bamboo%20basket%2C%20bright%20red%20dried%20fruits%2C%20warm%20lighting%2C%20traditional%20Chinese%20medicine&image_size=square" alt="枸杞">
-          <div class="ha-body"><h5>枸杞</h5><div class="ha-tag">滋补肝肾 · 日常</div></div>
-        </div>
-        <div class="herb-atlas-item">
-          <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Dried%20red%20dates%20jujube%20in%20a%20ceramic%20dish%2C%20warm%20lighting%2C%20traditional%20Chinese%20medicine%20herb%20photography&image_size=square" alt="红枣">
-          <div class="ha-body"><h5>红枣</h5><div class="ha-tag">补中益气 · 食疗</div></div>
-        </div>
-        <div class="herb-atlas-item">
-          <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Dried%20tangerine%20peel%20chenpi%20in%20a%20ceramic%20bowl%2C%20warm%20amber%20lighting%2C%20traditional%20Chinese%20medicine%20herb%20photography&image_size=square" alt="陈皮">
-          <div class="ha-body"><h5>陈皮</h5><div class="ha-tag">理气健脾 · 泡茶</div></div>
-        </div>
-        <div class="herb-atlas-item">
-          <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Dried%20rose%20buds%20in%20a%20white%20porcelain%20dish%2C%20soft%20pink%20color%2C%20delicate%20lighting%2C%20traditional%20Chinese%20medicine&image_size=square" alt="玫瑰花">
-          <div class="ha-body"><h5>玫瑰花</h5><div class="ha-tag">疏肝解郁 · 茶饮</div></div>
-        </div>
-        <div class="herb-atlas-item">
-          <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Ginseng%20roots%20displayed%20on%20a%20linen%20cloth%2C%20traditional%20Chinese%20medicine%2C%20warm%20natural%20lighting%2C%20professional%20herb%20photography&image_size=square" alt="黄芪">
-          <div class="ha-body"><h5>黄芪</h5><div class="ha-tag">补气固表 · 炖汤</div></div>
-        </div>
-        <div class="herb-atlas-item">
-          <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Dried%20angelica%20sinensis%20dong%20quai%20slices%20in%20a%20wooden%20bowl%2C%20traditional%20Chinese%20medicine%2C%20warm%20lighting&image_size=square" alt="当归">
-          <div class="ha-body"><h5>当归</h5><div class="ha-tag">补血活血 · 调经</div></div>
-        </div>
-        <div class="herb-atlas-item">
-          <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Dried%20honeysuckle%20flowers%20in%20a%20glass%20jar%2C%20traditional%20Chinese%20medicine%2C%20soft%20natural%20light%2C%20herb%20photography&image_size=square" alt="金银花">
-          <div class="ha-body"><h5>金银花</h5><div class="ha-tag">清热解毒 · 冲泡</div></div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="tag tag-primary" id="herbDailyTag">今日精选</span>
+          <button class="btn btn-sm btn-outline" onclick="openHerbAtlas()">查看全部 30 味 &rarr;</button>
         </div>
       </div>
+      <div class="herb-atlas" id="herbAtlas"></div>
     </div>
 
     <div class="quick-grid" style="margin-bottom:32px;">
@@ -396,6 +366,15 @@
       <div class="recipe-card"><div class="time-tag">晚餐</div><img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Spinach%20pork%20liver%20soup%20in%20a%20ceramic%20bowl%2C%20Chinese%20healthy%20dinner%2C%20warm%20lighting%2C%20food%20photography&image_size=square" style="width:100%;height:110px;object-fit:cover;" alt="菠菜猪肝汤"><div class="recipe-body"><h4>菠菜猪肝汤</h4><div class="ingr">菠菜150g, 猪肝100g, 姜片</div><div class="footer"><span class="recipe-action" onclick="toast('食谱加载中，请稍候…','info')">&#128293; 收藏</span><span class="recipe-action" onclick="toast('食谱加载中，请稍候…','info')">购物清单</span></div></div></div>
       <div class="recipe-card"><div class="time-tag">加餐</div><img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Rose%20petal%20tea%20with%20goji%20berries%20in%20a%20glass%20cup%2C%20herbal%20tea%20photography%2C%20warm%20afternoon%20light&image_size=square" style="width:100%;height:110px;object-fit:cover;" alt="玫瑰花茶"><div class="recipe-body"><h4>玫瑰花茶</h4><div class="ingr">玫瑰花5朵, 枸杞10粒, 蜂蜜</div><div class="footer"><span class="recipe-action" onclick="toast('食谱加载中，请稍候…','info')">&#128293; 收藏</span><span class="recipe-action" onclick="toast('食谱加载中，请稍候…','info')">购物清单</span></div></div></div>
     </div>
+    <div class="card" style="margin-bottom:20px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+        <div>
+          <h3 style="margin-bottom:6px;">药膳汤谱 &#127858;</h3>
+          <div style="font-size:13px;color:var(--text-light);">家常药膳 · 材料、做法、适用与禁忌齐全</div>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm" onclick="openSoupAtlas()">查看汤谱</button>
+      </div>
+    </div>
     <div class="season-banner">
       <img class="sb-img" src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=White%20dew%20season%20autumn%20morning%20with%20chrysanthemum%20and%20lily%20bulbs%2C%20traditional%20Chinese%20seasonal%20food%20ingredients%2C%20warm%20soft%20lighting&image_size=landscape_16_9" alt="白露节气">
       <div class="sb-content"><div class="season">二十四节气 · 白露</div><h3>润肺养阴 · 白露时令食方</h3><p>秋意渐浓，宜食百合、银耳、莲藕以润燥养阴</p></div>
@@ -458,9 +437,11 @@
         </div>
         <div class="card">
           <h3 style="margin-bottom:12px;">场景提醒</h3>
-          <div style="font-size:14px;color:var(--text-mid);margin-bottom:8px;">&#127779; 空调房披披肩</div>
-          <div style="font-size:14px;color:var(--text-mid);margin-bottom:8px;">&#127783; 雨天不露脚踝</div>
-          <div style="font-size:14px;color:var(--text-mid);">&#128170; 出汗不马上脱衣</div>
+          <div id="sceneReminders">
+            <div style="font-size:14px;color:var(--text-mid);margin-bottom:8px;">&#127779; 空调房披披肩</div>
+            <div style="font-size:14px;color:var(--text-mid);margin-bottom:8px;">&#127783; 雨天不露脚踝</div>
+            <div style="font-size:14px;color:var(--text-mid);">&#128170; 出汗不马上脱衣</div>
+          </div>
         </div>
       </div>
     </div>
@@ -877,7 +858,7 @@
 </div>
 <div class="toast-wrap" id="toastWrap"></div>
 
-<script src="js/app.js?v=20261006-1"></script>
+<script src="js/app.js?v=20261006-11"></script>
 <script src="js/stickman.js?v=20261003-54"></script>
 <script type="module" src="js/ai-pose.js?v=20261005-14"></script>
 

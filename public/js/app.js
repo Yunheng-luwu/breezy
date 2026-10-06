@@ -74,6 +74,9 @@ function openModal(html, opts) {
   if (opts.wide) {
     box.style.width = '1400px';
     box.style.maxWidth = '95vw';
+  } else if (opts.width) {
+    box.style.width = opts.width + 'px';
+    box.style.maxWidth = '95vw';
   } else {
     box.style.width = '';
     box.style.maxWidth = '';
@@ -492,11 +495,273 @@ function weatherEmoji(text) {
   return '\u{2601}';
 }
 
+// ============ 中药图鉴（每日轮换 8 味 + 查看全部 30 味） ============
+const HERBS_POOL = [
+  { name: '菊花', effect: '清肝明目 · 泡茶', prompt: 'Dried chrysanthemum flowers in a white ceramic bowl on wooden table, soft natural light, traditional Chinese medicine herb photography',
+    nature: '辛、甘、苦，微寒；归肺、肝经', desc: '散风清热、平肝明目、清热解毒；常用于风热感冒、头痛眩晕、目赤肿痛、眼目昏花。', usage: '取3~5朵沸水冲泡代茶，可配枸杞、金银花同饮。' },
+  { name: '枸杞', effect: '滋补肝肾 · 日常', prompt: 'Goji berries in a small bamboo basket, bright red dried fruits, warm lighting, traditional Chinese medicine',
+    nature: '甘，平；归肝、肾经', desc: '滋补肝肾、益精明目；用于虚劳精亏、腰膝酸痛、眩晕耳鸣、目昏不明。', usage: '每日10~20克，可直接嚼食、泡水或煮粥炖汤。' },
+  { name: '红枣', effect: '补中益气 · 食疗', prompt: 'Dried red dates jujube in a ceramic dish, warm lighting, traditional Chinese medicine herb photography',
+    nature: '甘，温；归脾、胃、心经', desc: '补中益气、养血安神；用于脾胃虚弱、血虚萎黄、疲乏无力。', usage: '煮粥炖汤或去核泡水，每日3~5枚为宜。' },
+  { name: '陈皮', effect: '理气健脾 · 泡茶', prompt: 'Dried tangerine peel chenpi in a ceramic bowl, warm amber lighting, traditional Chinese medicine herb photography',
+    nature: '苦、辛，温；归肺、脾经', desc: '理气健脾、燥湿化痰；用于胸脘胀满、食少吐泻、咳嗽痰多。', usage: '泡水、入菜或煲汤时放2~3片，陈久者佳。' },
+  { name: '玫瑰花', effect: '疏肝解郁 · 茶饮', prompt: 'Dried rose buds in a white porcelain dish, soft pink color, delicate lighting, traditional Chinese medicine',
+    nature: '甘、微苦，温；归肝、脾经', desc: '疏肝解郁、和血止痛；用于肝胃气痛、食少呕恶、月经不调。', usage: '取3~6朵沸水冲泡，可配红枣、蜂蜜。' },
+  { name: '黄芪', effect: '补气固表 · 炖汤', prompt: 'Astragalus membranaceus huangqi dried root slices on linen cloth, traditional Chinese medicine, warm natural lighting',
+    nature: '甘，微温；归脾、肺经', desc: '补气升阳、固表止汗、利水消肿；用于气虚乏力、食少便溏、自汗浮肿。', usage: '炖汤或煮水，常用10~30克；感冒发热时不宜。' },
+  { name: '当归', effect: '补血活血 · 调经', prompt: 'Dried angelica sinensis dong quai slices in a wooden bowl, traditional Chinese medicine, warm lighting',
+    nature: '甘、辛，温；归肝、心、脾经', desc: '补血活血、调经止痛、润肠通便；用于血虚萎黄、月经不调、肠燥便秘。', usage: '入药膳炖煮（如当归生姜羊肉汤）；孕期使用请先咨询医师。' },
+  { name: '金银花', effect: '清热解毒 · 冲泡', prompt: 'Dried honeysuckle flowers in a glass jar, traditional Chinese medicine, soft natural light, herb photography',
+    nature: '甘，寒；归肺、心、胃经', desc: '清热解毒、疏散风热；用于风热感冒、咽喉肿痛、痈肿疔疮。', usage: '取5~10克泡茶代饮，脾胃虚寒者不宜多服。' },
+  { name: '茯苓', effect: '健脾宁心 · 煮粥', prompt: 'Poria cocos fuling dried white cubes in a ceramic bowl, traditional Chinese medicine, soft lighting',
+    nature: '甘、淡，平；归心、肺、脾、肾经', desc: '利水渗湿、健脾、宁心；用于水肿尿少、脾虚食少、便溏泄泻、心神不安、惊悸失眠。', usage: '煮粥炖汤，或磨粉与面粉同做糕点。' },
+  { name: '山药', effect: '健脾养胃 · 炖汤', prompt: 'Dried Chinese yam shan yao slices on wooden table, traditional Chinese medicine, natural light',
+    nature: '甘，平；归脾、肺、肾经', desc: '既能补脾肺肾之气，又能滋养脾肺肾之阴；常用于脾虚食少、肺虚喘咳、肾虚遗精。', usage: '蒸食、炖汤或煮粥，鲜干品皆宜。' },
+  { name: '百合', effect: '润肺安神 · 煮粥', prompt: 'Dried lily bulb bai he scales in a ceramic plate, traditional Chinese medicine, soft warm light',
+    nature: '甘，寒；归心、肺经', desc: '养阴润肺、清心安神；用于阴虚燥咳、虚烦惊悸、失眠多梦。', usage: '煮粥、蒸食或炖甜汤，常配银耳、莲子。' },
+  { name: '莲子', effect: '养心安神 · 煮粥', prompt: 'Dried lotus seeds lian zi in a small wooden bowl, traditional Chinese medicine, warm lighting',
+    nature: '甘、涩，平；归脾、肾、心经', desc: '补脾止泻、益肾涩精、养心安神；用于脾虚泄泻、心悸失眠、肾虚遗精。', usage: '煮粥炖汤；去芯食用口感更佳，带芯则兼可清心。' },
+  { name: '桂圆', effect: '补益心脾 · 泡茶', prompt: 'Dried longan gui yuan fruits in a ceramic dish, traditional Chinese medicine, warm brown tones',
+    nature: '甘，温；归心、脾经', desc: '补益心脾、养血安神；用于气血不足、心悸怔忡、健忘失眠。', usage: '直接食用或炖甜汤；内有痰火、湿滞者慎食。' },
+  { name: '酸枣仁', effect: '养心安神 · 泡茶', prompt: 'Dried sour jujube seeds suan zao ren in a small ceramic dish, traditional Chinese medicine, soft natural light',
+    nature: '甘、酸，平；归肝、胆、心经', desc: '养心补肝、宁心安神、敛汗；用于虚烦不眠、惊悸多梦、体虚自汗。', usage: '炒香后研末或煮水，睡前半小时温服。' },
+  { name: '决明子', effect: '清肝明目 · 泡茶', prompt: 'Dried cassia seeds jue ming zi in a wooden spoon, traditional Chinese medicine, warm lighting',
+    nature: '甘、苦、咸，微寒；归肝、大肠经', desc: '清肝明目、润肠通便；用于目赤涩痛、头痛眩晕、大便秘结。', usage: '炒后取10克左右泡茶；脾虚便溏者不宜。' },
+  { name: '薄荷', effect: '疏风清热 · 泡茶', prompt: 'Dried mint leaves bo he in a glass bowl, traditional Chinese medicine, fresh green tones, natural light',
+    nature: '辛，凉；归肺、肝经', desc: '疏散风热、清利头目、利咽透疹、疏肝行气；用于风热感冒、咽喉肿痛、胸闷胁胀。', usage: '鲜叶或干叶沸水冲泡，不宜久煮以免香气散失。' },
+  { name: '甘草', effect: '调和诸药 · 泡茶', prompt: 'Dried licorice root gan cao slices on linen cloth, traditional Chinese medicine, warm natural light',
+    nature: '甘，平；归心、肺、脾、胃经', desc: '补脾益气、清热解毒、祛痰止咳、缓急止痛、调和诸药；用于脾胃虚弱、咳嗽痰多、脘腹挛急。', usage: '泡水或入汤配伍；不宜长期大量服用。' },
+  { name: '党参', effect: '健脾益肺 · 炖汤', prompt: 'Dried codonopsis dang shen roots coiled on wooden table, traditional Chinese medicine, warm lighting',
+    nature: '甘，平；归脾、肺经', desc: '健脾益肺、养血生津；用于脾肺气虚、食少倦怠、气血不足、津伤口渴。', usage: '炖汤煮粥常用10~30克，宜作平补之品。' },
+  { name: '麦冬', effect: '养阴生津 · 泡茶', prompt: 'Dried ophiopogon mai dong root tubers in a ceramic dish, traditional Chinese medicine, soft light',
+    nature: '甘、微苦，微寒；归心、肺、胃经', desc: '养阴生津、润肺清心；用于肺燥干咳、喉痹咽痛、津伤口渴、心烦失眠。', usage: '泡茶或炖汤，常与玉竹、沙参同用。' },
+  { name: '玉竹', effect: '养阴润燥 · 炖汤', prompt: 'Dried polygonatum yu zhu root segments on wooden board, traditional Chinese medicine, natural tones',
+    nature: '甘，微寒；归肺、胃经', desc: '养阴润燥、生津止渴；用于肺胃阴伤、燥热咳嗽、咽干口渴、内热消渴。', usage: '炖汤煮水，常与麦冬同用以养阴生津。' },
+  { name: '山楂', effect: '消食化积 · 泡水', prompt: 'Dried hawthorn berry slices shan zha in a ceramic plate, traditional Chinese medicine, warm red tones',
+    nature: '酸、甘，微温；归脾、胃、肝经', desc: '消食健胃、行气散瘀；用于肉食积滞、胃脘胀满、泻痢腹痛。', usage: '干片泡水或煮粥；胃酸过多者不宜空腹多食。' },
+  { name: '薏苡仁', effect: '健脾祛湿 · 煮粥', prompt: 'White coix seeds yi yi ren in a small bamboo bowl, traditional Chinese medicine, bright natural light',
+    nature: '甘、淡，凉；归脾、胃、肺经', desc: '利水渗湿、健脾止泻；用于水肿脚气、小便不利、脾虚泄泻。', usage: '煮粥前浸泡2小时更易煮烂；孕妇食用请先咨询医师。' },
+  { name: '黑芝麻', effect: '滋补肝肾 · 佐餐', prompt: 'Black sesame seeds in a small wooden spoon, traditional Chinese medicine food photography, warm light',
+    nature: '甘，平；归肝、肾、大肠经', desc: '补肝肾、益精血、润肠燥；用于精血亏虚、头晕眼花、须发早白、肠燥便秘。', usage: '炒熟碾碎后佐餐、冲糊，碾碎更利吸收。' },
+  { name: '核桃仁', effect: '补肾健脑 · 佐餐', prompt: 'Walnut kernels in a ceramic dish, traditional Chinese medicine food photography, warm tones',
+    nature: '甘，温；归肾、肺、大肠经', desc: '补肾、温肺、润肠；用于肾阳不足、腰膝酸软、肺虚久咳、肠燥便秘。', usage: '每日2~3颗直接食用，或入粥入菜。' },
+  { name: '桂花', effect: '温中散寒 · 泡茶', prompt: 'Dried osmanthus flowers gui hua in a small glass dish, traditional Chinese medicine, golden tiny blooms',
+    nature: '辛，温；归肺、脾、肾经', desc: '温中散寒、化痰止咳；用于痰饮咳喘、口臭、食欲不振。', usage: '泡茶、酿蜜或做糕点，每次1~3克即可。' },
+  { name: '蒲公英', effect: '清热解毒 · 泡茶', prompt: 'Dried dandelion root and leaves in a kraft paper bag, traditional Chinese medicine, natural light',
+    nature: '甘、苦，寒；归肝、胃经', desc: '清热解毒、消肿散结、利尿通淋；用于疔疮肿毒、咽喉肿痛、湿热黄疸。', usage: '干品5~10克泡茶；脾胃虚寒者不宜多服。' },
+  { name: '胖大海', effect: '清咽利喉 · 泡茶', prompt: 'Dried boat sterculia seeds pang da hai in a ceramic bowl, traditional Chinese medicine, brown tones',
+    nature: '甘，寒；归肺、大肠经', desc: '清热润肺、利咽开音、润肠通便；用于肺热声哑、干咳无痰、咽喉干痛、热结便秘。', usage: '取2~3枚沸水泡饮；不宜长期依赖。' },
+  { name: '西洋参', effect: '补气养阴 · 泡茶', prompt: 'American ginseng root slices on linen cloth, traditional Chinese medicine, soft lighting',
+    nature: '甘、微苦，凉；归心、肺、肾经', desc: '补气养阴、清热生津；用于气虚阴亏、虚热烦倦、咳喘痰血、内热消渴。', usage: '3~6克切片泡水或含服；服用时不宜同时饮浓茶。' },
+  { name: '生姜', effect: '温中散寒 · 调味', prompt: 'Fresh ginger root slices on wooden cutting board, traditional Chinese medicine food photography, warm light',
+    nature: '辛，微温；归肺、脾、胃经', desc: '解表散寒、温中止呕、温肺止咳；用于风寒感冒、胃寒呕吐、寒痰咳嗽。', usage: '煮汤调味或做姜糖水；阴虚内热者少食。' },
+  { name: '莲子心', effect: '清心除烦 · 泡茶', prompt: 'Dried lotus seed embryos lian zi xin green tiny sprouts in a small dish, traditional Chinese medicine, soft light',
+    nature: '苦，寒；归心、肾经', desc: '清心安神、交通心肾、涩精止血；用于热入心包、心肾不交、失眠遗精。', usage: '取1~2克泡茶，味苦性寒；脾胃虚寒者不宜。' },
+  // ---- 以下 28 味摘自《科普比赛资料.docx》，desc 照抄资料原文 ----
+  { name: '白扁豆', effect: '健脾化湿 · 煮粥', prompt: 'Dried white hyacinth beans bai bian dou in a ceramic bowl, traditional Chinese medicine, soft natural light',
+    nature: '甘，微温；归脾、胃经', desc: '健脾化湿，和中消暑，对脾虚湿盛、暑湿吐泻有帮助。', usage: '煮粥炖汤常用10~30克；须煮透至软烂，生扁豆有毒。' },
+  { name: '赤小豆', effect: '利水消肿 · 煮粥', prompt: 'Dried adzuki red beans chi xiao dou in a small bamboo basket, traditional Chinese medicine, warm lighting',
+    nature: '甘、酸，平；归心、小肠经', desc: '有利水消肿、解毒排脓之效。', usage: '煮汤煮粥常用30克左右，可配薏苡仁同煮。' },
+  { name: '胡椒', effect: '温中散寒 · 调味', prompt: 'Dried black peppercorns in a small ceramic dish, traditional Chinese medicine spice photography, warm tones',
+    nature: '辛，热；归胃、大肠经', desc: '有温中散寒、下气消痰的作用。', usage: '做菜调味少许即可；阴虚有火、咽喉口干者少食。' },
+  { name: '甜杏仁', effect: '润肺止咳 · 炖羹', prompt: 'Dried sweet apricot kernels in a white ceramic plate, traditional Chinese medicine, soft lighting',
+    nature: '甘，平；归肺、大肠经', desc: '润肺止咳、润肠通便。', usage: '炖甜品或打浆，一次10克左右为宜，勿过量。' },
+  { name: '蜂蜜', effect: '润肺通便 · 冲调', prompt: 'Honey jar with wooden dipper on wooden table with dried herbs, traditional Chinese medicine, warm golden lighting',
+    nature: '甘，平；归肺、脾、大肠经', desc: '可补中缓急、润肺止咳、润肠通便等。', usage: '温水冲服，水温不宜过高；一岁以下婴儿不宜。' },
+  { name: '白芍', effect: '养血柔肝 · 配伍', prompt: 'Dried white peony root bai shao slices on linen cloth, traditional Chinese medicine, soft natural light',
+    nature: '苦、酸，微寒；归肝、脾经', desc: '养血调经、敛阴止汗、柔肝止痛、平抑肝阳。', usage: '多作配伍煎服，常用6~15克；不宜与藜芦同用。' },
+  { name: '川贝母', effect: '润肺止咳 · 炖梨', prompt: 'Dried fritillaria chuan bei mu small white bulbs in a ceramic dish, traditional Chinese medicine, soft lighting',
+    nature: '苦、甘，微寒；归肺、心经', desc: '润肺止咳、化痰散结。', usage: '研粉炖梨或冲服，常用3~10克；不宜与乌头类同用。' },
+  { name: '天门冬', effect: '养阴润燥 · 炖汤', prompt: 'Dried asparagus root tian men dong spindle-shaped roots on wooden board, traditional Chinese medicine, natural tones',
+    nature: '甘、苦，寒；归肺、肾经', desc: '养阴润燥、清肺生津。', usage: '炖汤或煮水；虚寒腹泻者不宜多服。' },
+  { name: '桔梗', effect: '宣肺利咽 · 泡茶', prompt: 'Dried platycodon jie geng root slices in a kraft paper bag, traditional Chinese medicine, natural light',
+    nature: '苦、辛，平；归肺经', desc: '宣肺、利咽、祛痰、排脓。', usage: '泡水或入汤剂，常用3~10克；阴虚久咳者慎用。' },
+  { name: '银耳', effect: '滋阴润肺 · 炖羹', prompt: 'Dried white snow fungus tremella in a ceramic bowl, traditional Chinese medicine, bright soft lighting',
+    nature: '甘，平；归肺、胃、肾经', desc: '有滋阴润肺等功效。', usage: '泡发后炖羹，常配红枣、莲子、冰糖。' },
+  { name: '白茅根', effect: '凉血利尿 · 煮水', prompt: 'Dried imperata bai mao gen white grass roots bundled on linen cloth, traditional Chinese medicine, natural light',
+    nature: '甘，寒；归肺、胃、膀胱经', desc: '凉血止血、清热利尿。', usage: '鲜品或干品煮水代茶，常用15~30克；脾胃虚寒者不宜多服。' },
+  { name: '桂枝', effect: '温通经脉 · 配伍', prompt: 'Dried cassia twig gui zhi thin bark sticks on wooden table, traditional Chinese medicine, warm tones',
+    nature: '辛、甘，温；归心、肺、膀胱经', desc: '发汗解肌、温通经脉、助阳化气。', usage: '多作配伍煎服，常用3~10克；温热病及阴虚阳盛者忌用。' },
+  { name: '荆芥', effect: '解表散风 · 配伍', prompt: 'Dried jing jie herb with green stems and leaves in a paper bag, traditional Chinese medicine, natural light',
+    nature: '辛，微温；归肺、肝经', desc: '解表散风、透疹消疮。', usage: '多入汤剂，常用5~10克，不宜久煎。' },
+  { name: '砂仁', effect: '化湿开胃 · 炖汤', prompt: 'Dried amomum sha ren round brown seeds in a small ceramic dish, traditional Chinese medicine, warm lighting',
+    nature: '辛，温；归脾、胃、肾经', desc: '化湿开胃、温脾止泻、理气安胎。', usage: '炖汤宜后下，或研末冲服，常用3~6克。' },
+  { name: '桑叶', effect: '清肝明目 · 泡茶', prompt: 'Dried mulberry leaves sang ye in a glass bowl, traditional Chinese medicine, green tones, natural light',
+    nature: '甘、苦，寒；归肺、肝经', desc: '疏散风热、清肺润燥、清肝明目。', usage: '取10克左右泡茶，可配菊花同饮。' },
+  { name: '芦根', effect: '生津止渴 · 煮水', prompt: 'Dried reed rhizome lu gen pale bamboo-like root segments on wooden board, traditional Chinese medicine, natural tones',
+    nature: '甘，寒；归肺、胃经', desc: '清热泻火、生津止渴、除烦止呕、利尿。', usage: '鲜干品均可煮水代茶，常用15~30克；脾胃虚寒者慎用。' },
+  { name: '枇杷叶', effect: '清肺止咳 · 煮水', prompt: 'Dried loquat leaf pi pa ye in a kraft paper bundle, traditional Chinese medicine, green brown tones',
+    nature: '苦，微寒；归肺、胃经', desc: '清肺止咳、和胃降逆。', usage: '刷去叶背绒毛后煮水，常用6~10克。' },
+  { name: '牡丹皮', effect: '清热凉血 · 配伍', prompt: 'Dried moutan cortex mu dan pi bark curls on linen cloth, traditional Chinese medicine, soft reddish brown tones',
+    nature: '苦、辛，微寒；归心、肝、肾经', desc: '清热凉血、活血化瘀。', usage: '多作配伍煎服，常用6~12克；孕妇及月经过多者慎用。' },
+  { name: '五味子', effect: '益气生津 · 泡茶', prompt: 'Dried schisandra berries wu wei zi in a small ceramic dish, traditional Chinese medicine, deep red tones',
+    nature: '酸、甘，温；归肺、心、肾经', desc: '收敛固涩、益气生津、补肾宁心。', usage: '3~6克泡水或入汤剂；感冒初起、有实热者不宜。' },
+  { name: '竹叶', effect: '清热除烦 · 泡茶', prompt: 'Dried bamboo leaves zhu ye in a glass jar, traditional Chinese medicine, fresh green tones, natural light',
+    nature: '甘、淡，寒；归心、胃、小肠经', desc: '清热泻火、除烦、利尿。', usage: '干品6~10克泡茶或煮水；体寒者不宜多饮。' },
+  { name: '泽泻', effect: '利水渗湿 · 配伍', prompt: 'Dried alisma ze xie round white rhizome slices in a ceramic bowl, traditional Chinese medicine, soft light',
+    nature: '甘、淡，寒；归肾、膀胱经', desc: '利水渗湿、泄热、化浊降脂。', usage: '多作配伍煎服，常用6~10克。' },
+  { name: '山茱萸', effect: '补益肝肾 · 配伍', prompt: 'Dried cornus shan zhu yu deep red berries in a ceramic dish, traditional Chinese medicine, warm red tones',
+    nature: '酸、涩，微温；归肝、肾经', desc: '补益肝肾、收涩固脱。', usage: '多作配伍煎服，常用6~12克；湿热淋证者不宜。' },
+  { name: '熟地黄', effect: '补血滋阴 · 配伍', prompt: 'Dried prepared rehmannia shu di huang dark brown root segments on wooden board, traditional Chinese medicine, soft light',
+    nature: '甘，微温；归肝、肾经', desc: '补血滋阴、益精填髓。', usage: '多作配伍煎服，常用9~15克；滋腻碍胃，脾虚食少者慎用。' },
+  { name: '川芎', effect: '活血行气 · 配伍', prompt: 'Dried chuanxiong ligusticum irregular root slices in a kraft paper bag, traditional Chinese medicine, warm natural light',
+    nature: '辛，温；归肝、胆、心包经', desc: '活血行气、祛风止痛。', usage: '多作配伍煎服，常用3~10克；阴虚火旺者慎用。' },
+  { name: '乌药', effect: '行气止痛 · 配伍', prompt: 'Dried lindera wu yao round root slices in a ceramic bowl, traditional Chinese medicine, warm brown tones',
+    nature: '辛，温；归肺、脾、肾、膀胱经', desc: '行气止痛、温肾散寒。', usage: '多作配伍煎服，常用6~10克。' },
+  { name: '益智仁', effect: '暖肾缩尿 · 炖汤', prompt: 'Dried alpinia yi zhi ren oblong seeds in a small ceramic dish, traditional Chinese medicine, warm tones',
+    nature: '辛，温；归脾、肾经', desc: '暖肾固精缩尿、温脾止泻摄唾。', usage: '炖汤或配伍，常用3~9克；阴虚火旺者慎用。' },
+  { name: '防风', effect: '祛风解表 · 配伍', prompt: 'Dried saposhnikovia fang feng root slices on linen cloth, traditional Chinese medicine, natural light',
+    nature: '辛、甘，微温；归膀胱、肝、脾经', desc: '祛风解表、胜湿止痛、止痉。', usage: '多作配伍煎服，常用5~10克。' },
+  { name: '高丽参', effect: '大补元气 · 炖汤', prompt: 'Dried korean ginseng whole roots in an elegant wooden box, traditional Chinese medicine, warm amber lighting',
+    nature: '甘、微苦，微温；归脾、肺、心、肾经', desc: '大补元气、复脉固脱、益气摄血。', usage: '切片炖服或含服，常用3~6克；感冒发热时不宜，忌与萝卜、浓茶同服。' },
+];
+
+function herbImg(prompt) {
+  return 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=' + encodeURIComponent(prompt) + '&image_size=square';
+}
+
+// 药材图加载完成/失败 → 淡入显示（load/error 不冒泡，用捕获）
+document.addEventListener('load', function (e) {
+  if (e.target && e.target.classList && e.target.classList.contains('ha-img')) e.target.classList.add('loaded');
+}, true);
+document.addEventListener('error', function (e) {
+  if (e.target && e.target.classList && e.target.classList.contains('ha-img')) e.target.classList.add('error');
+}, true);
+
+function renderHerbAtlas() {
+  const el = document.getElementById('herbAtlas');
+  if (!el) return;
+  const doy = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
+  const n = HERBS_POOL.length;
+  const pick = [];
+  for (let i = 0; i < 8; i++) { const idx = (doy + i) % n; pick.push([idx, HERBS_POOL[idx]]); }
+  el.innerHTML = pick.map(function (p) {
+    return '<div class="herb-atlas-item" onclick="openHerbDetail(' + p[0] + ')" style="cursor:pointer">' +
+      '<img src="' + herbImg(p[1].prompt) + '" alt="' + p[1].name + '" class="ha-img">' +
+      '<div class="ha-body"><h5>' + p[1].name + '</h5><div class="ha-tag">' + p[1].effect + '</div></div></div>';
+  }).join('');
+  const d = new Date();
+  const lbl = document.getElementById('herbDailyTag');
+  if (lbl) lbl.textContent = '今日精选 · ' + (d.getMonth() + 1) + '月' + d.getDate() + '日';
+  // 3 秒后后台分批预热全部药材图（避免瞬时并发触发限流；弹窗打开时已基本生成好）
+  setTimeout(function () {
+    let queue = HERBS_POOL.slice();
+    const step = function () {
+      queue.splice(0, 6).forEach(function (h) { const im = new Image(); im.src = herbImg(h.prompt); });
+      if (queue.length) setTimeout(step, 1500);
+    };
+    step();
+  }, 3000);
+}
+
+function openHerbAtlas() {
+  const cards = HERBS_POOL.map(function (h, i) {
+    return '<div class="herb-atlas-item" onclick="openHerbDetail(' + i + ')" style="cursor:pointer">' +
+      '<img loading="lazy" src="' + herbImg(h.prompt) + '" alt="' + h.name + '" class="ha-img">' +
+      '<div class="ha-body"><h5>' + h.name + '</h5><div class="ha-tag">' + h.effect + '</div></div></div>';
+  }).join('');
+  openModal(
+    '<div style="padding:24px 28px 28px;">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin:-24px -28px 10px;padding:16px 28px 12px;position:sticky;top:0;background:var(--card,#fff);z-index:10;">' +
+    '<h3 style="margin:0;">中药图鉴 · ' + HERBS_POOL.length + ' 味药食同源</h3>' +
+    '<span class="modal-close" onclick="closeModal()" style="font-size:26px;cursor:pointer;color:var(--text-mid);padding:0 8px;">&times;</span></div>' +
+    '<p style="color:var(--text-mid);font-size:14px;margin-bottom:20px;">日常调理以「药食同源」为原则，适量为宜；体质特殊或正在服药者，请先咨询医师。</p>' +
+    '<div class="herb-atlas herb-atlas-modal" style="margin-bottom:0;">' + cards + '</div>' +
+    '</div>',
+    { width: 1000 }
+  );
+}
+
+// 药材详情弹窗（点击药材卡片进入）
+function openHerbDetail(idx) {
+  const h = HERBS_POOL[idx];
+  if (!h) return;
+  openModal(
+    '<div style="padding:24px 28px 28px;">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin:-24px -28px 16px;padding:16px 28px 12px;position:sticky;top:0;background:var(--card,#fff);z-index:10;">' +
+    '<span onclick="openHerbAtlas()" style="cursor:pointer;color:var(--accent);font-size:14px;font-weight:600;">&larr; 返回图鉴</span>' +
+    '<span class="modal-close" onclick="closeModal()" style="font-size:26px;cursor:pointer;color:var(--text-mid);padding:0 8px;">&times;</span></div>' +
+    '<div style="text-align:center;margin-bottom:20px;">' +
+    '<img src="' + herbImg(h.prompt) + '" alt="' + h.name + '" class="ha-img" style="width:220px;height:220px;border-radius:18px;object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,.10);">' +
+    '<h3 style="margin:16px 0 8px;">' + h.name + '</h3>' +
+    '<span class="ha-tag" style="display:inline-block;">' + h.effect + '</span></div>' +
+    '<div style="display:flex;flex-direction:column;gap:14px;text-align:left;font-size:15px;">' +
+    '<div><b>性味归经</b><p style="color:var(--text-mid);margin-top:4px;">' + (h.nature || '—') + '</p></div>' +
+    '<div><b>功效描述</b><p style="color:var(--text-mid);margin-top:4px;">' + (h.desc || '—') + '</p></div>' +
+    '<div><b>常见用法</b><p style="color:var(--text-mid);margin-top:4px;">' + (h.usage || '—') + '</p></div>' +
+    '</div>' +
+    '<p style="margin-top:20px;padding:12px 14px;background:rgba(139,0,0,.06);border-radius:10px;font-size:13px;color:var(--text-mid);">以上内容仅供养生科普参考，不构成医疗建议；体质特殊、孕期或正在服药者，请先咨询医师或药师。</p>' +
+    '</div>',
+    { width: 640 }
+  );
+}
+
+// ============ 药膳汤谱（饮食调理页入口，数据与 AI 工具共用 knowledge 库） ============
+let soupCache = null;
+async function fetchSoups() {
+  if (soupCache) return soupCache;
+  const res = await fetchAPI('/diet/soups');
+  if (res.success && res.data && Array.isArray(res.data.items)) soupCache = res.data.items;
+  return soupCache;
+}
+
+async function openSoupAtlas() {
+  openModal(
+    '<div style="padding:24px 28px 28px;">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin:-24px -28px 10px;padding:16px 28px 12px;position:sticky;top:0;background:var(--card,#fff);z-index:10;">' +
+    '<h3 style="margin:0;">药膳汤谱</h3>' +
+    '<span class="modal-close" onclick="closeModal()" style="font-size:26px;cursor:pointer;color:var(--text-mid);padding:0 8px;">&times;</span></div>' +
+    '<p style="color:var(--text-mid);font-size:14px;margin-bottom:16px;">常见家常药膳，材料平和易得；点击汤谱查看做法与禁忌。</p>' +
+    '<div id="soupList" style="display:flex;flex-direction:column;gap:12px;"><div style="text-align:center;color:var(--text-light);padding:24px 0;">正在加载汤谱…</div></div>' +
+    '</div>',
+    { width: 640 }
+  );
+  const items = await fetchSoups();
+  const list = document.getElementById('soupList');
+  if (!list) return;
+  if (!items || !items.length) {
+    list.innerHTML = '<div style="text-align:center;color:var(--text-light);padding:24px 0;">汤谱数据暂时不可用，请稍后再试。</div>';
+    return;
+  }
+  list.innerHTML = items.map(function (s, i) {
+    return '<div onclick="openSoupDetail(' + i + ')" style="cursor:pointer;padding:14px 16px;border:1px solid var(--line,#eee);border-radius:12px;transition:box-shadow .2s;" onmouseover="this.style.boxShadow=\'0 4px 14px rgba(0,0,0,.07)\'" onmouseout="this.style.boxShadow=\'none\'">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">' +
+      '<h4 style="margin:0;">' + s.name + '</h4>' +
+      '<span class="tag tag-primary">' + String(s.effect || '').replace(/[。；]$/, '') + '</span></div>' +
+      '<div style="font-size:13px;color:var(--text-light);margin-top:6px;">适用：' + (s.suitable || '一般人群') + '</div></div>';
+  }).join('');
+}
+
+async function openSoupDetail(i) {
+  const items = await fetchSoups();
+  const s = items && items[i];
+  if (!s) return;
+  const row = function (label, text) {
+    return text ? '<div><b>' + label + '</b><p style="color:var(--text-mid);margin-top:4px;">' + text + '</p></div>' : '';
+  };
+  openModal(
+    '<div style="padding:24px 28px 28px;">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin:-24px -28px 16px;padding:16px 28px 12px;position:sticky;top:0;background:var(--card,#fff);z-index:10;">' +
+    '<span onclick="openSoupAtlas()" style="cursor:pointer;color:var(--accent);font-size:14px;font-weight:600;">&larr; 返回汤谱</span>' +
+    '<span class="modal-close" onclick="closeModal()" style="font-size:26px;cursor:pointer;color:var(--text-mid);padding:0 8px;">&times;</span></div>' +
+    '<div style="text-align:center;margin-bottom:20px;"><h3 style="margin-bottom:8px;">' + s.name + '</h3>' +
+    '<span class="tag tag-primary">' + String(s.effect || '').replace(/[。；]$/, '') + '</span></div>' +
+    '<div style="display:flex;flex-direction:column;gap:14px;text-align:left;font-size:15px;">' +
+    row('材料', s.ingredients) + row('做法', s.method) + row('适用', s.suitable) +
+    row('禁忌', s.contraindication) + row('建议频率', s.frequency) +
+    '</div>' +
+    '<p style="margin-top:20px;padding:12px 14px;background:rgba(139,0,0,.06);border-radius:10px;font-size:13px;color:var(--text-mid);">' + (s.note || '药膳使用请咨询中医师，孕妇、儿童及慢性病患者遵医嘱。') + '</p>' +
+    '</div>',
+    { width: 640 }
+  );
+}
+
 async function loadHomeData() {
-  const [dash, meds, acuDay] = await Promise.all([
+  const [dash, meds, acuDay, clothing] = await Promise.all([
     fetchAPI('/health/dashboard'),
     fetchAPI('/record/medicines').catch(() => null),
     fetchAPI('/care/acupoint-of-day').catch(() => null),
+    fetchAPI('/clothing').catch(() => null),
   ]);
   if (dash.success && dash.data) {
     const d = dash.data;
@@ -525,6 +790,17 @@ async function loadHomeData() {
     const btn = document.getElementById('acuOfDayBtn');
     if (btn) btn.onclick = () => openAcuDetail(a.id);
   }
+  // 场景提醒随实时天气动态生成（雨雪/大风/温差/高温空调等）；接口失败保留页面静态兜底
+  const reminders = clothing && clothing.success && clothing.data && clothing.data.reminders;
+  if (Array.isArray(reminders) && reminders.length) {
+    const box = document.getElementById('sceneReminders');
+    if (box) {
+      box.innerHTML = reminders.map((r, i) =>
+        `<div style="font-size:14px;color:var(--text-mid);${i < reminders.length - 1 ? 'margin-bottom:8px;' : ''}">${r.icon} ${escapeHtml(r.text)}</div>`
+      ).join('');
+    }
+  }
+  renderHerbAtlas();
   loadTodos();
 }
 
@@ -732,9 +1008,22 @@ async function generateRecipe() {
 }
 
 // ============ 饮食调理 ============
-function renderFoodTags(el, items, cls) {
-  if (!el || !Array.isArray(items)) return;
-  el.innerHTML = items.map(f => `<span class="food-tag ${cls}">${escapeHtml(f)}</span>`).join('');
+// 红黑榜标签渲染：兼容旧字符串数组与新的 {items, topName, topReason, tip} 结构
+function renderFoodTags(el, data, cls) {
+  if (!el) return;
+  const items = Array.isArray(data) ? data.map(f => ({ name: f }))
+    : (data && Array.isArray(data.items) ? data.items.map(f => (typeof f === 'string' ? { name: f } : f)) : []);
+  let head = '';
+  if (data && data.topReason) {
+    head = `<div style="font-size:12px;color:var(--accent);margin-bottom:6px;">${escapeHtml(data.topReason)}</div>`;
+  }
+  const tags = items.map(f =>
+    `<span class="food-tag ${cls}${data && data.topName === f.name ? ' top-pick' : ''}">${escapeHtml(f.name)}</span>`).join('');
+  let tail = '';
+  if (data && data.tip) {
+    tail = `<div style="font-size:12px;color:#c05656;margin-top:6px;">${escapeHtml(data.tip)}</div>`;
+  }
+  el.innerHTML = head + tags + tail;
 }
 
 async function loadDietData() {
@@ -843,9 +1132,12 @@ function renderRecipes(items) {
       <div class="recipe-body">
         <h4>${escapeHtml(r.name)}</h4>
         <div class="ingr">${escapeHtml(r.ingredients)}</div>
-        <div class="footer">
-          <span class="recipe-action ${fav ? 'faved' : ''}" onclick="toggleFav('${escapeHtml(r.time)}','${escapeHtml(r.name)}','${escapeHtml(r.ingredients)}',this)">${fav ? '\u2764 已收藏' : '\u{1F90D} 收藏'}</span>
-          <span class="recipe-action" onclick="showShoppingList()">购物清单</span>
+        <div class="recipe-bottom">
+          ${r.reason ? `<div class="recipe-reason">${escapeHtml(r.reason)}</div>` : ''}
+          <div class="footer">
+            <span class="recipe-action ${fav ? 'faved' : ''}" onclick="toggleFav('${escapeHtml(r.time)}','${escapeHtml(r.name)}','${escapeHtml(r.ingredients)}',this)">${fav ? '\u2764 已收藏' : '\u{1F90D} 收藏'}</span>
+            <span class="recipe-action" onclick="showShoppingList()">购物清单</span>
+          </div>
         </div>
       </div>
     </div>`;
