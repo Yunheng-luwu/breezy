@@ -696,7 +696,7 @@ function openHerbDetail(idx) {
   );
 }
 
-// ============ 药膳汤谱（饮食调理页入口，数据与 AI 工具共用 knowledge 库） ============
+// ============ 家常药膳（饮食调理页入口，数据与 AI 工具共用 knowledge 库） ============
 let soupCache = null;
 async function fetchSoups() {
   if (soupCache) return soupCache;
@@ -709,10 +709,10 @@ async function openSoupAtlas() {
   openModal(
     '<div style="padding:24px 28px 28px;">' +
     '<div style="display:flex;justify-content:space-between;align-items:center;margin:-24px -28px 10px;padding:16px 28px 12px;position:sticky;top:0;background:var(--card,#fff);z-index:10;">' +
-    '<h3 style="margin:0;">药膳汤谱</h3>' +
+    '<h3 style="margin:0;">家常药膳</h3>' +
     '<span class="modal-close" onclick="closeModal()" style="font-size:26px;cursor:pointer;color:var(--text-mid);padding:0 8px;">&times;</span></div>' +
-    '<p style="color:var(--text-mid);font-size:14px;margin-bottom:16px;">常见家常药膳，材料平和易得；点击汤谱查看做法与禁忌。</p>' +
-    '<div id="soupList" style="display:flex;flex-direction:column;gap:12px;"><div style="text-align:center;color:var(--text-light);padding:24px 0;">正在加载汤谱…</div></div>' +
+    '<p style="color:var(--text-mid);font-size:14px;margin-bottom:16px;">汤品、粥膳、炖补、饮品，材料平和易得；点击药膳查看做法与禁忌。</p>' +
+    '<div id="soupList" style="display:flex;flex-direction:column;gap:12px;"><div style="text-align:center;color:var(--text-light);padding:24px 0;">正在加载药膳…</div></div>' +
     '</div>',
     { width: 640 }
   );
@@ -720,7 +720,7 @@ async function openSoupAtlas() {
   const list = document.getElementById('soupList');
   if (!list) return;
   if (!items || !items.length) {
-    list.innerHTML = '<div style="text-align:center;color:var(--text-light);padding:24px 0;">汤谱数据暂时不可用，请稍后再试。</div>';
+    list.innerHTML = '<div style="text-align:center;color:var(--text-light);padding:24px 0;">药膳数据暂时不可用，请稍后再试。</div>';
     return;
   }
   list.innerHTML = items.map(function (s, i) {
@@ -742,7 +742,7 @@ async function openSoupDetail(i) {
   openModal(
     '<div style="padding:24px 28px 28px;">' +
     '<div style="display:flex;justify-content:space-between;align-items:center;margin:-24px -28px 16px;padding:16px 28px 12px;position:sticky;top:0;background:var(--card,#fff);z-index:10;">' +
-    '<span onclick="openSoupAtlas()" style="cursor:pointer;color:var(--accent);font-size:14px;font-weight:600;">&larr; 返回汤谱</span>' +
+    '<span onclick="openSoupAtlas()" style="cursor:pointer;color:var(--accent);font-size:14px;font-weight:600;">&larr; 返回药膳</span>' +
     '<span class="modal-close" onclick="closeModal()" style="font-size:26px;cursor:pointer;color:var(--text-mid);padding:0 8px;">&times;</span></div>' +
     '<div style="text-align:center;margin-bottom:20px;"><h3 style="margin-bottom:8px;">' + s.name + '</h3>' +
     '<span class="tag tag-primary">' + String(s.effect || '').replace(/[。；]$/, '') + '</span></div>' +
@@ -1032,6 +1032,7 @@ async function loadDietData() {
     fetchAPI('/diet/recommend'),
     fetchAPI('/diet/foods'),
     fetchAPI('/diet/recipes'),
+    fetchSoups().catch(() => null), // 预热药膳库，供餐卡匹配「药膳做法」入口
   ]);
   if (r1.success && r1.data) {
     const el = document.getElementById('dietPrinciple');
@@ -1125,6 +1126,8 @@ function renderRecipes(items) {
   }
   grid.innerHTML = items.map(r => {
     const fav = isFav(r.name);
+    // 推荐的这一餐若属于药膳食疗库，给出直达做法/禁忌详情的入口
+    const soupIdx = soupCache ? soupCache.findIndex(s => s.name === r.name) : -1;
     return `
     <div class="recipe-card">
       <div class="time-tag">${escapeHtml(r.time)}</div>
@@ -1136,6 +1139,7 @@ function renderRecipes(items) {
           ${r.reason ? `<div class="recipe-reason">${escapeHtml(r.reason)}</div>` : ''}
           <div class="footer">
             <span class="recipe-action ${fav ? 'faved' : ''}" onclick="toggleFav('${escapeHtml(r.time)}','${escapeHtml(r.name)}','${escapeHtml(r.ingredients)}',this)">${fav ? '\u2764 已收藏' : '\u{1F90D} 收藏'}</span>
+            ${soupIdx >= 0 ? `<span class="recipe-action" onclick="openSoupDetail(${soupIdx})">\u{1F4D6} 药膳做法</span>` : ''}
             <span class="recipe-action" onclick="showShoppingList()">购物清单</span>
           </div>
         </div>
