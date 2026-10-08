@@ -366,7 +366,7 @@ function enterApp() {
   newChat();
   refreshChatOverview();
   loadFavs();
-  startTodoReminder();
+  if (localStorage.getItem('songxu_todo_alert') !== '0') startTodoReminder();
 }
 
 function openPanel(name) {
@@ -497,21 +497,21 @@ function weatherEmoji(text) {
 
 // ============ 中药图鉴（每日轮换 8 味 + 查看全部 30 味） ============
 const HERBS_POOL = [
-  { name: '菊花', effect: '清肝明目 · 泡茶', prompt: 'Dried chrysanthemum flowers in a white ceramic bowl on wooden table, soft natural light, traditional Chinese medicine herb photography',
+  { name: '菊花', emoji: '🌼', effect: '清肝明目 · 泡茶', prompt: 'Dried chrysanthemum flowers in a white ceramic bowl on wooden table, soft natural light, traditional Chinese medicine herb photography',
     nature: '辛、甘、苦，微寒；归肺、肝经', desc: '散风清热、平肝明目、清热解毒；常用于风热感冒、头痛眩晕、目赤肿痛、眼目昏花。', usage: '取3~5朵沸水冲泡代茶，可配枸杞、金银花同饮。' },
-  { name: '枸杞', effect: '滋补肝肾 · 日常', prompt: 'Goji berries in a small bamboo basket, bright red dried fruits, warm lighting, traditional Chinese medicine',
+  { name: '枸杞', emoji: '🔴', effect: '滋补肝肾 · 日常', prompt: 'Goji berries in a small bamboo basket, bright red dried fruits, warm lighting, traditional Chinese medicine',
     nature: '甘，平；归肝、肾经', desc: '滋补肝肾、益精明目；用于虚劳精亏、腰膝酸痛、眩晕耳鸣、目昏不明。', usage: '每日10~20克，可直接嚼食、泡水或煮粥炖汤。' },
   { name: '红枣', effect: '补中益气 · 食疗', prompt: 'Dried red dates jujube in a ceramic dish, warm lighting, traditional Chinese medicine herb photography',
     nature: '甘，温；归脾、胃、心经', desc: '补中益气、养血安神；用于脾胃虚弱、血虚萎黄、疲乏无力。', usage: '煮粥炖汤或去核泡水，每日3~5枚为宜。' },
-  { name: '陈皮', effect: '理气健脾 · 泡茶', prompt: 'Dried tangerine peel chenpi in a ceramic bowl, warm amber lighting, traditional Chinese medicine herb photography',
+  { name: '陈皮', emoji: '🍊', effect: '理气健脾 · 泡茶', prompt: 'Dried tangerine peel chenpi in a ceramic bowl, warm amber lighting, traditional Chinese medicine herb photography',
     nature: '苦、辛，温；归肺、脾经', desc: '理气健脾、燥湿化痰；用于胸脘胀满、食少吐泻、咳嗽痰多。', usage: '泡水、入菜或煲汤时放2~3片，陈久者佳。' },
-  { name: '玫瑰花', effect: '疏肝解郁 · 茶饮', prompt: 'Dried rose buds in a white porcelain dish, soft pink color, delicate lighting, traditional Chinese medicine',
+  { name: '玫瑰花', emoji: '🌹', effect: '疏肝解郁 · 茶饮', prompt: 'Dried rose buds in a white porcelain dish, soft pink color, delicate lighting, traditional Chinese medicine',
     nature: '甘、微苦，温；归肝、脾经', desc: '疏肝解郁、和血止痛；用于肝胃气痛、食少呕恶、月经不调。', usage: '取3~6朵沸水冲泡，可配红枣、蜂蜜。' },
   { name: '黄芪', effect: '补气固表 · 炖汤', prompt: 'Astragalus membranaceus huangqi dried root slices on linen cloth, traditional Chinese medicine, warm natural lighting',
     nature: '甘，微温；归脾、肺经', desc: '补气升阳、固表止汗、利水消肿；用于气虚乏力、食少便溏、自汗浮肿。', usage: '炖汤或煮水，常用10~30克；感冒发热时不宜。' },
-  { name: '当归', effect: '补血活血 · 调经', prompt: 'Dried angelica sinensis dong quai slices in a wooden bowl, traditional Chinese medicine, warm lighting',
+  { name: '当归', emoji: '🌿', effect: '补血活血 · 调经', prompt: 'Dried angelica sinensis dong quai slices in a wooden bowl, traditional Chinese medicine, warm lighting',
     nature: '甘、辛，温；归肝、心、脾经', desc: '补血活血、调经止痛、润肠通便；用于血虚萎黄、月经不调、肠燥便秘。', usage: '入药膳炖煮（如当归生姜羊肉汤）；孕期使用请先咨询医师。' },
-  { name: '金银花', effect: '清热解毒 · 冲泡', prompt: 'Dried honeysuckle flowers in a glass jar, traditional Chinese medicine, soft natural light, herb photography',
+  { name: '金银花', emoji: '🌼', effect: '清热解毒 · 冲泡', prompt: 'Dried honeysuckle flowers in a glass jar, traditional Chinese medicine, soft natural light, herb photography',
     nature: '甘，寒；归肺、心、胃经', desc: '清热解毒、疏散风热；用于风热感冒、咽喉肿痛、痈肿疔疮。', usage: '取5~10克泡茶代饮，脾胃虚寒者不宜多服。' },
   { name: '茯苓', effect: '健脾宁心 · 煮粥', prompt: 'Poria cocos fuling dried white cubes in a ceramic bowl, traditional Chinese medicine, soft lighting',
     nature: '甘、淡，平；归心、肺、脾、肾经', desc: '利水渗湿、健脾、宁心；用于水肿尿少、脾虚食少、便溏泄泻、心神不安、惊悸失眠。', usage: '煮粥炖汤，或磨粉与面粉同做糕点。' },
@@ -616,16 +616,30 @@ const HERBS_POOL = [
     nature: '甘、微苦，微温；归脾、肺、心、肾经', desc: '大补元气、复脉固脱、益气摄血。', usage: '切片炖服或含服，常用3~6克；感冒发热时不宜，忌与萝卜、浓茶同服。' },
 ];
 
-function herbImg(prompt) {
-  return 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=' + encodeURIComponent(prompt) + '&image_size=square';
-}
+// 图鉴图片全部本地化（600x600 WebP，服务器 /img/herbs|food|soups/），缺失时以 emoji 兜底
+function pad2(n) { return String(n).padStart(2, '0'); }
+// IMG_VER：图片同名覆盖更新后 bump 一次，即可让浏览器绕过 7 天强缓存拉新图
+const IMG_VER = '20261007-2';
+function herbImg(i) { return 'img/herbs/' + pad2(i) + '.webp?v=' + IMG_VER; }
 
-// 药材图加载完成/失败 → 淡入显示（load/error 不冒泡，用捕获）
+// 药材图加载完成 → 淡入显示；加载失败 → 替换为 emoji 占位块（load/error 不冒泡，用捕获）
 document.addEventListener('load', function (e) {
   if (e.target && e.target.classList && e.target.classList.contains('ha-img')) e.target.classList.add('loaded');
 }, true);
 document.addEventListener('error', function (e) {
-  if (e.target && e.target.classList && e.target.classList.contains('ha-img')) e.target.classList.add('error');
+  const t = e.target;
+  if (!(t && t.classList)) return;
+  if (t.classList.contains('ha-img')) {
+    const fb = t.getAttribute('data-fb');
+    if (fb) {
+      t.outerHTML = '<div class="ha-img-fb" style="height:' + (t.style.height || t.offsetHeight + 'px') + ';">' + fb + '</div>';
+    } else {
+      t.classList.add('error');
+    }
+  } else if (t.tagName === 'IMG' && t.src && t.src.indexOf('text_to_image') > -1) {
+    // 首页 banner 等远程生成图：服务异常时隐藏，露出容器渐变底色（本地化后再移除本兜底）
+    t.style.visibility = 'hidden';
+  }
 }, true);
 
 function renderHerbAtlas() {
@@ -637,52 +651,234 @@ function renderHerbAtlas() {
   for (let i = 0; i < 8; i++) { const idx = (doy + i) % n; pick.push([idx, HERBS_POOL[idx]]); }
   el.innerHTML = pick.map(function (p) {
     return '<div class="herb-atlas-item" onclick="openHerbDetail(' + p[0] + ')" style="cursor:pointer">' +
-      '<img src="' + herbImg(p[1].prompt) + '" alt="' + p[1].name + '" class="ha-img">' +
+      '<img src="' + herbImg(p[0]) + '" alt="' + p[1].name + '" class="ha-img" data-fb="' + (p[1].emoji || '🌿') + '">' +
       '<div class="ha-body"><h5>' + p[1].name + '</h5><div class="ha-tag">' + p[1].effect + '</div></div></div>';
   }).join('');
   const d = new Date();
   const lbl = document.getElementById('herbDailyTag');
   if (lbl) lbl.textContent = '今日精选 · ' + (d.getMonth() + 1) + '月' + d.getDate() + '日';
-  // 3 秒后后台分批预热全部药材图（避免瞬时并发触发限流；弹窗打开时已基本生成好）
+  // 3 秒后分批预载全部图鉴图（本地 webp，共约 90 张 3MB），用户打开图鉴时基本已在浏览器缓存
   setTimeout(function () {
-    let queue = HERBS_POOL.slice();
+    let queue = HERBS_POOL.map(function (h, i) { return herbImg(i); })
+      .concat(Object.keys(FOOD_LIB).map(function (n, j) { return 'img/food/' + pad2(j) + '.webp'; }))
+      .concat(SOUP_ORDER.map(function (n, k) { return 'img/soups/' + (k + 1) + '.webp'; }));
     const step = function () {
-      queue.splice(0, 6).forEach(function (h) { const im = new Image(); im.src = herbImg(h.prompt); });
-      if (queue.length) setTimeout(step, 1500);
+      queue.splice(0, 8).forEach(function (src) { const im = new Image(); im.src = src; });
+      if (queue.length) setTimeout(step, 400);
     };
     step();
   }, 3000);
 }
 
-function openHerbAtlas() {
-  const cards = HERBS_POOL.map(function (h, i) {
-    return '<div class="herb-atlas-item" onclick="openHerbDetail(' + i + ')" style="cursor:pointer">' +
-      '<img loading="lazy" src="' + herbImg(h.prompt) + '" alt="' + h.name + '" class="ha-img">' +
-      '<div class="ha-body"><h5>' + h.name + '</h5><div class="ha-tag">' + h.effect + '</div></div></div>';
+// 药膳配图（与 diet.json 汤谱顺序一一对应：1~6）
+const SOUP_ORDER = ['人参滋补汤', '健脾山药汤', '当归生姜羊肉汤', '龙眼红枣银耳炖鸡蛋', '白术陈皮粥', '姜汁豆浆'];
+function soupIdx(name) { return SOUP_ORDER.indexOf(name) + 1; }
+function soupImgHTML(name, fbH, extraStyle) {
+  const k = soupIdx(name);
+  if (k > 0) return '<img loading="lazy" src="img/soups/' + k + '.webp?v=' + IMG_VER + '" alt="' + name + '" class="ha-img" data-fb="🍲"' + (extraStyle ? ' style="' + extraStyle + '"' : '') + '>';
+  return '<div class="ha-img-fb" style="height:' + fbH + 'px;">🍲</div>';
+}
+function soupTag(effect) {
+  return String(effect || '').replace(/[。；]$/, '').split(/[，,]/)[0] || '调养药膳';
+}
+
+// ============ 食材图鉴（红黑榜推荐条目的介绍库，emoji 配图） ============
+const FOOD_LIB = {
+  '玫瑰花茶': { emoji: '🌹', tag: '疏肝解郁', desc: '玫瑰花性温，善于疏肝解郁、和血止痛，适合情绪紧绷、胸闷叹气时饮用。', tip: '经量偏多者经期少喝。' },
+  '陈皮茶': { emoji: '🍊', tag: '理气健脾', desc: '陈皮理气健脾、燥湿化痰，饭后一杯助消化，适合腹胀、食欲不振。', tip: '胃酸过多者宜泡淡一些。' },
+  '菊花茶': { emoji: '🌼', tag: '清肝明目', desc: '菊花清肝明目、平抑肝阳，适合用眼多、易烦躁上火的人。', tip: '脾胃虚寒者不宜长期饮用。' },
+  '枸杞茶': { emoji: '🔴', tag: '滋补肝肾', desc: '枸杞滋补肝肾、益精明目，适合熬夜多、用眼过度的人。', tip: '感冒发热时暂停饮用。' },
+  '茉莉花茶': { emoji: '🌸', tag: '理气开郁', desc: '茉莉花理气开郁、芳香辟秽，花气温润，适合情绪低落、压力大时。', tip: '睡前浓茶影响入睡，宜淡泡。' },
+  '荷叶茶': { emoji: '🍃', tag: '清暑祛湿', desc: '荷叶清暑祛湿，夏天或湿重困倦、久坐水肿时合适。', tip: '体瘦气血虚弱者不宜多喝。' },
+  '桂花茶': { emoji: '🌾', tag: '温中散寒', desc: '桂花温中散寒、暖胃化痰，秋冬手脚发凉、胃部怕冷的人合适。', tip: '无明显禁忌，适量为宜。' },
+  '大麦茶': { emoji: '🌾', tag: '健脾消食', desc: '大麦茶健脾消食、去油解腻，饭后解腻首选，性平和不上火。', tip: '哺乳期不宜大量饮用（传统认为有回乳之说）。' },
+  '山药粥': { emoji: '🥔', tag: '健脾益气', desc: '山药健脾益气、补肺固肾，煮粥温和好吸收，适合脾胃虚弱、大便溏稀。', tip: '大便干结者适量。' },
+  '小米粥': { emoji: '🥣', tag: '健脾安神', desc: '小米健脾和胃、安神助眠，晚上一碗养胃又安神，老少皆宜。', tip: '无特殊禁忌。' },
+  '红枣饭': { emoji: '🍚', tag: '补气养血', desc: '红枣补中益气、养血安神，蒸饭时放几颗自然回甜。', tip: '含糖较高，血糖偏高者控量。' },
+  '薏米饭': { emoji: '🍚', tag: '健脾祛湿', desc: '薏苡仁利水渗湿、健脾止泻，适合湿重困倦、舌苔厚腻的人。', tip: '孕妇不宜多食薏米。' },
+  '燕麦粥': { emoji: '🥣', tag: '健脾通便', desc: '燕麦健脾益气、富含膳食纤维，早餐耐饿、升糖平缓。', tip: '无特殊禁忌。' },
+  '南瓜小米粥': { emoji: '🎃', tag: '和胃暖身', desc: '南瓜补中益气，配小米暖胃安神，秋冬早晨尤其合适。', tip: '无特殊禁忌。' },
+  '红豆薏米饭': { emoji: '🫘', tag: '祛湿消肿', desc: '赤小豆配薏米是经典祛湿组合，适合久坐水肿、湿气偏重的人群。', tip: '孕妇不宜多食薏米。' },
+  '黑芝麻饭': { emoji: '⚫', tag: '润燥养血', desc: '黑芝麻润燥滑肠、补益精血，适合秋燥便秘、头发干枯。', tip: '大便溏稀者少食。' },
+  '菠菜': { emoji: '🥬', tag: '清肝补血', desc: '菠菜清肝热、养血润燥，叶酸与铁质丰富，适合面色差、易烦躁的人。', tip: '肾结石人群建议焯水后食用。' },
+  '芹菜': { emoji: '🥬', tag: '清肝平肝', desc: '芹菜清肝热、平肝阳，适合易怒头胀、血压偏高的人群。', tip: '血压偏低者适量。' },
+  '西兰花': { emoji: '🥦', tag: '平和滋养', desc: '西兰花维生素C与膳食纤维丰富，性平和，日常蔬菜优选。', tip: '无特殊禁忌。' },
+  '胡萝卜': { emoji: '🥕', tag: '健脾明目', desc: '胡萝卜健脾化滞，富含胡萝卜素，用眼多的人合适。', tip: '短期过量食用皮肤会暂时发黄，停食即恢复。' },
+  '冬瓜': { emoji: '🥒', tag: '利水祛湿', desc: '冬瓜利水消肿、清热祛湿，适合湿热困重、水肿的人群。', tip: '体质虚寒者不宜常吃生冷冬瓜。' },
+  '白萝卜': { emoji: '🥕', tag: '理气消食', desc: '白萝卜下气消食、化痰生津，吃撑腹胀时最合适。', tip: '服人参、党参等补气药时不宜同食（传统认为削弱补力）。' },
+  '莲藕': { emoji: '🪷', tag: '生津润燥', desc: '熟藕健脾开胃、生藕清热生津，秋冬吃藕润燥养阴。', tip: '无特殊禁忌。' },
+  '苹果': { emoji: '🍎', tag: '平和生津', desc: '苹果生津润肺、健脾开胃，是最平和的水果，每天一个刚好。', tip: '无特殊禁忌。' },
+  '橙子': { emoji: '🍊', tag: '生津止渴', desc: '橙子生津止渴、开胃下气，维生素C丰富。', tip: '不宜空腹大量吃酸味水果。' },
+  '葡萄': { emoji: '🍇', tag: '补气血', desc: '葡萄补气血、强筋骨，适合疲劳乏力、面色差的人。', tip: '含糖偏高，控量。' },
+  '猕猴桃': { emoji: '🥝', tag: '清热生津', desc: '猕猴桃清热生津、助消化，维生素C极高。', tip: '脾胃虚寒、易腹泻者少食。' },
+  '雪梨': { emoji: '🍐', tag: '润燥清热', desc: '雪梨润肺清燥、生津止咳，秋燥咽干、干咳时的首选。', tip: '脾胃虚寒易腹泻者少吃生梨，可以炖煮后吃。' },
+  '柑橘': { emoji: '🍊', tag: '生津理气', desc: '柑橘生津润肺、理气开胃。', tip: '一天2~3个为宜，多吃易上火、皮肤暂黄。' },
+  '香蕉': { emoji: '🍌', tag: '润肠通便', desc: '香蕉清热润肠，适合便秘、熬夜后虚火偏旺的人。', tip: '脾胃虚寒者少食，不宜空腹多吃。' },
+  '红枣': { emoji: '🔴', tag: '补气养血', desc: '红枣补中益气、养血安神，可直接吃或煮粥蒸饭。', tip: '含糖较高，血糖偏高者控量。' },
+};
+
+// 食材分组：顺序与 FOOD_LIB 键顺序严格一致（图片按索引对应，不可乱序）
+const FOOD_GROUPS = [
+  { title: '🍵 茶饮', from: 0, to: 8 },
+  { title: '🍚 主食粥饭', from: 8, to: 16 },
+  { title: '🥬 蔬菜', from: 16, to: 23 },
+  { title: '🍎 水果', from: 23, to: 31 },
+];
+
+function renderDishGrid() {
+  const body = document.getElementById('atlasBody');
+  if (!body || atlasTab !== 'dish') return;
+  const names = Object.keys(FOOD_LIB);
+  body.innerHTML = FOOD_GROUPS.map(function (g) {
+    return '<div style="grid-column:1/-1;font-size:15px;font-weight:700;color:var(--text-dark);margin:10px 0 2px;">' + g.title +
+      '<span style="font-weight:400;font-size:12px;color:var(--text-light);margin-left:8px;">' + (g.to - g.from) + ' 项</span></div>' +
+      names.slice(g.from, g.to).map(function (n) {
+        const j = names.indexOf(n);
+        const f = FOOD_LIB[n];
+        return '<div class="herb-atlas-item" onclick="openFoodDetail(\'' + n + '\')" style="cursor:pointer">' +
+          '<img loading="lazy" src="img/food/' + pad2(j) + '.webp?v=' + IMG_VER + '" alt="' + n + '" class="ha-img" data-fb="' + f.emoji + '">' +
+          '<div class="ha-body"><h5>' + n + '</h5><div class="ha-tag">' + f.tag + '</div></div></div>';
+      }).join('');
   }).join('');
+}
+
+function foodDetailImgHTML(name, f, size) {
+  const j = Object.keys(FOOD_LIB).indexOf(name);
+  if (j < 0) return '<div style="width:' + size + 'px;height:' + size + 'px;margin:0 auto;border-radius:18px;background:var(--card-beige,#f7f1e5);display:flex;align-items:center;justify-content:center;font-size:' + Math.round(size * 0.53) + 'px;box-shadow:0 8px 24px rgba(0,0,0,.08);">' + f.emoji + '</div>';
+  return '<img src="img/food/' + pad2(j) + '.webp?v=' + IMG_VER + '" alt="' + name + '" class="ha-img" data-fb="' + f.emoji + '" style="width:' + size + 'px;height:' + size + 'px;border-radius:18px;object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,.10);">';
+}
+
+function openFoodDetail(name) {
+  const f = FOOD_LIB[name];
+  if (!f) return;
+  saveAtlasScroll();
   openModal(
     '<div style="padding:24px 28px 28px;">' +
-    '<div style="display:flex;justify-content:space-between;align-items:center;margin:-24px -28px 10px;padding:16px 28px 12px;position:sticky;top:0;background:var(--card,#fff);z-index:10;">' +
-    '<h3 style="margin:0;">中药图鉴 · ' + HERBS_POOL.length + ' 味药食同源</h3>' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin:-24px -28px 16px;padding:16px 28px 12px;position:sticky;top:0;background:var(--card,#fff);z-index:10;">' +
+    '<span onclick="openHerbAtlas(\'dish\', true)" style="cursor:pointer;color:var(--accent);font-size:14px;font-weight:600;">&larr; 返回图鉴</span>' +
     '<span class="modal-close" onclick="closeModal()" style="font-size:26px;cursor:pointer;color:var(--text-mid);padding:0 8px;">&times;</span></div>' +
+    '<div style="text-align:center;margin-bottom:20px;">' +
+    foodDetailImgHTML(name, f, 180) +
+    '<h3 style="margin:16px 0 8px;">' + name + '</h3>' +
+    '<span class="ha-tag" style="display:inline-block;">' + f.tag + '</span></div>' +
+    '<div style="display:flex;flex-direction:column;gap:14px;text-align:left;font-size:15px;">' +
+    '<div><b>食材介绍</b><p style="color:var(--text-mid);margin-top:4px;">' + f.desc + '</p></div>' +
+    (f.tip ? '<div><b>食用提示</b><p style="color:var(--text-mid);margin-top:4px;">' + f.tip + '</p></div>' : '') +
+    '</div>' +
+    '<p style="margin-top:20px;padding:12px 14px;background:rgba(139,0,0,.06);border-radius:10px;font-size:13px;color:var(--text-mid);">以上内容仅供养生科普参考，不构成医疗建议；体质特殊或正在服药者，请先咨询医师。</p>' +
+    '</div>',
+    { width: 640 }
+  );
+}
+
+function herbCardsHTML() {
+  return HERBS_POOL.map(function (h, i) {
+    return '<div class="herb-atlas-item" onclick="openHerbDetail(' + i + ')" style="cursor:pointer">' +
+      '<img loading="lazy" src="' + herbImg(i) + '" alt="' + h.name + '" class="ha-img" data-fb="' + (h.emoji || '🌿') + '">' +
+      '<div class="ha-body"><h5>' + h.name + '</h5><div class="ha-tag">' + h.effect + '</div></div></div>';
+  }).join('');
+}
+
+// ============ 图鉴（中药 / 药膳 双 tab 统一入口） ============
+let atlasTab = 'herb';
+let atlasScroll = 0; // 图鉴滚动位置：进详情时保存，返回时恢复，避免每次回到顶部
+function saveAtlasScroll() {
+  const mb = document.querySelector('.modal-box');
+  if (mb) atlasScroll = mb.scrollTop;
+}
+function restoreAtlasScroll() {
+  const mb = document.querySelector('.modal-box');
+  if (mb) mb.scrollTop = atlasScroll;
+}
+const ATLAS_TAB_ON = 'flex:1;padding:9px 0;border:none;border-radius:999px;background:var(--primary);color:#fff;font-size:14px;font-weight:600;cursor:pointer;';
+const ATLAS_TAB_OFF = 'flex:1;padding:9px 0;border:none;border-radius:999px;background:transparent;color:var(--text-mid);font-size:14px;cursor:pointer;';
+
+async function renderSoupGrid() {
+  const items = await fetchSoups();
+  const body = document.getElementById('atlasBody');
+  if (!body || atlasTab !== 'soup') return; // 用户已切走
+  if (!items || !items.length) {
+    body.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-light);padding:24px 0;">药膳数据暂时不可用，请稍后再试。</div>';
+    return;
+  }
+  body.innerHTML = items.map(function (s, i) {
+    return '<div class="herb-atlas-item" onclick="openSoupDetail(' + i + ')" style="cursor:pointer">' +
+      soupImgHTML(s.name, 150) +
+      '<div class="ha-body"><h5>' + s.name + '</h5><div class="ha-tag">' + soupTag(s.effect) + '</div></div></div>';
+  }).join('');
+}
+
+function switchAtlasTab(tab) {
+  atlasTab = tab;
+  atlasScroll = 0; // 手动切换 tab 是新内容，从顶部开始
+  const body = document.getElementById('atlasBody');
+  const t1 = document.getElementById('atlasTabHerb');
+  const t2 = document.getElementById('atlasTabSoup');
+  const t3 = document.getElementById('atlasTabDish');
+  if (!body || !t1 || !t2 || !t3) return;
+  t1.style.cssText = tab === 'herb' ? ATLAS_TAB_ON : ATLAS_TAB_OFF;
+  t2.style.cssText = tab === 'soup' ? ATLAS_TAB_ON : ATLAS_TAB_OFF;
+  t3.style.cssText = tab === 'dish' ? ATLAS_TAB_ON : ATLAS_TAB_OFF;
+  if (tab === 'herb') {
+    body.innerHTML = herbCardsHTML();
+  } else if (tab === 'soup') {
+    body.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-light);padding:24px 0;">正在加载药膳…</div>';
+    renderSoupGrid();
+  } else {
+    renderDishGrid();
+  }
+}
+
+function openHerbAtlas(tab, keepScroll) {
+  atlasTab = (tab === 'soup' || tab === 'dish') ? tab : 'herb';
+  if (!keepScroll) atlasScroll = 0; // 全新打开从顶部开始；从详情返回则恢复原位置
+  openModal(
+    '<div style="padding:24px 28px 28px;">' +
+    '<div style="margin:-24px -28px 12px;padding:12px 28px;position:sticky;top:0;background:var(--card,#fff);z-index:10;">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+    '<h3 style="margin:0;">本草图鉴</h3>' +
+    '<span class="modal-close" onclick="closeModal()" style="font-size:26px;cursor:pointer;color:var(--text-mid);padding:0 8px;">&times;</span></div>' +
+    '<div style="display:flex;gap:8px;background:rgba(0,0,0,.05);border-radius:999px;padding:4px;margin-top:10px;">' +
+    '<button id="atlasTabHerb" onclick="switchAtlasTab(\'herb\')">中药</button>' +
+    '<button id="atlasTabSoup" onclick="switchAtlasTab(\'soup\')">药膳</button>' +
+    '<button id="atlasTabDish" onclick="switchAtlasTab(\'dish\')">食材</button></div>' +
+    '</div>' +
     '<p style="color:var(--text-mid);font-size:14px;margin-bottom:20px;">日常调理以「药食同源」为原则，适量为宜；体质特殊或正在服药者，请先咨询医师。</p>' +
-    '<div class="herb-atlas herb-atlas-modal" style="margin-bottom:0;">' + cards + '</div>' +
+    '<div id="atlasBody" class="herb-atlas herb-atlas-modal" style="margin-bottom:0;">' +
+    (atlasTab === 'herb' ? herbCardsHTML()
+      : atlasTab === 'soup' ? '<div style="grid-column:1/-1;text-align:center;color:var(--text-light);padding:24px 0;">正在加载药膳…</div>'
+      : '') +
+    '</div>' +
     '</div>',
     { width: 1000 }
   );
+  if (atlasTab === 'soup') {
+    renderSoupGrid().then(restoreAtlasScroll);
+  } else {
+    // 等浏览器完成布局后再恢复滚动位置
+    requestAnimationFrame(restoreAtlasScroll);
+  }
+  // 初始化 tab 按钮态
+  const t1 = document.getElementById('atlasTabHerb');
+  const t2 = document.getElementById('atlasTabSoup');
+  const t3 = document.getElementById('atlasTabDish');
+  if (t1) t1.style.cssText = atlasTab === 'herb' ? ATLAS_TAB_ON : ATLAS_TAB_OFF;
+  if (t2) t2.style.cssText = atlasTab === 'soup' ? ATLAS_TAB_ON : ATLAS_TAB_OFF;
+  if (t3) t3.style.cssText = atlasTab === 'dish' ? ATLAS_TAB_ON : ATLAS_TAB_OFF;
 }
 
 // 药材详情弹窗（点击药材卡片进入）
 function openHerbDetail(idx) {
   const h = HERBS_POOL[idx];
   if (!h) return;
+  saveAtlasScroll();
   openModal(
     '<div style="padding:24px 28px 28px;">' +
     '<div style="display:flex;justify-content:space-between;align-items:center;margin:-24px -28px 16px;padding:16px 28px 12px;position:sticky;top:0;background:var(--card,#fff);z-index:10;">' +
-    '<span onclick="openHerbAtlas()" style="cursor:pointer;color:var(--accent);font-size:14px;font-weight:600;">&larr; 返回图鉴</span>' +
+    '<span onclick="openHerbAtlas(\'herb\', true)" style="cursor:pointer;color:var(--accent);font-size:14px;font-weight:600;">&larr; 返回图鉴</span>' +
     '<span class="modal-close" onclick="closeModal()" style="font-size:26px;cursor:pointer;color:var(--text-mid);padding:0 8px;">&times;</span></div>' +
     '<div style="text-align:center;margin-bottom:20px;">' +
-    '<img src="' + herbImg(h.prompt) + '" alt="' + h.name + '" class="ha-img" style="width:220px;height:220px;border-radius:18px;object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,.10);">' +
+    '<img src="' + herbImg(idx) + '" alt="' + h.name + '" class="ha-img" data-fb="' + (h.emoji || '🌿') + '" style="width:220px;height:220px;border-radius:18px;object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,.10);">' +
     '<h3 style="margin:16px 0 8px;">' + h.name + '</h3>' +
     '<span class="ha-tag" style="display:inline-block;">' + h.effect + '</span></div>' +
     '<div style="display:flex;flex-direction:column;gap:14px;text-align:left;font-size:15px;">' +
@@ -696,7 +892,7 @@ function openHerbDetail(idx) {
   );
 }
 
-// ============ 药膳汤谱（饮食调理页入口，数据与 AI 工具共用 knowledge 库） ============
+// ============ 家常药膳（饮食调理页入口，数据与 AI 工具共用 knowledge 库） ============
 let soupCache = null;
 async function fetchSoups() {
   if (soupCache) return soupCache;
@@ -705,48 +901,30 @@ async function fetchSoups() {
   return soupCache;
 }
 
-async function openSoupAtlas() {
-  openModal(
-    '<div style="padding:24px 28px 28px;">' +
-    '<div style="display:flex;justify-content:space-between;align-items:center;margin:-24px -28px 10px;padding:16px 28px 12px;position:sticky;top:0;background:var(--card,#fff);z-index:10;">' +
-    '<h3 style="margin:0;">药膳汤谱</h3>' +
-    '<span class="modal-close" onclick="closeModal()" style="font-size:26px;cursor:pointer;color:var(--text-mid);padding:0 8px;">&times;</span></div>' +
-    '<p style="color:var(--text-mid);font-size:14px;margin-bottom:16px;">常见家常药膳，材料平和易得；点击汤谱查看做法与禁忌。</p>' +
-    '<div id="soupList" style="display:flex;flex-direction:column;gap:12px;"><div style="text-align:center;color:var(--text-light);padding:24px 0;">正在加载汤谱…</div></div>' +
-    '</div>',
-    { width: 640 }
-  );
-  const items = await fetchSoups();
-  const list = document.getElementById('soupList');
-  if (!list) return;
-  if (!items || !items.length) {
-    list.innerHTML = '<div style="text-align:center;color:var(--text-light);padding:24px 0;">汤谱数据暂时不可用，请稍后再试。</div>';
-    return;
-  }
-  list.innerHTML = items.map(function (s, i) {
-    return '<div onclick="openSoupDetail(' + i + ')" style="cursor:pointer;padding:14px 16px;border:1px solid var(--line,#eee);border-radius:12px;transition:box-shadow .2s;" onmouseover="this.style.boxShadow=\'0 4px 14px rgba(0,0,0,.07)\'" onmouseout="this.style.boxShadow=\'none\'">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">' +
-      '<h4 style="margin:0;">' + s.name + '</h4>' +
-      '<span class="tag tag-primary">' + String(s.effect || '').replace(/[。；]$/, '') + '</span></div>' +
-      '<div style="font-size:13px;color:var(--text-light);margin-top:6px;">适用：' + (s.suitable || '一般人群') + '</div></div>';
-  }).join('');
+// 家常药膳入口（饮食调理页）：统一并入本草图鉴的药膳 tab
+function openSoupAtlas() {
+  openHerbAtlas('soup');
 }
 
 async function openSoupDetail(i) {
   const items = await fetchSoups();
   const s = items && items[i];
   if (!s) return;
+  saveAtlasScroll();
   const row = function (label, text) {
     return text ? '<div><b>' + label + '</b><p style="color:var(--text-mid);margin-top:4px;">' + text + '</p></div>' : '';
   };
   openModal(
     '<div style="padding:24px 28px 28px;">' +
     '<div style="display:flex;justify-content:space-between;align-items:center;margin:-24px -28px 16px;padding:16px 28px 12px;position:sticky;top:0;background:var(--card,#fff);z-index:10;">' +
-    '<span onclick="openSoupAtlas()" style="cursor:pointer;color:var(--accent);font-size:14px;font-weight:600;">&larr; 返回汤谱</span>' +
+    '<span onclick="openHerbAtlas(\'soup\', true)" style="cursor:pointer;color:var(--accent);font-size:14px;font-weight:600;">&larr; 返回图鉴</span>' +
     '<span class="modal-close" onclick="closeModal()" style="font-size:26px;cursor:pointer;color:var(--text-mid);padding:0 8px;">&times;</span></div>' +
-    '<div style="text-align:center;margin-bottom:20px;"><h3 style="margin-bottom:8px;">' + s.name + '</h3>' +
-    '<span class="tag tag-primary">' + String(s.effect || '').replace(/[。；]$/, '') + '</span></div>' +
+    '<div style="text-align:center;margin-bottom:20px;">' +
+    soupImgHTML(s.name, 220, 'width:220px;height:220px;border-radius:18px;object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,.10);') +
+    '<h3 style="margin:16px 0 8px;">' + s.name + '</h3>' +
+    '<span class="tag tag-primary">' + soupTag(s.effect) + '</span></div>' +
     '<div style="display:flex;flex-direction:column;gap:14px;text-align:left;font-size:15px;">' +
+    row('功效', String(s.effect || '').replace(/^[^，,]*[，,]/, '')) +
     row('材料', s.ingredients) + row('做法', s.method) + row('适用', s.suitable) +
     row('禁忌', s.contraindication) + row('建议频率', s.frequency) +
     '</div>' +
@@ -756,19 +934,79 @@ async function openSoupDetail(i) {
   );
 }
 
+// ============ 节气板块：首页badge + 饮食页banner + 本期节气食方（公开接口，失败时保留静态兜底） ============
+let solarTermData = null;
+
+async function renderSolarTerm() {
+  try {
+    const res = await fetchAPI('/diet/solar-term');
+    if (!res.success || !res.data) return;
+    solarTermData = res.data;
+    const d = solarTermData;
+    const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+    set('homeTermBadge', d.name + '时节 · ' + d.theme);
+    set('termBannerSeason', '二十四节气 · ' + d.name);
+    set('termBannerTitle', d.theme + ' · ' + d.name + '时令食方');
+    set('termBannerDesc', d.principle);
+    set('termFoodsTag', d.name);
+    const grid = document.getElementById('termFoods');
+    if (grid && d.foods && d.foods.length) {
+      grid.innerHTML = d.foods.map((f, i) =>
+        '<div class="card-beige term-food-card" style="text-align:center;cursor:pointer;" onclick="openSolarFood(' + i + ')">' +
+        '<div style="font-size:32px;">' + f.emoji + '</div>' +
+        '<div style="font-weight:500;">' + f.name + '</div>' +
+        '<div class="term-food-sub" style="font-size:13px;color:var(--text-light);">' + f.tag + '·' + d.name + '时令</div></div>'
+      ).join('');
+    }
+  } catch (e) { /* 接口失败保留页面静态白露兜底 */ }
+}
+
+function openSolarFood(i) {
+  if (!solarTermData || !solarTermData.foods || !solarTermData.foods[i]) return;
+  const d = solarTermData;
+  const f = d.foods[i];
+  const row = function (label, text) {
+    return text ? '<div><b>' + label + '</b><p style="color:var(--text-mid);margin-top:4px;">' + text + '</p></div>' : '';
+  };
+  openModal(
+    '<div style="padding:24px 28px 28px;">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin:-24px -28px 16px;padding:16px 28px 12px;position:sticky;top:0;background:var(--card,#fff);z-index:10;">' +
+    '<span style="color:var(--text-light);font-size:14px;">' + d.name + ' · ' + d.theme + '</span>' +
+    '<span class="modal-close" onclick="closeModal()" style="font-size:26px;cursor:pointer;color:var(--text-mid);padding:0 8px;">&times;</span></div>' +
+    '<div style="text-align:center;margin-bottom:20px;">' +
+    '<div style="font-size:56px;line-height:1.2;">' + f.emoji + '</div>' +
+    '<h3 style="margin:16px 0 8px;">' + f.name + '</h3>' +
+    '<span class="tag tag-primary">' + f.tag + '</span></div>' +
+    '<div style="display:flex;flex-direction:column;gap:14px;text-align:left;font-size:15px;">' +
+    row('节气导语', d.tip) + row('功效', f.effect) + row('食材', f.ingredients) + row('做法', f.method) +
+    '</div>' +
+    '<p style="margin-top:20px;padding:12px 14px;background:rgba(139,0,0,.06);border-radius:10px;font-size:13px;color:var(--text-mid);">食方为节气养生科普参考，体质特殊或有基础疾病者请遵医嘱。</p>' +
+    '</div>',
+    { width: 640 }
+  );
+}
+
+// 首页天气/场景提醒：失败后 2 秒重试一次（避开后端重启窗口，防止静态默认文案假退化）
+async function fetchClothingWithRetry() {
+  const first = await fetchAPI('/clothing').catch(() => null);
+  if (first) return first;
+  await new Promise(res => setTimeout(res, 2000));
+  return fetchAPI('/clothing').catch(() => null);
+}
+
 async function loadHomeData() {
+  const set = (id, text) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  };
   const [dash, meds, acuDay, clothing] = await Promise.all([
-    fetchAPI('/health/dashboard'),
+    fetchAPI('/health/dashboard').catch(() => null),
     fetchAPI('/record/medicines').catch(() => null),
     fetchAPI('/care/acupoint-of-day').catch(() => null),
-    fetchAPI('/clothing').catch(() => null),
+    fetchClothingWithRetry(),
   ]);
-  if (dash.success && dash.data) {
+  if (dash && dash.success && dash.data) {
     const d = dash.data;
-    const set = (id, text) => {
-      const el = document.getElementById(id);
-      if (el) el.textContent = text;
-    };
     set('homeScore', d.score !== undefined ? d.score : '--');
     set('homeLevel', d.level || '--');
     set('homeDesc', d.desc || '');
@@ -1017,8 +1255,14 @@ function renderFoodTags(el, data, cls) {
   if (data && data.topReason) {
     head = `<div style="font-size:12px;color:var(--accent);margin-bottom:6px;">${escapeHtml(data.topReason)}</div>`;
   }
-  const tags = items.map(f =>
-    `<span class="food-tag ${cls}${data && data.topName === f.name ? ' top-pick' : ''}">${escapeHtml(f.name)}</span>`).join('');
+  const tags = items.map(f => {
+    const pickCls = data && data.topName === f.name ? ' top-pick' : '';
+    const whyTxt = f.reason ? `<i class="food-why">${escapeHtml(f.reason)}</i>` : '';
+    if (FOOD_LIB[f.name]) {
+      return `<span class="food-tag ${cls}${pickCls}" style="cursor:pointer;" title="查看介绍" onclick="openFoodDetail('${f.name}')">${escapeHtml(f.name)}${whyTxt}</span>`;
+    }
+    return `<span class="food-tag ${cls}${pickCls}">${escapeHtml(f.name)}${whyTxt}</span>`;
+  }).join('');
   let tail = '';
   if (data && data.tip) {
     tail = `<div style="font-size:12px;color:#c05656;margin-top:6px;">${escapeHtml(data.tip)}</div>`;
@@ -1032,6 +1276,7 @@ async function loadDietData() {
     fetchAPI('/diet/recommend'),
     fetchAPI('/diet/foods'),
     fetchAPI('/diet/recipes'),
+    fetchSoups().catch(() => null), // 预热药膳库，供餐卡匹配「药膳做法」入口
   ]);
   if (r1.success && r1.data) {
     const el = document.getElementById('dietPrinciple');
@@ -1125,6 +1370,8 @@ function renderRecipes(items) {
   }
   grid.innerHTML = items.map(r => {
     const fav = isFav(r.name);
+    // 推荐的这一餐若属于药膳食疗库，给出直达做法/禁忌详情的入口
+    const soupIdx = soupCache ? soupCache.findIndex(s => s.name === r.name) : -1;
     return `
     <div class="recipe-card">
       <div class="time-tag">${escapeHtml(r.time)}</div>
@@ -1133,17 +1380,18 @@ function renderRecipes(items) {
         <h4>${escapeHtml(r.name)}</h4>
         <div class="ingr">${escapeHtml(r.ingredients)}</div>
         <div class="recipe-bottom">
-          ${r.reason ? `<div class="recipe-reason">${escapeHtml(r.reason)}</div>` : ''}
+          ${r.reason ? `<div class="recipe-reason">\u{1F4AC} ${escapeHtml(r.reason)}</div>` : ''}
           <div class="footer">
             <span class="recipe-action ${fav ? 'faved' : ''}" onclick="toggleFav('${escapeHtml(r.time)}','${escapeHtml(r.name)}','${escapeHtml(r.ingredients)}',this)">${fav ? '\u2764 已收藏' : '\u{1F90D} 收藏'}</span>
-            <span class="recipe-action" onclick="showShoppingList()">购物清单</span>
+            ${soupIdx >= 0 ? `<span class="recipe-action" onclick="openSoupDetail(${soupIdx})">\u{1F4D6} 药膳做法</span>` : ''}
+            <span class="recipe-action" onclick="showShoppingList()">🧺 购物清单</span>
           </div>
         </div>
       </div>
     </div>`;
   }).join('');
 }
-function shuffleRecipes() {
+async function shuffleRecipes() {
   if (!recipePoolCache) { loadDietData(); return; }
   // 轮换「今日饮食原则」（避免和当前相同）
   const principleEl = document.getElementById('dietPrinciple');
@@ -1152,6 +1400,18 @@ function shuffleRecipes() {
     let candidates = principlePool.filter(p => p !== current);
     principleEl.textContent = candidates[Math.floor(Math.random() * candidates.length)];
   }
+  // 换一批走后端推荐引擎：排除当前菜，理由照常生成（不再前端随机裸挑）
+  const exclude = currentRecipes.map(r => encodeURIComponent(r.time) + ':' + encodeURIComponent(r.name)).join(',');
+  try {
+    const res = await fetchAPI('/diet/recipes?shuffle=1&salt=' + Date.now() + '&exclude=' + encodeURIComponent(exclude));
+    if (res.success && res.data && res.data.items && res.data.items.length) {
+      recipePoolCache = res.data.pool || recipePoolCache;
+      renderRecipes(res.data.items);
+      toast('原则和食谱都换了一批～');
+      return;
+    }
+  } catch (e) { /* 走下方兜底 */ }
+  // 接口失败兜底：本地随机换（无理由）
   const picked = [];
   Object.keys(POOL_KEY).forEach(time => {
     const pool = recipePoolCache[POOL_KEY[time]] || [];
@@ -1626,6 +1886,7 @@ async function loadSleep() {
   const res = await fetchAPI('/rhythm/sleep');
   if (!res.success || !res.data) return;
   const { week = [], today } = res.data;
+  window._sleepToday = today || null;
   renderRhythmPunchStates(today);
   if (today) {
     const sSel = document.getElementById('sleepTimeInput');
@@ -1680,6 +1941,114 @@ async function loadSleep() {
       ? '\u{1F49A} 最近入睡很规律，肝胆得到充分休养，继续保持'
       : `\u{1F56F} 近7天有 ${late} 天过了零点才睡，尽量在 23 点前躺下，养肝效果更好`;
   }
+}
+
+// ============ 熬夜补救方案（按当天实际打卡动态生成） ============
+function openNightRepair() {
+  const today = window._sleepToday;
+  let statusRow = '';
+  const items = [];
+  let title = '🌙 睡眠小建议';
+  let foot = '以上建议仅供健康参考，规律作息才是养肝的根本。';
+
+  if (today && today.sleepTime && today.wakeTime) {
+    const sm = sleepMinutes(today.sleepTime);
+    const wm = sleepMinutes(today.wakeTime);
+    let dur = wm - sm;
+    if (dur <= 0) dur += 24 * 60;             // 跨零点修正
+    const durText = Math.floor(dur / 60) + ' 小时 ' + (dur % 60) + ' 分';
+    const late = sm > 24 * 60;                // 过了零点才睡（真熬夜）
+    const deep = sm > 25 * 60;                // 凌晨 1 点后
+    // 五分类：熬夜 / 熬夜+睡过多 / 睡过长(≥9.5h) / 睡不足(<6.5h) / 作息正常
+    const long = dur >= 9.5 * 60;
+    const short = dur < 6.5 * 60;
+    const kind = late ? (long ? 'lateLong' : 'late') : long ? 'long' : short ? 'short' : 'ok';
+    const verdict = {
+      late: '昨晚熬了夜，今天好好补一补',
+      lateLong: '睡得晚又睡得久，重点是今天把节律拉回来',
+      long: '睡得有点多，白天反而容易昏沉乏力',
+      short: '睡得偏少，今天温和地补一补',
+      ok: '睡眠时长很健康，继续保持',
+    }[kind];
+    statusRow = `<div style="background:var(--bg,#f7f5f0);border-radius:12px;padding:12px 16px;margin-bottom:14px;font-size:14px;color:var(--text-mid);">
+      今日 <b style="color:var(--text,#333)">${today.sleepTime}</b> 入睡 · <b style="color:var(--text,#333)">${today.wakeTime}</b> 起床 · 睡了约 <b style="color:var(--primary)">${durText}</b><br>${verdict}
+    </div>`;
+
+    if (kind === 'late') {
+      title = '🌙 熬夜补救方案';
+      foot = '补救只是应急，规律作息才是养肝的根本。以上建议仅供健康参考。';
+      items.push(['☀️', '起床后先补水', '一杯温开水，简单拉伸 5 分钟，别立刻刷手机']);
+      items.push(['🍚', '早餐吃温热易消化的', '小米粥、山药粥都好，少油炸生冷' + (dur < 6 * 60 ? '；昨晚睡眠不足，今天别空腹' : '')]);
+      items.push(['☕', '咖啡因只在上午', '可以来一杯咖啡或淡茶提神，14 点后别再碰，免得晚上又睡不着']);
+      items.push(['😴', '午间小憩补回来', '13 点前后睡 20~30 分钟，定个闹钟，超过半小时反而影响晚上入睡']);
+      items.push(['🚶', '今天运动降档', '只安排散步、八段锦这类和缓的，别做高强度训练加重身体负担']);
+      items.push(['💆', '午休或睡前按揉穴位', '太冲穴（足背第1、2趾间上）2~3 分钟，酸胀为度，疏肝理气']);
+      items.push(['🛁', '今晚温水泡脚', '40℃ 左右泡 15 分钟，微微发热即可，睡前 1 小时做']);
+      items.push(['🌙', '今晚提前躺下', `比平时提前 30~60 分钟入睡（${deep ? '昨晚过了 1 点，今晚尽量 23 点前' : '今晚争取 23 点前'}），睡前 1 小时放下手机`]);
+    } else if (kind === 'lateLong') {
+      title = '🔄 节律后移的调整';
+      foot = '晚睡又久睡会让节律整体后移，今天的目标不是补觉，而是把入睡点拉回来。以上建议仅供健康参考。';
+      items.push(['🌅', '起床后晒晒太阳', '到窗边或户外接触阳光 10 分钟，帮生物钟重新对时']);
+      items.push(['⏰', '今天别再补觉', '午憩跳过或闭目养神 15 分钟以内，困意留给今晚']);
+      items.push(['🍚', '午餐正常吃', '别因为起得晚就省掉，温热易消化为主']);
+      items.push(['🚶', '下午轻度活动', '散步 20 分钟或一组八段锦，别久躺刷手机']);
+      items.push(['☕', '咖啡因只在上午', '14 点后别再碰，避免今晚又推迟入睡']);
+      items.push(['🛁', '今晚温水泡脚', '40℃ 左右泡 15 分钟，睡前 1 小时做']);
+      items.push(['🌙', '今晚 23 点前躺下', '这是把节律拉回来的关键一步，睡前 1 小时放下手机']);
+    } else if (kind === 'long') {
+      title = '🌅 睡眠过长的调整';
+      foot = '睡得多不等于睡得好，把节律拉回来比补觉更重要。以上建议仅供健康参考。';
+      items.push(['🌅', '起床后晒晒太阳', '到窗边或户外接触阳光 10 分钟，帮生物钟重新对时']);
+      items.push(['⏰', '固定起床时间', '比睡眠总时长更重要的是节律，明天同一闹钟起床']);
+      items.push(['🛋️', '白天别赖床久躺', '躺得越久越乏，起来活动，困意留给今晚']);
+      items.push(['😴', '午憩跳过或缩短', '今天不建议再补觉，最多闭目养神 15~20 分钟']);
+      items.push(['🚶', '轻度运动提神', '散步 20 分钟或做一组八段锦，比咖啡更解昏沉']);
+      items.push(['🍵', '下午之后少碰咖啡因', '避免影响今晚入睡，晚上睡前 1 小时放下手机']);
+    } else if (kind === 'short') {
+      title = '💤 睡眠不足的补救';
+      foot = '偶尔一晚没睡够不用焦虑，补对节奏就能缓过来。以上建议仅供健康参考。';
+      items.push(['☀️', '起床后先补水', '一杯温开水，简单拉伸 5 分钟再开始一天']);
+      items.push(['🍚', '早餐别空腹', '温热易消化的小米粥、鸡蛋都好，给身体供上能量']);
+      items.push(['☕', '咖啡因只在上午', '提神可以，但 14 点后别再碰，免得今晚又睡不着']);
+      items.push(['😴', '午间小憩 20~30 分钟', '13 点前后最佳，定个闹钟，超过半小时反而头昏']);
+      items.push(['🚶', '今天运动降档', '和缓为主，别硬撑高强度训练']);
+      items.push(['🌙', '今晚提前躺下', '比平时提前 30~60 分钟入睡，睡前 1 小时放下手机']);
+      items.push(['⚠️', '犯困别硬撑', '今天尽量避免长时间开车或高危操作']);
+    } else {
+      title = '🌿 睡眠状况小结';
+      foot = '规律作息是最好的养肝药，偶尔波动也别有心理负担。以上建议仅供健康参考。';
+      items.push(['⏰', '固定作息继续保持', '保持同一时间起床，周末浮动尽量不超过 1 小时']);
+      items.push(['🌅', '早晨晒晒太阳', '起床后接触阳光，让生物钟更稳定']);
+      items.push(['💆', '常规养生别落下', '睡前温水泡脚 15 分钟，或按揉太冲穴 2~3 分钟疏肝理气']);
+      items.push(['🧘', '睡前 1 小时静下来', '放下手机，做几组 478 呼吸更容易入睡']);
+    }
+  } else {
+    statusRow = `<div style="background:var(--bg,#f7f5f0);border-radius:12px;padding:12px 16px;margin-bottom:14px;font-size:14px;color:var(--text-mid);">
+      今天还没有睡眠打卡，<b style="color:var(--text,#333)">在上方打卡后</b>，这里会按你的实际入睡和起床时间生成专属方案。先给你一份通用版：
+    </div>`;
+    items.push(['☀️', '起床后先补水', '一杯温开水，简单拉伸 5 分钟再开始一天']);
+    items.push(['😴', '午间小憩', '13 点前后睡 20~30 分钟，别超过半小时']);
+    items.push(['🌙', '今晚 23 点前躺下', '睡前 1 小时放下手机，温水泡脚 15 分钟更好入睡']);
+  }
+
+  openModal(`
+    <div class="modal-head">
+      <div class="modal-title">${title}</div>
+      <span class="modal-close" onclick="closeModal()">×</span>
+    </div>
+    <div class="modal-body" style="padding:20px 24px 24px;">
+      ${statusRow}
+      ${items.map(it => `
+        <div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px dashed var(--border);">
+          <span style="font-size:20px;line-height:1.2;">${it[0]}</span>
+          <div>
+            <div style="font-size:14px;font-weight:600;color:var(--text,#333);">${it[1]}</div>
+            <div style="font-size:13px;color:var(--text-mid);margin-top:2px;">${it[2]}</div>
+          </div>
+        </div>`).join('')}
+      <div style="font-size:12px;color:var(--text-light);margin-top:12px;">补救只是应急，规律作息才是养肝的根本。以上建议仅供健康参考。</div>
+    </div>
+  `);
 }
 
 // ============ 478 呼吸引导 ============
@@ -2847,6 +3216,51 @@ function setAIScore(score) {
   if (fill) fill.style.width = score + '%';
 }
 
+// ============ 排行榜（演示数据；待 AI 打分落库后替换为真实成绩） ============
+const RANK_DATA = [
+  { user: '松友_01', action: '两手托天理三焦', score: 98, date: '2026-10-04', cat: 'baduanjin' },
+  { user: '松友_02', action: '左右开弓似射雕', score: 95, date: '2026-10-04', cat: 'baduanjin' },
+  { user: '松友_03', action: '调理脾胃须单举', score: 92, date: '2026-10-03', cat: 'baduanjin' },
+  { user: '松友_04', action: '五劳七伤往后瞧', score: 88, date: '2026-10-03', cat: 'baduanjin' },
+  { user: '松友_05', action: '两手攀足固肾腰', score: 85, date: '2026-10-02', cat: 'baduanjin' },
+  { user: '松友_06', action: '扩胸展背式', score: 94, date: '2026-10-05', cat: 'stretch' },
+  { user: '松友_07', action: '侧腰伸展式', score: 91, date: '2026-10-05', cat: 'stretch' },
+  { user: '松友_08', action: '肩背开合式', score: 89, date: '2026-10-04', cat: 'stretch' },
+  { user: '松友_09', action: '颈部缓旋式', score: 85, date: '2026-10-03', cat: 'stretch' },
+  { user: '松友_10', action: '体侧拉伸式', score: 83, date: '2026-10-02', cat: 'stretch' },
+  { user: '松友_11', action: '肩颈绕环', score: 93, date: '2026-10-06', cat: 'office' },
+  { user: '松友_12', action: '腕指放松操', score: 90, date: '2026-10-05', cat: 'office' },
+  { user: '松友_13', action: '坐姿转体', score: 87, date: '2026-10-05', cat: 'office' },
+  { user: '松友_14', action: '踮脚提踵', score: 84, date: '2026-10-04', cat: 'office' },
+  { user: '松友_15', action: '眼周按压操', score: 82, date: '2026-10-03', cat: 'office' },
+];
+
+function switchRankTab(cat, ev) {
+  document.querySelectorAll('#page-rank .tab-bar .tab').forEach(t => t.classList.remove('active'));
+  const trigger = (ev && ev.currentTarget) || document.querySelector('#page-rank .tab-bar .tab[data-rank="' + cat + '"]');
+  if (trigger) trigger.classList.add('active');
+  renderRankBody(cat);
+}
+
+function renderRankBody(cat) {
+  const body = document.getElementById('aiRankBody');
+  if (!body) return;
+  const list = (cat === 'all' ? RANK_DATA.slice() : RANK_DATA.filter(r => r.cat === cat))
+    .sort((a, b) => b.score - a.score).slice(0, 8);
+  const badge = (i) => i === 0 ? '<span class="ai-rank-badge gold">1</span>'
+    : i === 1 ? '<span class="ai-rank-badge silver">2</span>'
+      : i === 2 ? '<span class="ai-rank-badge bronze">3</span>' : String(i + 1);
+  body.innerHTML = list.length ? list.map((r, i) =>
+    '<div class="ai-rank-row">'
+    + '<div class="ai-rank-col rank">' + badge(i) + '</div>'
+    + '<div class="ai-rank-col user">' + r.user + '</div>'
+    + '<div class="ai-rank-col action">' + r.action + '</div>'
+    + '<div class="ai-rank-col score">' + r.score + '</div>'
+    + '<div class="ai-rank-col date">' + r.date + '</div></div>'
+  ).join('') : '<div style="padding:24px;text-align:center;color:var(--text-mid);">该分类暂无成绩，快来打第一个分～</div>';
+}
+renderRankBody('all');
+
 // 播放模式选择器：独立绑定，有无视频都可用
 function initPlayModeSelector() {
   const modeBtn = document.getElementById('pdModeBtn');
@@ -2983,7 +3397,7 @@ function switchRecordTab(tab, ev) {
     const el = document.getElementById('recordTab' + (i + 1));
     if (el) el.style.display = tab === t ? 'block' : 'none';
   });
-  if (tab === 'chronic') switchChronic(currentChronic);
+  if (tab === 'chronic') { switchChronic(currentChronic); loadChronicTrack(); }
 }
 
 // 「＋ 添加记录」入口：选择记录类型
@@ -3237,6 +3651,39 @@ async function loadSymptomStats() {
   }
 }
 
+// 慢病页「调理跟踪」：近4周（滚动7天窗口）症状发作次数柱状图
+async function loadChronicTrack() {
+  const el = document.getElementById('chronicTrack');
+  if (!el) return;
+  const res = await fetchAPI('/record/symptoms/stats');
+  if (!res.success || !res.data || !res.data.weeks) return;
+  const weeks = res.data.weeks;
+  const total = weeks.reduce((a, b) => a + b.count, 0);
+  const max = Math.max(1, ...weeks.map(w => w.count));
+  el.innerHTML = weeks.map(w => {
+    const pct = w.count ? Math.max(12, (w.count / max) * 88) : 4;
+    const color = w.count === 0 ? 'var(--border)' : w.count >= max && max >= 3 ? 'var(--danger)' : w.count >= 2 ? 'var(--warn)' : 'var(--primary)';
+    const range = w.start.slice(5).replace('-', '/') + '~' + w.end.slice(5).replace('-', '/');
+    return `<div style="display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0;">
+      <div style="font-size:12px;color:var(--text-mid);font-weight:600;">${w.count || ''}</div>
+      <div style="width:34px;height:${pct}%;border-radius:4px 4px 0 0;background:${color};"></div>
+      <div style="font-size:12px;color:var(--text-mid);">${w.label}</div>
+      <div style="font-size:10px;color:var(--text-light);white-space:nowrap;">${range}</div>
+    </div>`;
+  }).join('');
+  const tip = document.getElementById('chronicTrackTip');
+  if (tip) {
+    const first = weeks[0].count; const last = weeks[weeks.length - 1].count;
+    tip.innerHTML = total === 0
+      ? '\u{1F4DD} 近4周还没有症状记录，去「症状打卡」记一记，才能看出调理趋势'
+      : first > last
+        ? '\u{1F9E0} 近4周发作频率在下降，当前调理方向是对的，继续保持'
+        : first < last
+          ? '\u{1F9E0} 本周发作比之前频繁，留意发作当天的作息、饮食和情绪，必要时调整方案'
+          : `\u{1F9E0} 近4周共记录 ${total} 次发作，频率基本持平，坚持记录观察变化`;
+  }
+}
+
 // ============ 慢病养护（静态常识 + AI 计划） ============
 let currentChronic = '偏头痛';
 const CHRONIC_DATA = {
@@ -3318,6 +3765,67 @@ function genChronicPlan() {
 // ============ 个人中心（健康档案，be-3） ============
 let profileCache = null;
 
+// ============ 健康偏好编辑（标签化点选，替代自由文本；多选以「、」入库） ============
+const PREF_DEFS = [
+  { key: 'dietPref', label: '饮食偏好', multi: true, options: ['清淡', '少辣', '少甜', '忌生冷', '素食', '爱喝汤'] },
+  { key: 'exercisePref', label: '运动习惯', multi: false, options: ['几乎不动', '偶尔散步', '每周1~2次', '每周3次以上', '爱练功法'] },
+  { key: 'sleepPref', label: '作息规律', multi: false, options: ['早睡早起', '夜猫子', '作息不规律', '常轮班'] },
+  { key: 'bodySense', label: '体感敏感度', multi: false, options: ['怕冷', '怕热', '易口干咽燥', '不太明显'] },
+];
+
+async function openPrefEditor() {
+  if (!profileCache) await loadProfile();
+  const p = profileCache || {};
+  const groups = PREF_DEFS.map(g => {
+    const cur = (p[g.key] || '').split('、').filter(Boolean);
+    // 早先手填的自由文本若不在选项里，动态补成可选 chip，避免丢数据
+    const opts = [...g.options];
+    cur.forEach(v => { if (!opts.includes(v)) opts.push(v); });
+    const chips = opts.map(o =>
+      `<span class="tag-chip${cur.includes(o) ? ' active' : ''}" data-multi="${g.multi ? 1 : 0}" onclick="togglePrefChip(this)">${escapeHtml(o)}</span>`
+    ).join('');
+    return '<div style="margin-bottom:18px;">' +
+      '<div style="font-size:14px;font-weight:600;margin-bottom:8px;">' + g.label +
+      (g.multi ? '<span style="font-weight:400;color:var(--text-light);font-size:12px;">（可多选）</span>' : '') + '</div>' +
+      '<div class="tag-row" style="margin-bottom:0;" data-group="' + g.key + '">' + chips + '</div></div>';
+  }).join('');
+  openModal(
+    '<div style="padding:24px 28px 28px;">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin:-24px -28px 16px;padding:16px 28px 12px;position:sticky;top:0;background:var(--card,#fff);z-index:10;">' +
+    '<b style="font-size:16px;">编辑健康偏好</b>' +
+    '<span class="modal-close" onclick="closeModal()" style="font-size:26px;cursor:pointer;color:var(--text-mid);padding:0 8px;">&times;</span></div>' +
+    groups +
+    '<button class="btn btn-primary btn-block" style="margin-top:8px;" onclick="savePrefEditor()">保存</button>' +
+    '</div>', { width: 560 }
+  );
+}
+
+function togglePrefChip(el) {
+  const row = el.parentElement;
+  if (!row) return;
+  if (el.dataset.multi === '1') {
+    el.classList.toggle('active');
+  } else {
+    const wasActive = el.classList.contains('active');
+    row.querySelectorAll('.tag-chip').forEach(c => c.classList.remove('active'));
+    if (!wasActive) el.classList.add('active');
+  }
+}
+
+async function savePrefEditor() {
+  const payload = {};
+  for (const g of PREF_DEFS) {
+    const row = document.querySelector('[data-group="' + g.key + '"]');
+    if (!row) return;
+    payload[g.key] = Array.from(row.querySelectorAll('.tag-chip.active')).map(c => c.textContent.trim()).join('、') || null;
+  }
+  const res = await fetchAPI('/profile', { method: 'PUT', body: JSON.stringify(payload) });
+  if (!res.success) { toast(res.message || '保存失败，请稍后重试', 'error'); return; }
+  closeModal();
+  toast('健康偏好已保存，推荐会更懂你 🌿', 'success');
+  loadProfile();
+}
+
 async function loadProfile() {
   const res = await fetchAPI('/profile');
   if (!res.success || !res.data) return;
@@ -3358,22 +3866,16 @@ async function loadProfileStats() {
 function switchProfileView(view, mi) {
   document.querySelectorAll('.profile-menu .mi').forEach(m => m.classList.remove('active'));
   if (mi) mi.classList.add('active');
-  const favCard = document.getElementById('viewFavorites');
-  const chronicCard = document.getElementById('viewChronic');
+  const EXTRA = { favorites: 'viewFavorites', chronic: 'viewChronic', reminders: 'viewReminders', security: 'viewSecurity', feedback: 'viewFeedback' };
+  const targetId = EXTRA[view] || null;
+  ['viewFavorites', 'viewChronic', 'viewReminders', 'viewSecurity', 'viewFeedback'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = id === targetId ? '' : 'none';
+  });
   const cards = document.querySelectorAll('.pf-view-card');
-  if (view === 'favorites') {
-    if (favCard) favCard.style.display = '';
-    if (chronicCard) chronicCard.style.display = 'none';
+  if (targetId) {
     cards.forEach(c => c.style.display = 'none');
-    renderFavList();
-  } else if (view === 'chronic') {
-    if (favCard) favCard.style.display = 'none';
-    if (chronicCard) chronicCard.style.display = '';
-    cards.forEach(c => c.style.display = 'none');
-    loadChronicProfile();
   } else {
-    if (favCard) favCard.style.display = 'none';
-    if (chronicCard) chronicCard.style.display = 'none';
     cards.forEach(c => c.style.display = '');
     if (view === 'stats') {
       setTimeout(() => {
@@ -3381,6 +3883,79 @@ function switchProfileView(view, mi) {
         if (statCard) statCard.scrollIntoView({ behavior: 'smooth' });
       }, 60);
     }
+  }
+  if (view === 'favorites') renderFavList();
+  if (view === 'chronic') loadChronicProfile();
+  if (view === 'security') loadSecurityInfo();
+}
+
+// ============ 提醒设置（本地存储，与穿衣建议页天气开关同步） ============
+function syncReminderSwitches() {
+  const todoOn = localStorage.getItem('songxu_todo_alert') !== '0';
+  const weatherOn = localStorage.getItem('songxu_weather_alert') !== '0';
+  [[todoOn, 'todoRemindSwitch'], [weatherOn, 'remWeatherSwitch']].forEach(([on, id]) => {
+    const sw = document.getElementById(id);
+    if (!sw) return;
+    sw.setAttribute('aria-checked', on ? 'true' : 'false');
+    sw.style.background = on ? 'var(--primary)' : '#C7BCA8';
+    const knob = sw.firstElementChild;
+    if (knob) {
+      knob.style.right = on ? '2px' : '';
+      knob.style.left = on ? '' : '2px';
+    }
+  });
+}
+function toggleTodoRemind() {
+  const on = localStorage.getItem('songxu_todo_alert') === '0';
+  localStorage.setItem('songxu_todo_alert', on ? '1' : '0');
+  if (on) startTodoReminder(); else stopTodoReminder();
+  syncReminderSwitches();
+  toast(on ? '已开启每日待办提醒' : '已关闭每日待办提醒');
+}
+function toggleRemWeather() {
+  toggleWeatherAlert(); // 本地存储切换 + 穿衣建议页开关同步 + toast
+  syncReminderSwitches();
+}
+
+// ============ 账号与安全 ============
+function loadSecurityInfo() {
+  fetchAPI('/auth/me').then(res => {
+    if (!res.success || !res.data) return;
+    const d = res.data;
+    const put = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+    put('pfSecUsername', d.username || '--');
+    put('pfSecName', d.name || '--');
+    put('pfSecCreated', d.created_at ? String(d.created_at).slice(0, 10) : '--');
+  });
+}
+async function changePassword() {
+  const val = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+  const oldPwd = val('secOldPwd'), newPwd = val('secNewPwd'), newPwd2 = val('secNewPwd2');
+  if (!oldPwd || !newPwd) return toast('请填写原密码和新密码', 'warn');
+  if (newPwd.length < 6) return toast('新密码至少 6 位', 'warn');
+  if (newPwd !== newPwd2) return toast('两次输入的新密码不一致', 'warn');
+  const res = await fetchAPI('/auth/change-password', { method: 'POST', body: JSON.stringify({ oldPassword: oldPwd, newPassword: newPwd }) });
+  if (res.success) {
+    ['secOldPwd', 'secNewPwd', 'secNewPwd2'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    toast('密码已更新，下次登录请使用新密码');
+  } else {
+    toast(res.message || '修改失败，稍后再试', 'error');
+  }
+}
+
+// ============ 意见反馈 ============
+async function submitFeedback() {
+  const el = document.getElementById('feedbackText');
+  const content = ((el && el.value) || '').trim();
+  if (content.length < 5) return toast('反馈内容至少 5 个字', 'warn');
+  const res = await fetchAPI('/feedback', { method: 'POST', body: JSON.stringify({ content }) });
+  if (res.success) {
+    if (el) el.value = '';
+    const c = document.getElementById('feedbackCount');
+    if (c) c.textContent = '0';
+    toast('已收到你的反馈，谢谢～');
+  } else {
+    toast(res.message || '提交失败，稍后再试', 'error');
   }
 }
 // ============ 慢病档案（分步问卷） ============
@@ -3985,6 +4560,14 @@ function initTagRows() {
 // ============ 初始化 ============
 document.addEventListener('DOMContentLoaded', async () => {
   initTagRows();
+  renderSolarTerm();
+  // 意见反馈字数统计
+  const fbText = document.getElementById('feedbackText');
+  if (fbText) fbText.addEventListener('input', () => {
+    const c = document.getElementById('feedbackCount');
+    if (c) c.textContent = String(fbText.value.length);
+  });
+  syncReminderSwitches();
 
   // 侧边栏功能板块 → 抽屉打开
   document.querySelectorAll('.sb-nav a').forEach(a => {

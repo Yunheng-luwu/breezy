@@ -1,10 +1,10 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>松序 - 顺气舒心，慢养日常</title>
-<link rel="stylesheet" href="css/style.css?v=20261006-4">
+<link rel="stylesheet" href="css/style.css?v=20261007-5">
 
 </head>
 <body>
@@ -172,7 +172,7 @@
     <div class="home-hero">
       <img class="hero-img" src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Beautiful%20arrangement%20of%20traditional%20Chinese%20herbal%20medicine%20ingredients%2C%20goji%20berries%2C%20red%20dates%2C%20dried%20roses%2C%20chrysanthemum%2C%20angelica%20root%20on%20rustic%20wooden%20table%20with%20warm%20sunlight%2C%20professional%20food%20photography&image_size=landscape_16_9" alt="中药养生">
       <div class="hero-content">
-        <span class="badge">白露时节 · 养生正当时</span>
+        <span class="badge" id="homeTermBadge">白露时节 · 养生正当时</span>
         <h2>顺气舒心 · 慢养日常</h2>
         <p>基于中医疏肝解郁理论，为你定制每日调理方案<br>茶饮 · 穴位 · 功法 · 作息，四位一体轻养生</p>
       </div>
@@ -220,7 +220,7 @@
         <h3>中药图鉴 · 疏肝养身</h3>
         <div style="display:flex;align-items:center;gap:10px;">
           <span class="tag tag-primary" id="herbDailyTag">今日精选</span>
-          <button class="btn btn-sm btn-outline" onclick="openHerbAtlas()">查看全部 30 味 &rarr;</button>
+          <button class="btn btn-sm btn-outline" onclick="openHerbAtlas()">查看全部 &rarr;</button>
         </div>
       </div>
       <div class="herb-atlas" id="herbAtlas"></div>
@@ -307,15 +307,31 @@
       <div class="card-grid-3">
         <div class="herb-recipe-card">
           <img class="hr-img" src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Dried%20rose%20buds%20and%20herbs%20for%20foot%20bath%20in%20a%20wooden%20bowl%2C%20warm%20lighting%2C%20wellness%20photography%2C%20traditional%20Chinese%20medicine&image_size=square" alt="玫瑰疏肝方">
-          <div class="hr-body"><h4>玫瑰疏肝方</h4><span class="tag tag-primary">疏肝解郁</span><div style="font-size:13px;color:var(--text-mid);margin:8px 0;">玫瑰花10g + 柴胡6g + 薄荷5g</div><div style="font-size:12px;color:var(--text-light);">水温40-42°C / 20分钟</div><button class="btn btn-sm btn-outline btn-block" style="margin-top:8px;" onclick="footbathToTodo('玫瑰疏肝方泡脚','20分钟')">开始泡脚</button></div>
+          <div class="hr-body"><h4>玫瑰疏肝方</h4><span class="tag tag-primary">疏肝解郁</span><div class="hr-info">玫瑰花10g + 柴胡6g + 薄荷5g<div class="hr-temp">水温40-42°C / 20分钟</div></div><button class="btn btn-sm btn-outline btn-block" onclick="footbathToTodo('玫瑰疏肝方泡脚','20分钟')">开始泡脚</button></div>
         </div>
         <div class="herb-recipe-card">
           <img class="hr-img" src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Dried%20mugwort%20artemisia%20leaves%20and%20ginger%20slices%20for%20foot%20bath%2C%20traditional%20Chinese%20medicine%2C%20warm%20natural%20lighting&image_size=square" alt="艾草温通方">
-          <div class="hr-body"><h4>艾草温通方</h4><span class="tag tag-warn">温经散寒</span><div style="font-size:13px;color:var(--text-mid);margin:8px 0;">艾叶15g + 生姜3片 + 红花5g</div><div style="font-size:12px;color:var(--text-light);">水温38-40°C / 15分钟</div><button class="btn btn-sm btn-outline btn-block" style="margin-top:8px;" onclick="footbathToTodo('艾草温通方泡脚','15分钟')">开始泡脚</button></div>
+          <div class="hr-body"><h4>艾草温通方</h4><span class="tag tag-warn">温经散寒</span><div class="hr-info">艾叶15g + 生姜3片 + 红花5g<div class="hr-temp">水温38-40°C / 15分钟</div></div><button class="btn btn-sm btn-outline btn-block" onclick="footbathToTodo('艾草温通方泡脚','15分钟')">开始泡脚</button></div>
         </div>
         <div class="herb-recipe-card">
           <img class="hr-img" src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Dried%20he%20huan%20pi%20albizia%20bark%20and%20night%20jasmine%20vines%20for%20herbal%20foot%20soak%2C%20traditional%20Chinese%20medicine%2C%20warm%20lighting&image_size=square" alt="合欢安神方">
-          <div class="hr-body"><h4>合欢安神方</h4><span class="tag tag-success">安神助眠</span><div style="font-size:13px;color:var(--text-mid);margin:8px 0;">合欢皮10g + 夜交藤15g + 柏子仁5g</div><div style="font-size:12px;color:var(--text-light);">水温40°C / 20分钟</div><button class="btn btn-sm btn-outline btn-block" style="margin-top:8px;" onclick="footbathToTodo('合欢安神方泡脚','20分钟')">开始泡脚</button></div>
+          <div class="hr-body"><h4>合欢安神方</h4><span class="tag tag-success">安神助眠</span><div class="hr-info">合欢皮10g + 夜交藤15g + 柏子仁5g<div class="hr-temp">水温40°C / 20分钟</div></div><button class="btn btn-sm btn-outline btn-block" onclick="footbathToTodo('合欢安神方泡脚','20分钟')">开始泡脚</button></div>
+        </div>
+        <div class="herb-recipe-card">
+          <div class="hr-img" style="display:flex;align-items:center;justify-content:center;font-size:56px;background:linear-gradient(135deg,#eef3f6,#dde8ee);">💧</div>
+          <div class="hr-body"><h4>陈皮茯苓祛湿方</h4><span class="tag tag-primary">祛湿健脾</span><div class="hr-info">陈皮10g + 茯苓15g + 藿香10g<div class="hr-temp">水温40-42°C / 20分钟</div></div><button class="btn btn-sm btn-outline btn-block" onclick="footbathToTodo('陈皮茯苓祛湿方泡脚','20分钟')">开始泡脚</button></div>
+        </div>
+        <div class="herb-recipe-card">
+          <div class="hr-img" style="display:flex;align-items:center;justify-content:center;font-size:56px;background:linear-gradient(135deg,#f6efe6,#eadfce);">🍃</div>
+          <div class="hr-body"><h4>生姜艾叶驱寒方</h4><span class="tag tag-warn">驱寒解表</span><div class="hr-info">生姜5片 + 艾叶15g + 紫苏10g<div class="hr-temp">水温40-42°C / 20分钟</div></div><button class="btn btn-sm btn-outline btn-block" onclick="footbathToTodo('生姜艾叶驱寒方泡脚','20分钟')">开始泡脚</button></div>
+        </div>
+        <div class="herb-recipe-card">
+          <div class="hr-img" style="display:flex;align-items:center;justify-content:center;font-size:56px;background:linear-gradient(135deg,#eef2e8,#dfe8d5);">🧘</div>
+          <div class="hr-body"><h4>伸筋草舒筋方</h4><span class="tag tag-success">舒筋活络</span><div class="hr-info">伸筋草15g + 桑枝10g + 艾叶10g<div class="hr-temp">水温40-42°C / 20分钟</div></div><button class="btn btn-sm btn-outline btn-block" onclick="footbathToTodo('伸筋草舒筋方泡脚','20分钟')">开始泡脚</button></div>
+        </div>
+        <div class="herb-recipe-card">
+          <div class="hr-img" style="display:flex;align-items:center;justify-content:center;font-size:56px;background:linear-gradient(135deg,#f3eee9,#e5dccd);">🌼</div>
+          <div class="hr-body"><h4>菊花决明清润方</h4><span class="tag tag-warn">清热明目</span><div class="hr-info">菊花10g + 决明子10g + 薄荷5g<div class="hr-temp">水温38-40°C / 15分钟</div></div><button class="btn btn-sm btn-outline btn-block" onclick="footbathToTodo('菊花决明清润方泡脚','15分钟')">开始泡脚</button></div>
         </div>
       </div>
     </div>
@@ -369,21 +385,21 @@
     <div class="card" style="margin-bottom:20px;">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
         <div>
-          <h3 style="margin-bottom:6px;">药膳汤谱 &#127858;</h3>
-          <div style="font-size:13px;color:var(--text-light);">家常药膳 · 材料、做法、适用与禁忌齐全</div>
+          <h3 style="margin-bottom:6px;">家常药膳 &#127858;</h3>
+          <div style="font-size:13px;color:var(--text-light);">汤品 · 粥膳 · 炖补 · 饮品，材料、做法、适用与禁忌齐全</div>
         </div>
-        <button type="button" class="btn btn-primary btn-sm" onclick="openSoupAtlas()">查看汤谱</button>
+        <button type="button" class="btn btn-primary btn-sm" onclick="openSoupAtlas()">查看药膳</button>
       </div>
     </div>
     <div class="season-banner">
-      <img class="sb-img" src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=White%20dew%20season%20autumn%20morning%20with%20chrysanthemum%20and%20lily%20bulbs%2C%20traditional%20Chinese%20seasonal%20food%20ingredients%2C%20warm%20soft%20lighting&image_size=landscape_16_9" alt="白露节气">
-      <div class="sb-content"><div class="season">二十四节气 · 白露</div><h3>润肺养阴 · 白露时令食方</h3><p>秋意渐浓，宜食百合、银耳、莲藕以润燥养阴</p></div>
+      <img class="sb-img" src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=White%20dew%20season%20autumn%20morning%20with%20chrysanthemum%20and%20lily%20bulbs%2C%20traditional%20Chinese%20seasonal%20food%20ingredients%2C%20warm%20soft%20lighting&image_size=landscape_16_9" alt="白露节气" id="termBannerImg">
+      <div class="sb-content"><div class="season" id="termBannerSeason">二十四节气 · 白露</div><h3 id="termBannerTitle">润肺养阴 · 白露时令食方</h3><p id="termBannerDesc">秋意渐浓，宜食百合、银耳、莲藕以润燥养阴</p></div>
     </div>
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;">
-        <h3>本期节气食方</h3><span class="tag tag-primary">白露</span>
+        <h3>本期节气食方</h3><span class="tag tag-primary" id="termFoodsTag">白露</span>
       </div>
-      <div class="card-grid-3" style="margin-top:16px;">
+      <div class="card-grid-3" id="termFoods" style="margin-top:16px;">
         <div class="card-beige" style="text-align:center;"><div style="font-size:32px;">&#127843;</div><div style="font-weight:500;">百合银耳羹</div><div style="font-size:13px;color:var(--text-light);">润肺养阴·白露时令</div></div>
         <div class="card-beige" style="text-align:center;"><div style="font-size:32px;">&#127840;</div><div style="font-weight:500;">莲藕排骨汤</div><div style="font-size:13px;color:var(--text-light);">健脾养胃·秋初滋补</div></div>
         <div class="card-beige" style="text-align:center;"><div style="font-size:32px;">&#127861;</div><div style="font-weight:500;">枸杞菊花茶</div><div style="font-size:13px;color:var(--text-light);">清肝明目·日常饮用</div></div>
@@ -501,7 +517,7 @@
             <div style="font-size:14px;color:var(--text-mid);margin-bottom:8px;">1. 按揉太冲穴5分钟</div>
             <div style="font-size:14px;color:var(--text-mid);margin-bottom:8px;">2. 喝枸杞菊花茶</div>
             <div style="font-size:14px;color:var(--text-mid);margin-bottom:12px;">3. 午间小憩20分钟</div>
-            <button class="btn btn-outline btn-sm btn-block">生成完整方案</button>
+            <button class="btn btn-outline btn-sm btn-block" onclick="openNightRepair()">生成完整方案</button>
           </div>
         </div>
       </div>
@@ -625,10 +641,10 @@
     </div>
     <div class="page-header"><div><h1>🏆 排行榜</h1><div class="sub">看看谁的动作最标准</div></div></div>
     <div class="tab-bar">
-      <div class="tab active">总榜</div>
-      <div class="tab">八段锦</div>
-      <div class="tab">疏肝拉伸</div>
-      <div class="tab">办公室微动</div>
+      <div class="tab active" data-rank="all" onclick="switchRankTab('all', event)">总榜</div>
+      <div class="tab" data-rank="baduanjin" onclick="switchRankTab('baduanjin', event)">八段锦</div>
+      <div class="tab" data-rank="stretch" onclick="switchRankTab('stretch', event)">疏肝拉伸</div>
+      <div class="tab" data-rank="office" onclick="switchRankTab('office', event)">办公室微动</div>
     </div>
     <div class="card">
       <div class="ai-rank-table">
@@ -639,43 +655,7 @@
           <div class="ai-rank-col score">得分</div>
           <div class="ai-rank-col date">日期</div>
         </div>
-        <div class="ai-rank-body" id="aiRankBody">
-          <div class="ai-rank-row">
-            <div class="ai-rank-col rank"><span class="ai-rank-badge gold">1</span></div>
-            <div class="ai-rank-col user">松友_01</div>
-            <div class="ai-rank-col action">两手托天理三焦</div>
-            <div class="ai-rank-col score">98</div>
-            <div class="ai-rank-col date">2026-10-04</div>
-          </div>
-          <div class="ai-rank-row">
-            <div class="ai-rank-col rank"><span class="ai-rank-badge silver">2</span></div>
-            <div class="ai-rank-col user">松友_02</div>
-            <div class="ai-rank-col action">左右开弓似射雕</div>
-            <div class="ai-rank-col score">95</div>
-            <div class="ai-rank-col date">2026-10-04</div>
-          </div>
-          <div class="ai-rank-row">
-            <div class="ai-rank-col rank"><span class="ai-rank-badge bronze">3</span></div>
-            <div class="ai-rank-col user">松友_03</div>
-            <div class="ai-rank-col action">调理脾胃须单举</div>
-            <div class="ai-rank-col score">92</div>
-            <div class="ai-rank-col date">2026-10-03</div>
-          </div>
-          <div class="ai-rank-row">
-            <div class="ai-rank-col rank">4</div>
-            <div class="ai-rank-col user">松友_04</div>
-            <div class="ai-rank-col action">五劳七伤往后瞧</div>
-            <div class="ai-rank-col score">88</div>
-            <div class="ai-rank-col date">2026-10-03</div>
-          </div>
-          <div class="ai-rank-row">
-            <div class="ai-rank-col rank">5</div>
-            <div class="ai-rank-col user">松友_05</div>
-            <div class="ai-rank-col action">两手攀足固肾腰</div>
-            <div class="ai-rank-col score">85</div>
-            <div class="ai-rank-col date">2026-10-02</div>
-          </div>
-        </div>
+        <div class="ai-rank-body" id="aiRankBody"></div>
       </div>
     </div>
   </div>
@@ -769,13 +749,10 @@
       </div>
       <div class="card">
         <h3 style="margin-bottom:12px;">调理跟踪</h3>
-        <div style="height:100px;display:flex;align-items:end;justify-content:space-around;">
-          <div style="width:24px;height:60px;background:var(--danger);border-radius:3px;"></div>
-          <div style="width:24px;height:50px;background:var(--warn);border-radius:3px;"></div>
-          <div style="width:24px;height:40px;background:var(--warn);border-radius:3px;"></div>
-          <div style="width:24px;height:30px;background:var(--success);border-radius:3px;"></div>
+        <div id="chronicTrack" style="height:110px;display:flex;align-items:end;justify-content:space-around;">
+          <div style="color:var(--text-light);font-size:13px;margin:auto;">正在加载近4周发作趋势…</div>
         </div>
-        <div style="font-size:14px;color:var(--text-mid);margin-top:12px;">&#129504; 近4周发作频率递减，调理方案有效</div>
+        <div style="font-size:14px;color:var(--text-mid);margin-top:12px;" id="chronicTrackTip">&#129504; 坚持记录症状，才能看出调理趋势</div>
       </div>
     </div>
   </div>
@@ -802,9 +779,9 @@
             <div class="mi" onclick="switchProfileView('chronic', this)">慢病档案 <span class="arrow">&rarr;</span></div>
             <div class="mi" onclick="switchProfileView('favorites', this)">我的收藏 <span class="arrow">&rarr;</span></div>
             <div class="mi" onclick="switchProfileView('stats', this)">健康数据总览 <span class="arrow">&rarr;</span></div>
-            <div class="mi" onclick="toast('提醒设置即将上线，可先在「穿衣建议」页开启天气提醒')">提醒设置 <span class="arrow">&rarr;</span></div>
-            <div class="mi" onclick="toast('账号安全功能即将上线')">账号与安全 <span class="arrow">&rarr;</span></div>
-            <div class="mi" onclick="toast('感谢反馈，可直接在 AI 对话里告诉小松你的建议～')">意见反馈 <span class="arrow">&rarr;</span></div>
+            <div class="mi" onclick="switchProfileView('reminders', this)">提醒设置 <span class="arrow">&rarr;</span></div>
+            <div class="mi" onclick="switchProfileView('security', this)">账号与安全 <span class="arrow">&rarr;</span></div>
+            <div class="mi" onclick="switchProfileView('feedback', this)">意见反馈 <span class="arrow">&rarr;</span></div>
             <div class="mi mi-logout" onclick="logout()">退出登录 <span class="arrow">&rarr;</span></div>
           </div>
         </div>
@@ -816,6 +793,39 @@
         <div class="card" id="viewFavorites" style="margin-bottom:20px;display:none;">
           <h3 style="margin-bottom:12px;">我的收藏</h3>
           <div id="favList"><div style="color:var(--text-light);font-size:14px;">还没有收藏，去「饮食调理」点亮食谱的收藏吧</div></div>
+        </div>
+        <div class="card" id="viewReminders" style="margin-bottom:20px;display:none;">
+          <h3 style="margin-bottom:12px;">提醒设置</h3>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
+            <div><div>每日待办提醒</div><div style="font-size:12px;color:var(--text-light);">临近待办时间时弹窗与系统通知</div></div>
+            <div id="todoRemindSwitch" onclick="toggleTodoRemind()" role="switch" aria-checked="true" style="width:44px;height:24px;border-radius:12px;background:var(--primary);position:relative;cursor:pointer;flex-shrink:0;margin-left:16px;"><div style="width:20px;height:20px;border-radius:50%;background:#fff;position:absolute;top:2px;right:2px;transition:all .2s;"></div></div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;">
+            <div><div>天气提醒</div><div style="font-size:12px;color:var(--text-light);">降温、大风等天气变化时自动提示</div></div>
+            <div id="remWeatherSwitch" onclick="toggleRemWeather()" role="switch" aria-checked="true" style="width:44px;height:24px;border-radius:12px;background:var(--primary);position:relative;cursor:pointer;flex-shrink:0;margin-left:16px;"><div style="width:20px;height:20px;border-radius:50%;background:#fff;position:absolute;top:2px;right:2px;transition:all .2s;"></div></div>
+          </div>
+          <div style="font-size:12px;color:var(--text-light);">偏好保存在本设备上，与「穿衣建议」页的天气开关同步</div>
+        </div>
+        <div class="card" id="viewSecurity" style="margin-bottom:20px;display:none;">
+          <h3 style="margin-bottom:12px;">账号与安全</h3>
+          <div class="info-row"><span class="ir-label">账号</span><span class="ir-value" id="pfSecUsername">--</span></div>
+          <div class="info-row"><span class="ir-label">昵称</span><span class="ir-value" id="pfSecName">--</span></div>
+          <div class="info-row"><span class="ir-label">注册时间</span><span class="ir-value" id="pfSecCreated">--</span></div>
+          <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);">
+            <b style="font-size:14px;">修改密码</b>
+            <input id="secOldPwd" type="password" placeholder="原密码" style="width:100%;box-sizing:border-box;margin-top:10px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px;background:#fff;">
+            <input id="secNewPwd" type="password" placeholder="新密码（至少 6 位）" style="width:100%;box-sizing:border-box;margin-top:8px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px;background:#fff;">
+            <input id="secNewPwd2" type="password" placeholder="确认新密码" style="width:100%;box-sizing:border-box;margin-top:8px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px;background:#fff;">
+            <button class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="changePassword()">保存新密码</button>
+          </div>
+        </div>
+        <div class="card" id="viewFeedback" style="margin-bottom:20px;display:none;">
+          <h3 style="margin-bottom:12px;">意见反馈</h3>
+          <textarea id="feedbackText" maxlength="500" placeholder="说说你的建议或遇到的问题（5~500 字），我们会认真看每一条" style="width:100%;box-sizing:border-box;min-height:110px;resize:vertical;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px;background:#fff;font-family:inherit;"></textarea>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
+            <span style="font-size:12px;color:var(--text-light);"><span id="feedbackCount">0</span>/500</span>
+            <button class="btn btn-primary btn-sm" onclick="submitFeedback()">提交反馈</button>
+          </div>
         </div>
         <div class="card pf-view-card" style="margin-bottom:20px;">
           <h3 style="margin-bottom:12px;">基本信息</h3>
@@ -837,7 +847,7 @@
           <div class="info-row"><span class="ir-label">运动习惯</span><span class="ir-value" id="pfExercise">--</span></div>
           <div class="info-row"><span class="ir-label">作息规律</span><span class="ir-value" id="pfSleep">--</span></div>
           <div class="info-row"><span class="ir-label">体感敏感度</span><span class="ir-value" id="pfBody">--</span></div>
-          <button class="btn btn-outline btn-sm" style="margin-top:12px;" onclick="toggleProfileEdit(this, [{id:'pfDiet',key:'dietPref',label:'饮食偏好'},{id:'pfExercise',key:'exercisePref',label:'运动习惯'},{id:'pfSleep',key:'sleepPref',label:'作息规律'},{id:'pfBody',key:'bodySense',label:'体感敏感度'}])">编辑</button>
+          <button class="btn btn-outline btn-sm" style="margin-top:12px;" onclick="openPrefEditor()">编辑</button>
         </div>
         <div class="card pf-view-card" id="pfStatCard">
           <h3 style="margin-bottom:12px;">数据总览</h3>
@@ -858,9 +868,9 @@
 </div>
 <div class="toast-wrap" id="toastWrap"></div>
 
-<script src="js/app.js?v=20261006-11"></script>
+<script src="js/app.js?v=20261007-26"></script>
 <script src="js/stickman.js?v=20261003-54"></script>
-<script type="module" src="js/ai-pose.js?v=20261005-14"></script>
+<script type="module" src="js/ai-pose.js?v=20261007-15"></script>
 
 </body>
 </html>

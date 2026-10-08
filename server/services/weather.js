@@ -292,39 +292,64 @@ function buildAdvice(w) {
   return { principle, inner, outer, shoes };
 }
 
-// ============ 场景提醒（首页三条，随天气变化） ============
-// 复用 buildAdvice 的天气判断范式，从条件池按权重选 3 条；条件不足时用通用养生提醒兜底
-function getSceneReminders(w) {
-  const rainy = /雨|雷/.test(w.dayWeather);
-  const snowy = /雪/.test(w.dayWeather);
-  const windy = w.windLevel >= 5;
-  const sunny = /晴/.test(w.dayWeather) && !rainy && !snowy;
-  const diff = w.high - w.low;
+// ============ 场景提醒（首页三条：天气 + 个人状况，文案带真实数值） ============
+// d：getClothingByAdcode 返回的数据（含 temp/high/low/diff/humidity/dayWeather/windLevel）
+// userCtx：登录用户 { score 肝郁指数, symptoms 近30天症状, prefs 健康偏好开关 }，未登录为 null
+function getSceneReminders(d, userCtx) {
+  const rainy = /雨|雷/.test(d.dayWeather || '');
+  const snowy = /雪/.test(d.dayWeather || '');
+  const windy = (d.windLevel || 0) >= 5;
+  const sunny = /晴/.test(d.dayWeather || '') && !rainy && !snowy;
+  const diff = d.diff != null ? d.diff : (d.high - d.low);
   const picked = [];
   const add = (icon, text, weight) => picked.push({ icon, text, weight });
 
-  if (snowy) add('🌨️', '雪天路滑防摔倒，护住颈背脚踝', 9);
-  if (rainy) add('🌧️', '雨天湿重，出门带伞不露脚踝', 9);
-  if (windy && w.temp < 25) add('🌬️', '大风天戴围巾，护住颈部防受风', 8);
-  if (w.temp <= 8) add('🧣', '低温天护住颈背，寒从脚生', 8);
-  if (diff >= 10) add('🌡️', '早晚温差大，洋葱式穿搭方便增减', 7);
-  if (w.temp >= 28) add('❄️', '空调房披披肩，护住肩颈膝盖', 7);
-  if (w.humidity >= 80 && w.temp >= 20) add('💧', '湿气偏重，少贪生冷甜腻', 6);
-  if (sunny && w.temp >= 25) add('☀️', '晴晒紫外线强，出门做好防晒', 5);
-  if (sunny && w.temp >= 15 && w.temp < 25) add('☀️', '晴好天气，适合出门晒背散步', 4);
+  // 天气条目：带真实温度/湿度/风力，具体可执行
+  if (snowy) add('🌨️', `今天有雪（${d.low}~${d.high}°C），出门防滑，护住颈背脚踝`, 9);
+  else if (rainy) add('🌧️', `今天${d.dayWeather}，包里备把伞，鞋子别露脚踝`, 9);
+  if (windy && d.temp < 25) add('🌬️', `今天风有${d.windLevel}级，围巾护住后颈再出门`, 8);
+  if (d.temp <= 8) add('🧣', `现在只有${d.temp}°C，外套拉链拉到顶，寒从脚生`, 8);
+  if (diff >= 10) add('🌡️', `早晚温差${diff}°C，早出晚归多带一件外套`, 7);
+  if (d.temp >= 28) add('❄️', `午后最高${d.high}°C，空调房备件披肩护肩颈`, 7);
+  if (d.humidity >= 80 && d.temp >= 20) add('💧', `湿度${d.humidity}%偏湿，今天少碰生冷甜腻`, 6);
+  if (d.humidity > 0 && d.humidity <= 40) add('💧', `空气偏干（湿度${d.humidity}%），多喝温水，炖个雪梨润润`, 6);
+  if (sunny && d.temp >= 25) add('☀️', `中午紫外线强，出门做好防晒，傍晚晒背15分钟`, 5);
+  if (sunny && d.temp >= 15 && d.temp < 25) add('☀️', `今天${d.temp}°C晴好，午休出门走10分钟晒晒背`, 4);
 
-  // 通用养生兜底：条件命中不足 3 条时按序补齐
+  // 个人状况条目（登录用户）：体感偏好 > 近30天症状 > 肝郁指数，置顶最前面
+  let personal = null;
+  if (userCtx) {
+    const s = (userCtx.symptoms || []).join(' ');
+    if (userCtx.prefs && userCtx.prefs.coldSensitive && d.temp <= 15) {
+      personal = ['🧣', `你怕冷，今天只有${d.temp}°C，比别人早一步加衣，护住颈背脚踝`];
+    } else if (userCtx.prefs && userCtx.prefs.heatSensitive && d.temp >= 26) {
+      personal = ['🧊', `你怕热，今天最高${d.high}°C，选透气衣物，避开午后暴晒`];
+    } else if (/失眠|睡|梦/.test(s)) personal = ['🌙', '你最近睡得不太好，今晚提前半小时放下手机'];
+    else if (/肩|颈|酸/.test(s)) personal = ['🧘', '久坐易肩颈僵，每小时起来转转肩、拉伸1分钟'];
+    else if (/胸闷|胁|叹|怒|烦|压|郁|生气/.test(s)) personal = ['🌿', '情绪紧绷时按揉太冲穴3分钟，缓缓疏气'];
+    else if (/疲|乏|累|倦/.test(s)) personal = ['🦶', '累的时候睡前温水泡脚15分钟，解乏助眠'];
+    else if (/胃|食欲|腹|消化|胀/.test(s)) personal = ['🍵', '胃口不佳就喝碗小米粥，温软不负担'];
+    else if ((userCtx.score || 0) >= 70) personal = ['🌼', `今日肝郁指数${userCtx.score}偏高，午后散步20分钟散散心`];
+    else if (userCtx.symptoms && userCtx.symptoms.length) personal = ['🍀', `这两天留意「${userCtx.symptoms[0]}」，规律作息是最好的调理`];
+  }
+
+  const out = [];
+  if (personal) out.push({ icon: personal[0], text: personal[1] });
+  for (const r of picked.sort((a, b) => b.weight - a.weight)) {
+    if (out.length >= 3) break;
+    out.push({ icon: r.icon, text: r.text });
+  }
+  // 通用兜底：天气+个人条目凑不满 3 条时补齐
   const fallback = [
-    { icon: '💪', text: '出汗不马上脱衣，毛孔开时最怕风' },
-    { icon: '🦶', text: '睡前温水泡脚，微微发热就好' },
+    { icon: '💪', text: '出汗别急着脱衣，等汗收了再减' },
+    { icon: '🦶', text: '睡前温水泡脚15分钟，微微发热就好' },
     { icon: '🍵', text: '晨起一杯温水，唤醒脾胃' },
   ];
-  const out = picked.sort((a, b) => b.weight - a.weight).slice(0, 3);
   for (const f of fallback) {
     if (out.length >= 3) break;
     out.push(f);
   }
-  return out.map(r => ({ icon: r.icon, text: r.text }));
+  return out.slice(0, 3);
 }
 
 // ============ 对外入口 ============
@@ -352,12 +377,14 @@ async function getClothingByAdcode(adcode, city, located = true) {
     low: w.low,
     diff: w.high - w.low,
     wind: `${w.windDir}风${w.windPower}级`,
+    windLevel: w.windLevel,
     humidity: w.humidity,
+    dayWeather: w.dayWeather,
     principle: advice.principle,
     inner: advice.inner,
     outer: advice.outer,
     shoes: advice.shoes,
-    reminders: getSceneReminders(w),
+    // reminders 不进缓存（个人化提醒按用户动态生成），由路由层调用 getSceneReminders 注入
     source: 'amap',
     located,
   };
@@ -407,6 +434,7 @@ module.exports = {
   getClothingByWeather,
   getClothingByIp,
   getClothingByAdcode,
+  getSceneReminders,
   searchCity,
   locateByLngLat,
 };

@@ -23,7 +23,8 @@ app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // 静态文件服务：仅开放 public 目录，不暴露 server/ 源码与 package.json
-app.use(express.static(path.join(__dirname, '..', 'public')));
+// maxAge 7 天：图片/js/css 均带版本号（?v=）或文件名不变，长缓存安全；二次访问走本地缓存秒开
+app.use(express.static(path.join(__dirname, '..', 'public'), { maxAge: '7d' }));
 
 // 所有 /api 接口先做可选认证：有 token 解析出 req.userId，无 token 放行（由各接口决定是否强制登录）
 app.use('/api', optionalAuth);
