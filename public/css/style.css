@@ -196,6 +196,27 @@ input { font-family:inherit; outline:none; }
 .food-tag.good { background:rgba(122,155,110,0.15); color:var(--success); }
 .food-tag.bad { background:rgba(197,108,92,0.12); color:var(--danger); }
 .food-tag.top-pick { box-shadow:0 0 0 2px var(--accent) inset; font-weight:600; }
+/* 红黑榜理由小字：桌面端悬停以气泡浮现，触屏端（无 hover）保持常显 */
+.food-tag { position:relative; }
+.food-why { display:block; font-style:normal; font-size:10px; color:var(--text-light); margin-top:2px; line-height:1.3; font-weight:400; }
+@media (hover:hover) {
+  .food-why { display:none; }
+  .food-tag:hover .food-why {
+    display:block; position:absolute; left:50%; bottom:calc(100% + 7px); transform:translateX(-50%);
+    background:#3d3229; color:#fff; font-size:11px; line-height:1.4; padding:5px 9px; border-radius:7px;
+    white-space:nowrap; z-index:60; pointer-events:none; box-shadow:0 4px 12px rgba(0,0,0,.18);
+  }
+  .food-tag:hover .food-why::after {
+    content:''; position:absolute; top:100%; left:50%; transform:translateX(-50%);
+    border:4px solid transparent; border-top-color:#3d3229;
+  }
+}
+/* 节气食方卡副标题：桌面端悬停浮现，触屏端常显 */
+.term-food-sub { transition:opacity .2s ease, transform .2s ease; }
+@media (hover:hover) {
+  .term-food-sub { opacity:0; transform:translateY(3px); }
+  .term-food-card:hover .term-food-sub { opacity:1; transform:none; }
+}
 .recipe-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
 .recipe-card { background:var(--card); border-radius:var(--radius); overflow:hidden; border:1px solid var(--border); box-shadow:var(--shadow); display:flex; flex-direction:column; }
 .recipe-card .time-tag { padding:6px 12px; background:var(--primary); color:#fff; font-size:13px; text-align:center; }
@@ -206,7 +227,7 @@ input { font-family:inherit; outline:none; }
 .recipe-card .ingr::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
 .recipe-card .recipe-bottom { margin-top:auto; }
 .recipe-card .recipe-reason { font-size:12px; color:var(--accent); margin:0 0 8px; }
-.recipe-card .footer { display:flex; justify-content:space-between; font-size:12px; color:var(--text-mid); padding-top:8px; border-top:1px dashed var(--border); }
+.recipe-card .footer { display:flex; justify-content:space-between; align-items:center; gap:4px 8px; flex-wrap:wrap; font-size:12px; color:var(--text-mid); padding-top:8px; border-top:1px dashed var(--border); }
 .card-beige { background:var(--card-beige); border-radius:12px; padding:16px; }
 
 /* 穿衣建议 */
@@ -335,9 +356,17 @@ input { font-family:inherit; outline:none; }
 .player-area { background:linear-gradient(135deg,rgba(74,56,38,0.85),rgba(107,78,46,0.75)), url('https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Serene%20Chinese%20mountain%20garden%20at%20sunrise%20with%20mist%2C%20traditional%20pavilion%2C%20bamboo%20grove%2C%20peaceful%20landscape%20for%20qigong%20practice&image_size=landscape_16_9') center/cover !important; }
 
 /* 泡脚配方带图 */
-.herb-recipe-card { display:flex; gap:0; border-radius:var(--radius); overflow:hidden; border:1px solid var(--border); box-shadow:var(--shadow); background:var(--card); }
+.herb-recipe-card { display:flex; gap:0; border-radius:var(--radius); overflow:hidden; border:1px solid var(--border); box-shadow:var(--shadow); background:var(--card); transition:all .2s; }
+.herb-recipe-card:hover { transform:translateY(-3px); box-shadow:var(--shadow-lg); }
 .herb-recipe-card .hr-img { width:100px; object-fit:cover; flex-shrink:0; }
-.herb-recipe-card .hr-body { padding:14px; flex:1; }
+.herb-recipe-card .hr-body { padding:14px; flex:1; display:flex; flex-direction:column; min-width:0; }
+/* 配料/水温区限高内部滚动：三卡高度一致，「开始泡脚」按钮贴底对齐 */
+.herb-recipe-card .hr-info { flex:1; min-height:0; max-height:92px; overflow-y:auto; margin:8px 0 10px; font-size:13px; color:var(--text-mid); }
+.herb-recipe-card .hr-info .hr-temp { font-size:12px; color:var(--text-light); margin-top:4px; }
+.herb-recipe-card .hr-body .btn { margin-top:auto; }
+.herb-recipe-card .hr-info::-webkit-scrollbar { width:4px; }
+.herb-recipe-card .hr-info::-webkit-scrollbar-thumb { background:rgba(54,39,24,0.2); border-radius:2px; }
+.herb-recipe-card .hr-info::-webkit-scrollbar-track { background:transparent; }
 
 /* 中药图鉴卡片 */
 .herb-atlas { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:24px; }
@@ -353,9 +382,11 @@ input { font-family:inherit; outline:none; }
 .herb-atlas-modal .herb-atlas-item .ha-body { padding:12px 14px; }
 .herb-atlas-modal .herb-atlas-item h5 { font-size:15px; margin-bottom:4px; }
 .herb-atlas-modal .herb-atlas-item .ha-tag { font-size:13px; }
-/* 图加载中：米色占位 + 淡入 */
-.ha-img { background:var(--card-beige); opacity:0; transition:opacity .35s; }
-.ha-img.loaded, .ha-img.error { opacity:1; background:none; }
+/* 图加载中：米色占位（图片加载完自然覆盖背景），不再做透明淡入，避免空窗期全白 */
+.ha-img { background:var(--card-beige); }
+.ha-img.error { background:none; }
+/* 图缺失时的 emoji 兜底块（与图片位同尺寸） */
+.ha-img-fb { width:100%; display:flex; align-items:center; justify-content:center; background:var(--card-beige,#f7f1e5); font-size:56px; }
 
 /* 周节气 banner */
 .season-banner { height:120px; border-radius:var(--radius); overflow:hidden; position:relative; display:flex; align-items:center; padding:0 28px; margin-bottom:20px; }
@@ -509,6 +540,11 @@ body.drawer-open .mobile-drawer { right:0; }
 .modal-mask { position:fixed; inset:0; background:rgba(54,39,24,0.45); z-index:2500; display:none; align-items:center; justify-content:center; padding:20px; }
 .modal-mask.show { display:flex; }
 .modal-box { width:100%; max-width:440px; max-height:86vh; overflow-y:auto; background:var(--card, #fff); border-radius:18px; box-shadow:0 12px 40px rgba(54,39,24,0.28); animation:modalIn .22s ease; }
+/* 细滚动条：原生宽滚动条在圆角容器上会突出圆角外，换 6px 细条 + 透明轨道 */
+.modal-box::-webkit-scrollbar { width:6px; }
+.modal-box::-webkit-scrollbar-thumb { background:rgba(54,39,24,0.22); border-radius:3px; }
+.modal-box::-webkit-scrollbar-track { background:transparent; }
+.modal-box { scrollbar-width:thin; scrollbar-color:rgba(54,39,24,0.22) transparent; }
 @keyframes modalIn { from { opacity:0; transform:translateY(14px) scale(.97); } to { opacity:1; transform:none; } }
 .modal-head { display:flex; align-items:center; justify-content:space-between; padding:16px 20px 8px; }
 .modal-title { font-size:17px; font-weight:600; color:var(--text-dark); display:flex; align-items:center; gap:8px; }
@@ -865,7 +901,7 @@ body.drawer-open .mobile-drawer { right:0; }
 
 /* ============ 食谱操作 / 收藏 ============ */
 .recipe-card .footer span { cursor:pointer; }
-.recipe-action { color:var(--text-mid); font-size:13px; transition:color .2s; }
+.recipe-action { color:var(--text-mid); font-size:12px; white-space:nowrap; transition:color .2s; }
 .recipe-action:hover { color:var(--accent); }
 .recipe-action.faved { color:var(--danger); font-weight:600; }
 .fav-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:14px; }

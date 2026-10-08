@@ -10,8 +10,8 @@ const router = express.Router();
 const fs = require('fs').promises;
 const path = require('path');
 const { pool } = require('../db/pool');
-const { signToken, requireAuth, hashPassword, verifyPassword } = require('../middleware/auth');
-const { getClothingByWeather, getClothingByAdcode, searchCity, locateByLngLat } = require('../services/weather');
+const { signToken, requireAuth, optionalAuth, hashPassword, verifyPassword } = require('../middleware/auth');
+const { getClothingByWeather, getClothingByAdcode, getSceneReminders, searchCity, locateByLngLat } = require('../services/weather');
 const {
   ApiError, ok, wrap, cleanStr, optionalDate, timeField, enumOr, TIME_RE,
 } = require('../utils/http');
@@ -20,11 +20,11 @@ const {
   practiceStretchData, practiceOfficeData,
 } = require('../services/contentData');
 const kb = require('../services/knowledge');
-const { recommendMeals, buildDietPrinciple, rankFoodGroups } = require('../services/dietRecommend');
+const { recommendMeals, buildDietPrinciple, rankFoodGroups, parsePrefs } = require('../services/dietRecommend');
 
-// 登录用户的个性化信号：肝郁指数 + 近30天症状（未登录/查库失败返回空，调用方降级为通用推荐）
+// 登录用户的个性化信号：肝郁指数 + 近30天症状 + 健康偏好（未登录/查库失败返回空，调用方降级为通用推荐）
 async function getUserSignals(req) {
-  if (!req.userId) return { user: null, symptoms: [] };
+  if (!req.userId) return { user: null, symptoms: [], prefs: null };
   try {
     const [users] = await pool.query('SELECT score, level FROM users WHERE id = ?', [req.userId]);
     const [syms] = await pool.query(
@@ -32,9 +32,12 @@ async function getUserSignals(req) {
         WHERE user_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
         GROUP BY symptom ORDER BY count DESC LIMIT 6`, [req.userId],
     );
-    return { user: users[0] || null, symptoms: syms };
+    const [pf] = await pool.query(
+      'SELECT diet_pref, body_sense FROM health_profiles WHERE user_id = ?', [req.userId],
+    ).catch(() => [[]]);
+    return { user: users[0] || null, symptoms: syms, prefs: parsePrefs(pf[0] || {}) };
   } catch (e) {
-    return { user: null, symptoms: [] };
+    return { user: null, symptoms: [], prefs: null };
   }
 }
 
@@ -129,9 +132,9 @@ router.post('/care/footbath', wrap(async (req, res) => {
 // 饮食推荐
 // 今日饮食原则：天气+肝郁指数动态生成；无天气时回退静态池按日期轮换
 router.get('/diet/recommend', wrap(async (req, res) => {
-  const { user } = await getUserSignals(req);
+  const { user, prefs } = await getUserSignals(req);
   const weather = await getClothingByWeather(req).catch(() => null);
-  let principle = buildDietPrinciple(weather, user);
+  let principle = buildDietPrinciple(weather, user, new Date(), prefs);
   if (!principle) {
     const list = dietData.recommend.principles;
     const doy = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
@@ -141,9 +144,9 @@ router.get('/diet/recommend', wrap(async (req, res) => {
 }));
 
 router.get('/diet/foods', wrap(async (req, res) => {
-  const { user, symptoms } = await getUserSignals(req);
+  const { user, symptoms, prefs } = await getUserSignals(req);
   const weather = await getClothingByWeather(req).catch(() => null);
-  ok(res, rankFoodGroups(dietData.goodFoods, dietData.badFoods, user, symptoms, weather));
+  ok(res, rankFoodGroups(dietData.goodFoods, dietData.badFoods, user, symptoms, weather, new Date(), prefs));
 }));
 
 // 食谱推荐：药膳汤谱（与 /diet/soups、AI 工具共用 knowledge 库）按性质并入各餐池，
@@ -167,10 +170,12 @@ const RECIPE_POOL = (() => {
 })();
 
 router.get('/diet/recipes', wrap(async (req, res) => {
-  // 个性化信号：登录才查（肝郁指数 + 近30天症状）；未登录/查库失败按通用推荐
-  const { user, symptoms } = await getUserSignals(req);
+  // 个性化信号：登录才查（肝郁指数 + 近30天症状 + 偏好）；未登录/查库失败按通用推荐
+  const { user, symptoms, prefs } = await getUserSignals(req);
   const weather = await getClothingByWeather(req).catch(() => null);
-  const { items } = recommendMeals(RECIPE_POOL, MEAL_LABEL, user, symptoms, weather);
+  // shuffle=1 为「换一批」模式：exclude 排除当前菜、salt 打散组合，理由照常生成
+  const opts = { shuffle: req.query.shuffle === '1', exclude: String(req.query.exclude || ''), salt: String(req.query.salt || '') };
+  const { items } = recommendMeals(RECIPE_POOL, MEAL_LABEL, user, symptoms, weather, new Date(), prefs, opts);
   ok(res, { items, pool: RECIPE_POOL });
 }));
 
@@ -179,9 +184,16 @@ router.get('/diet/soups', (req, res) => {
   ok(res, { items: kb.getDietTherapy('soup') || [] });
 });
 
+// 本期节气食方：按 24 节气返回当前节气的养生主题与 3 道时令食方（公开只读）
+const { getSolarTermFood } = require('../services/solarTermFood');
+router.get('/diet/solar-term', (req, res) => {
+  ok(res, getSolarTermFood());
+});
+
 // 穿衣建议（be-7：真实天气，失败回退默认数据）
 // 支持用户手动选城：?adcode=330100；不传则按来源 IP 定位
-router.get('/clothing', wrap(async (req, res) => {
+// 场景提醒 = 天气条目 + 个人状况条目（optionalAuth 解析登录态，登录后融合近30天症状与肝郁指数）
+router.get('/clothing', optionalAuth, wrap(async (req, res) => {
   const adcode = cleanStr(req.query.adcode, 6);
   let data;
   if (adcode) {
@@ -190,6 +202,27 @@ router.get('/clothing', wrap(async (req, res) => {
     data = await getClothingByAdcode(adcode, city, true);
   } else {
     data = await getClothingByWeather(req);
+  }
+  if (data) {
+    let userCtx = null;
+    if (req.userId) {
+      try {
+        const [users] = await pool.query('SELECT score FROM users WHERE id = ?', [req.userId]);
+        const [syms] = await pool.query(
+          `SELECT symptom, COUNT(*) AS c FROM symptoms
+            WHERE user_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+            GROUP BY symptom ORDER BY c DESC LIMIT 4`, [req.userId],
+        );
+        const [pf] = await pool.query(
+          'SELECT body_sense FROM health_profiles WHERE user_id = ?', [req.userId],
+        ).catch(() => [[]]);
+        userCtx = { score: (users[0] && users[0].score) || 0, symptoms: syms.map(s => s.symptom), prefs: parsePrefs(pf[0] || {}) };
+      } catch (e) {
+        userCtx = null; // 查个人数据失败不影响天气提醒
+      }
+    }
+    // 缓存对象是共享的，必须浅拷贝后再注入个性化提醒
+    data = { ...data, reminders: getSceneReminders(data, userCtx) };
   }
   ok(res, data || clothingData);
 }));
@@ -435,7 +468,24 @@ router.get('/record/symptoms/stats', requireAuth, wrap(async (req, res) => {
       WHERE user_id = ? AND created_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01')`,
     [req.userId],
   );
-  ok(res, { days, monthCount });
+  // 近4周滚动窗口（每窗7天）发作次数，供「调理跟踪」趋势展示
+  const [wrows] = await pool.query(
+    `SELECT DATE(created_at) AS day, COUNT(*) AS cnt
+       FROM symptoms
+      WHERE user_id = ? AND created_at >= DATE_SUB(CURDATE(), INTERVAL 27 DAY)
+      GROUP BY DATE(created_at)`,
+    [req.userId],
+  );
+  const dayMap = wrows.map(r => ({ key: String(r.day).slice(0, 10), cnt: Number(r.cnt) }));
+  const weeks = [];
+  for (let w = 3; w >= 0; w--) {
+    const end = new Date(); end.setDate(end.getDate() - w * 7);
+    const start = new Date(end); start.setDate(start.getDate() - 6);
+    const endKey = localDate(end); const startKey = localDate(start);
+    const count = dayMap.filter(d => d.key >= startKey && d.key <= endKey).reduce((a, b) => a + b.cnt, 0);
+    weeks.push({ label: w === 0 ? '本周' : w + '周前', start: startKey, end: endKey, count });
+  }
+  ok(res, { days, monthCount, weeks });
 }));
 
 // ============ 用户收藏（跟随账号，多端同步） ============
@@ -571,12 +621,36 @@ router.post('/auth/login', wrap(async (req, res) => {
 // 当前登录用户信息（登录态持久化校验）
 router.get('/auth/me', requireAuth, wrap(async (req, res) => {
   const [rows] = await pool.query(
-    'SELECT name, username, email, score, level, avatar FROM users WHERE id = ?', [req.userId],
+    'SELECT name, username, email, score, level, avatar, created_at FROM users WHERE id = ?', [req.userId],
   );
   if (!rows[0]) {
     throw new ApiError(401, '用户不存在');
   }
   ok(res, rows[0]);
+}));
+
+// 修改密码：验证原密码 → 哈希写入新密码
+router.post('/auth/change-password', requireAuth, wrap(async (req, res) => {
+  const oldPassword = String((req.body && req.body.oldPassword) || '');
+  const newPassword = String((req.body && req.body.newPassword) || '');
+  if (!oldPassword || !newPassword) throw new ApiError(400, '请填写原密码和新密码');
+  if (newPassword.length < 6) throw new ApiError(400, '新密码至少 6 位');
+  if (newPassword.length > 100) throw new ApiError(400, '新密码过长');
+  const [rows] = await pool.query('SELECT password_hash FROM users WHERE id = ?', [req.userId]);
+  if (!rows[0] || !verifyPassword(oldPassword, rows[0].password_hash || '')) {
+    throw new ApiError(400, '原密码不正确');
+  }
+  await pool.query('UPDATE users SET password_hash = ? WHERE id = ?', [hashPassword(newPassword), req.userId]);
+  ok(res, { changed: true });
+}));
+
+// 意见反馈：登录用户提交文字反馈，落库不丢失
+router.post('/feedback', requireAuth, wrap(async (req, res) => {
+  const content = String((req.body && req.body.content) || '').trim();
+  if (content.length < 5) throw new ApiError(400, '反馈内容至少 5 个字');
+  if (content.length > 500) throw new ApiError(400, '反馈内容最多 500 字');
+  await pool.query('INSERT INTO feedback (user_id, content) VALUES (?, ?)', [req.userId, content]);
+  ok(res, { received: true });
 }));
 
 // 功法动作：group=baduanjin 读中医知识库（默认，含分步/呼吸/易错点），stretch/office 返回静态动作
@@ -627,10 +701,10 @@ router.put('/profile', requireAuth, wrap(async (req, res) => {
   const fieldMap = {
     constitution: ['constitution', 50],
     allergy: ['allergy', 255],
-    dietPref: ['diet_pref', 50],
-    exercisePref: ['exercise_pref', 50],
-    sleepPref: ['sleep_pref', 50],
-    bodySense: ['body_sense', 50],
+    dietPref: ['diet_pref', 200],
+    exercisePref: ['exercise_pref', 200],
+    sleepPref: ['sleep_pref', 200],
+    bodySense: ['body_sense', 200],
   };
 
   // 与现有档案合并：未提交的字段保持原值
