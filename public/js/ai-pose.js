@@ -100,10 +100,13 @@ function copyDebugData() {
     if (msgEl) { msgEl.textContent = '还没有完成一次上托，先让骨架出现再做动作'; setTimeout(() => msgEl.textContent = '', 2500); }
     return;
   }
-  const header = '次 时长 腕高过耳 前推z 肘角 比肩 手距H 腕距P 头宽比 |判:垂 直 交 停';
+  const header = '次 时长 腕高过耳 前推z 肘角 比肩 手距H 腕距P 头宽比 膝上 膝下 抬头 |判:垂 直 交 停';
   const lines = tuotian.records.map(r =>
     [r.i, r.dur.toFixed(2), nz(r.topMin), nz(r.pushMax), Math.round(r.angMin),
      nz(r.raiseMin), nz(r.handMin), nz(r.wristMin), r.xInRatio.toFixed(2),
+     r.kneeBefore === null || r.kneeBefore === undefined ? '-' : Math.round(r.kneeBefore),
+     r.kneeAfter === null || r.kneeAfter === undefined ? '-' : Math.round(r.kneeAfter),
+     nz(r.faceMin),
      '|', r.v, r.s, r.c, r.h].join('\t'));
   copyText(header + '\n' + lines.join('\n')).then(
     () => { const m = debugEl.querySelector('[data-msg]'); if (m) { m.textContent = '已复制，去聊天框粘贴'; setTimeout(() => m.textContent = '', 2500); } },
@@ -152,12 +155,13 @@ function renderDebug(m) {
     `手距  Hands ${fmt(m.handDist)}${dbg(m.handDist !== null && m.handDist < 0.09)} (${m.handsCount}只)  Pose ${fmt(m.wristDist)}${dbg(m.wristDist < 0.11)}\n` +
     `前推(耳z-腕z)L${fmt(m.pushL)}${dbg(m.pushL < 0.12)} R${fmt(m.pushR)}${dbg(m.pushR < 0.12)}  正=手前伸 阈值<0.12\n` +
     `腕在头宽内    L${dbg(m.xInL)} R${dbg(m.xInR)}\n` +
+    `膝角          ${m.kneeAng === null || m.kneeAng === undefined ? ' -  ' : String(Math.round(m.kneeAng)).padStart(3)}°   抬头比 ${nz(m.faceRatio)}  (直立≥165° 抬头看手时抬头比变小)\n` +
     `停留 ${(m.heldMs / 1000).toFixed(2)}s${dbg(m.heldMs >= 700)}  up=${m.up ? 1 : 0} 已计次=${m.reps}`;
   if (tuotian.records.length !== (renderLastDebug || 0)) {
     renderLastDebug = tuotian.records.length;
     rows.innerHTML = '已记录 ' + tuotian.records.length + ' 次上托（做完点上方“复制数据”）\n' +
       tuotian.records.slice(-8).map(r =>
-        `#${r.i} ${r.dur.toFixed(1)}s 高${nz(r.topMin)} 推${nz(r.pushMax)} 肘${Math.round(r.angMin)} 交${nz(r.handMin)}/${nz(r.wristMin)} 宽${r.xInRatio.toFixed(2)} [${r.v}${r.s}${r.c}${r.h}]`
+        `#${r.i} ${r.dur.toFixed(1)}s 高${nz(r.topMin)} 推${nz(r.pushMax)} 肘${Math.round(r.angMin)} 交${nz(r.handMin)}/${nz(r.wristMin)} 膝${r.kneeBefore === null || r.kneeBefore === undefined ? '-' : Math.round(r.kneeBefore)}/${r.kneeAfter === null || r.kneeAfter === undefined ? '-' : Math.round(r.kneeAfter)} 抬${nz(r.faceMin)} 宽${r.xInRatio.toFixed(2)} [${r.v}${r.s}${r.c}${r.h}]`
       ).join('\n');
   }
 }
@@ -423,6 +427,7 @@ function evalTuotian(poseLms, handLmsList) {
   const lm = poseLms;
   const ls = lm[P.LS], rs = lm[P.RS], le = lm[P.LE], re = lm[P.RE], lw = lm[P.LW], rw = lm[P.RW];
   const lear = lm[P.LEAR], rear = lm[P.REAR];
+  const lh = lm[P.LH], rh = lm[P.RH], lk = lm[P.LK], rk = lm[P.RK], la = lm[P.LA], ra = lm[P.RA];
 
   // ---- 每帧度量（打分与调试共用）----
   const earOk = !!(lear && rear &&
@@ -439,6 +444,16 @@ function evalTuotian(poseLms, handLmsList) {
   const pushR = earOk ? rear.z - rw.z : null;
   const headLo = earOk ? Math.min(lear.x, rear.x) - 0.03 : null;
   const headHi = earOk ? Math.max(lear.x, rear.x) + 0.03 : null;
+
+  // 膝角（髋-膝-踝）：直立≈170°+，屈膝明显变小；可见度差时为 null
+  const kneeAngL = (lh && lk && la) ? angleDeg(lh, lk, la) : null;
+  const kneeAngR = (rh && rk && ra) ? angleDeg(rh, rk, ra) : null;
+  const kneeAng = minOf(kneeAngL, kneeAngR);
+  // 抬头近似：鼻-肩线竖直距离 / 肩宽，抬头看手时变小，低头平视时偏大
+  const nose = lm[0];
+  const shoulderW = Math.abs(ls.x - rs.x);
+  const faceRatio = (nose && nose.visibility > 0.3)
+    ? ((ls.y + rs.y) / 2 - nose.y) / (shoulderW || 0.2) : null;
 
   // 1) 双臂举过肩（画面 y 向下，越小越高）
   const raised = lw.y < ls.y - 0.03 && rw.y < rs.y - 0.03;
@@ -459,6 +474,7 @@ function evalTuotian(poseLms, handLmsList) {
     pushL, pushR,
     xInL: headLo !== null && lw.x >= headLo && lw.x <= headHi,
     xInR: headLo !== null && rw.x >= headLo && rw.x <= headHi,
+    kneeAng, faceRatio,
     heldMs: 0, up: false, reps: tuotian.reps, prep: null,
   };
 
@@ -492,6 +508,7 @@ function evalTuotian(poseLms, handLmsList) {
         topMin: minOf(topL, topR), pushMax: maxOf(pushL, pushR),
         angMin: Math.min(angL, angR), raiseMin: Math.min(ls.y - lw.y, rs.y - rw.y),
         handMin: handDist, wristMin: wristDist,
+        kneeBefore: null, kneeAfter: null, faceMin: null,
         xInFrames: 0, raisedFrames: 0,
       };
     }
@@ -514,6 +531,12 @@ function evalTuotian(poseLms, handLmsList) {
       c.raiseMin = Math.min(c.raiseMin, ls.y - lw.y, rs.y - rw.y);
       c.wristMin = Math.min(c.wristMin, wristDist);
       if (handDist !== null) c.handMin = c.handMin === null ? handDist : Math.min(c.handMin, handDist);
+      // 膝角分窗：双腕距收到肩宽之前（上托+停留+下落前半）vs 之后（下落后半）
+      if (kneeAng !== null) {
+        if (wristDist < shoulderW - 0.02) c.kneeBefore = c.kneeBefore === null ? kneeAng : Math.min(c.kneeBefore, kneeAng);
+        else c.kneeAfter = c.kneeAfter === null ? kneeAng : Math.min(c.kneeAfter, kneeAng);
+      }
+      if (faceRatio !== null) c.faceMin = c.faceMin === null ? faceRatio : Math.min(c.faceMin, faceRatio);
       const xInL = headLo !== null && lw.x >= headLo && lw.x <= headHi;
       const xInR = headLo !== null && rw.x >= headLo && rw.x <= headHi;
       if (xInL && xInR) c.xInFrames++;
@@ -547,6 +570,7 @@ function evalTuotian(poseLms, handLmsList) {
           dur: (performance.now() - tuotian.upStart) / 1000,
           topMin: c.topMin, pushMax: c.pushMax, angMin: c.angMin,
           raiseMin: c.raiseMin, handMin: c.handMin, wristMin: c.wristMin,
+          kneeBefore: c.kneeBefore, kneeAfter: c.kneeAfter, faceMin: c.faceMin,
           xInRatio: c.raisedFrames ? c.xInFrames / c.raisedFrames : 0,
           v: b.vertical ? 1 : 0, s: b.straight ? 1 : 0,
           c: b.close ? 1 : 0, h: tuotian.heldLongEnough ? 1 : 0,

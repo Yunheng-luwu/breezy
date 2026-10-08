@@ -85,10 +85,10 @@ async function migrateUsers(conn) {
 // 迁移早期版本 health_profiles：补结构化偏好字段，移除通用 preference 字段
 async function migrateHealthProfiles(conn) {
   const newCols = [
-    ['diet_pref', "VARCHAR(50) NULL COMMENT '饮食偏好' AFTER allergy"],
-    ['exercise_pref', "VARCHAR(50) NULL COMMENT '运动习惯' AFTER diet_pref"],
-    ['sleep_pref', "VARCHAR(50) NULL COMMENT '作息规律' AFTER exercise_pref"],
-    ['body_sense', "VARCHAR(50) NULL COMMENT '体感敏感度' AFTER sleep_pref"],
+    ['diet_pref', "VARCHAR(200) NULL COMMENT '饮食偏好' AFTER allergy"],
+    ['exercise_pref', "VARCHAR(200) NULL COMMENT '运动习惯' AFTER diet_pref"],
+    ['sleep_pref', "VARCHAR(200) NULL COMMENT '作息规律' AFTER exercise_pref"],
+    ['body_sense', "VARCHAR(200) NULL COMMENT '体感敏感度' AFTER sleep_pref"],
   ];
   const hasColumn = async (name) => {
     const [rows] = await conn.query(
@@ -102,6 +102,18 @@ async function migrateHealthProfiles(conn) {
     if (!(await hasColumn(name))) {
       await conn.query(`ALTER TABLE health_profiles ADD COLUMN ${name} ${ddl}`);
       console.log(`[initDb] health_profiles 新增字段 ${name}`);
+    }
+  }
+  // 偏好改为标签化多选存储，拼接值可能超 50 字符：统一扩容到 200
+  for (const [name, ddl] of newCols) {
+    const [rows] = await conn.query(
+      `SELECT CHARACTER_MAXIMUM_LENGTH AS len FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = 'songxu' AND TABLE_NAME = 'health_profiles' AND COLUMN_NAME = ?`,
+      [name],
+    );
+    if (rows[0] && Number(rows[0].len) < 200) {
+      await conn.query(`ALTER TABLE health_profiles MODIFY COLUMN ${name} ${ddl}`);
+      console.log(`[initDb] health_profiles ${name} 扩容到 VARCHAR(200)`);
     }
   }
   if (await hasColumn('preference')) {
