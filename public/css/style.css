@@ -147,7 +147,7 @@ input { font-family:inherit; outline:none; }
 .ts-mid .ring { width:80px; height:80px; border-radius:50%; border:4px solid var(--green-light); display:flex; align-items:center; justify-content:center; font-size:12px; color:var(--green); font-weight:600; }
 .ts-right .info-item { font-size:14px; color:var(--text-mid); margin-bottom:6px; }
 .ts-right .view-btn { font-size:14px; color:var(--accent); font-weight:600; cursor:pointer; }
-.quick-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+.quick-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
 .qg-item { background:var(--card); border-radius:var(--radius); padding:24px 16px; text-align:center; cursor:pointer; transition:all .2s; border:1px solid var(--border); box-shadow:var(--shadow); }
 .qg-item:hover { transform:translateY(-3px); box-shadow:var(--shadow-lg); border-color:var(--accent-light); }
 .qg-item .icon { font-size:36px; margin-bottom:10px; }
@@ -163,6 +163,15 @@ input { font-family:inherit; outline:none; }
 .acu-card .acu-img { font-size:56px; margin:16px 0; }
 .acu-card .acu-name { font-size:18px; font-weight:600; }
 .acu-card .acu-desc { font-size:13px; color:var(--text-light); margin-top:6px; }
+
+/* 首页待办+穴位合并卡 */
+.dashboard-row { display:flex; gap:0; align-items:stretch; }
+.dashboard-row .dash-todo { flex:1 1 60%; padding-right:24px; border-right:1px solid var(--border); }
+.dashboard-row .dash-acu { flex:0 0 38%; padding-left:24px; text-align:center; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.dashboard-row .dash-acu .acu-img { font-size:48px; margin:10px 0; }
+.dashboard-row .dash-acu .acu-name { font-size:17px; font-weight:600; }
+.dashboard-row .dash-acu .acu-desc { font-size:13px; color:var(--text-light); margin-top:6px; }
+
 /* 中药文化展示区 */
 .herb-showcase { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:32px; }
 .herb-show-card { border-radius:var(--radius); overflow:hidden; border:1px solid var(--border); box-shadow:var(--shadow); background:var(--card); transition:all .2s; cursor:pointer; }
@@ -188,6 +197,24 @@ input { font-family:inherit; outline:none; }
 .acu-card-grid .effect { font-size:13px; color:var(--text-mid); margin:6px 0 10px; }
 .footbath-input { display:flex; gap:8px; }
 .footbath-input input { padding:8px 12px; border-radius:8px; border:1px solid var(--border); font-size:14px; }
+
+/* 记录日历：悬停气泡（替代原生 title） */
+.cal-day { position:relative; }
+.cal-day .cal-dot { transition:transform .18s ease; }
+.cal-day:hover .cal-dot { transform:scale(1.12); }
+.cal-day .cal-tip {
+  position:absolute; bottom:calc(100% + 8px); left:50%;
+  transform:translateX(-50%) translateY(4px);
+  background:var(--text-dark); color:#fff; font-size:12px; line-height:1;
+  padding:7px 10px; border-radius:8px; white-space:nowrap;
+  opacity:0; pointer-events:none; z-index:30;
+  transition:opacity .18s ease, transform .18s ease;
+}
+.cal-day .cal-tip::after {
+  content:''; position:absolute; top:100%; left:50%; transform:translateX(-50%);
+  border:5px solid transparent; border-top-color:var(--text-dark);
+}
+.cal-day:hover .cal-tip { opacity:1; transform:translateX(-50%) translateY(0); }
 
 /* 饮食调理 */
 .diet-recommend { display:flex; justify-content:space-between; align-items:center; background:linear-gradient(135deg,var(--card),var(--card-beige)); }
@@ -312,15 +339,14 @@ input { font-family:inherit; outline:none; }
 .punch.done { background:var(--success); border-color:var(--success); color:#fff; }
 
 /* 个人中心 */
-.profile-layout { display:flex; gap:20px; }
-.profile-menu { width:280px; }
+.profile-back { display:inline-flex; align-items:center; gap:6px; font-size:14px; color:var(--text-mid); cursor:pointer; padding:8px 0 16px; }
+.profile-back:hover { color:var(--accent); }
 .user-info { text-align:center; padding:20px 0; border-bottom:1px solid var(--border); }
 .user-info .avatar { margin:0 auto 10px; width:56px; height:56px; font-size:24px; }
 .user-info .nick { font-size:18px; font-weight:600; }
-.menu-list .mi { padding:12px 0; font-size:14px; color:var(--text-mid); cursor:pointer; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; }
+.menu-list .mi { padding:16px 0; font-size:15px; color:var(--text-mid); cursor:pointer; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; }
 .menu-list .mi.active { color:var(--accent); font-weight:600; }
 .menu-list .mi:hover { color:var(--accent); }
-.profile-content { flex:1; }
 .info-row { display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border); font-size:14px; }
 .ir-label { color:var(--text-light); }
 .ir-value { color:var(--text-dark); font-weight:500; }
@@ -408,8 +434,6 @@ input { font-family:inherit; outline:none; }
   .nav-menu { display:none; }
   .chat-page { flex-direction:column; }
   .chat-side { width:100%; }
-  .profile-layout { flex-direction:column; }
-  .profile-menu { width:100%; }
   .page-banner { height:130px; padding:0 20px; }
   .home-hero { height:160px; padding:0 20px; }
   .home-hero .hero-content h2 { font-size:22px; }
@@ -908,7 +932,7 @@ body.drawer-open .mobile-drawer { right:0; }
 .fav-item { background:var(--card-beige); border-radius:12px; padding:14px; position:relative; }
 .fav-del { display:inline-block; margin-top:8px; font-size:12px; color:var(--text-light); cursor:pointer; }
 .fav-del:hover { color:var(--danger); }
-.mi-logout { color:var(--danger); }
+.mi-logout { color:var(--danger); margin-top:10px; }
 
 /* ============ 功法带练可点击序列 ============ */
 .move-list .move-item { cursor:pointer; border-radius:8px; padding-left:6px; padding-right:6px; }

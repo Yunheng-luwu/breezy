@@ -334,8 +334,9 @@ document.addEventListener('click', function askNotifPerm() {
 
 // ============ 页面切换（AI 对话常驻主区，其余板块走抽屉） ============
 const PANEL_TITLES = {
-  home: '首页', care: '居家保健', diet: '饮食调理', clothing: '穿衣建议',
+  home: '首页', care: '居家保健', diet: '饮食推荐', clothing: '穿衣建议',
   rhythm: '生活节律', practice: '功法带练', record: '健康记录',
+  mood: '情绪解压',
   profile: '我的', assistant: '今日处方与概览', aifollow: 'AI 跟练', rank: '排行榜',
 };
 
@@ -892,7 +893,7 @@ function openHerbDetail(idx) {
   );
 }
 
-// ============ 家常药膳（饮食调理页入口，数据与 AI 工具共用 knowledge 库） ============
+// ============ 家常药膳（饮食推荐页入口，数据与 AI 工具共用 knowledge 库） ============
 let soupCache = null;
 async function fetchSoups() {
   if (soupCache) return soupCache;
@@ -901,7 +902,7 @@ async function fetchSoups() {
   return soupCache;
 }
 
-// 家常药膳入口（饮食调理页）：统一并入本草图鉴的药膳 tab
+// 家常药膳入口（饮食推荐页）：统一并入本草图鉴的药膳 tab
 function openSoupAtlas() {
   openHerbAtlas('soup');
 }
@@ -1007,13 +1008,20 @@ async function loadHomeData() {
   ]);
   if (dash && dash.success && dash.data) {
     const d = dash.data;
-    set('homeScore', d.score !== undefined ? d.score : '--');
+    const unassessed = d.score == null;
+    const hs = document.getElementById('homeScore');
+    if (hs) {
+      hs.textContent = unassessed ? '未测' : d.score;
+      hs.onclick = unassessed ? () => openScoreSurvey() : null;
+      hs.style.cursor = unassessed ? 'pointer' : '';
+      hs.title = unassessed ? '点击开始肝郁指数测评' : '';
+    }
     set('homeLevel', d.level || '--');
     set('homeDesc', d.desc || '');
     set('homeWeather', weatherEmoji(d.weather) + ' ' + (d.weather || ''));
     set('homeCity', '\u{1F4CD} ' + (d.city || '--'));
     // AI对话页概览
-    set('chScore', d.score !== undefined ? d.score : '--');
+    set('chScore', d.score == null ? '未测' : d.score);
     const done = (d.todos || []).filter(t => t.done).length;
     set('chTodos', (d.todos || []).length ? done + '/' + d.todos.length : '0');
     const pending = (d.todos || []).filter(t => !t.done).length;
@@ -1033,8 +1041,8 @@ async function loadHomeData() {
   if (Array.isArray(reminders) && reminders.length) {
     const box = document.getElementById('sceneReminders');
     if (box) {
-      box.innerHTML = reminders.map((r, i) =>
-        `<div style="font-size:14px;color:var(--text-mid);${i < reminders.length - 1 ? 'margin-bottom:8px;' : ''}">${r.icon} ${escapeHtml(r.text)}</div>`
+      box.innerHTML = reminders.map((r) =>
+        `<div style="font-size:14px;color:var(--text-mid);">${r.icon} ${escapeHtml(r.text)}</div>`
       ).join('');
     }
   }
@@ -1209,6 +1217,7 @@ async function acuToTodo(name, duration) {
 }
 
 async function footbathToTodo(name, duration) {
+  closeModal();
   const res = await fetchAPI('/todos', {
     method: 'POST',
     body: JSON.stringify({ content: `${name}（${duration}）`, type: 'ai' }),
@@ -1224,28 +1233,34 @@ async function generateRecipe() {
     toast('请输入你今天的状态，如：失眠多梦、手脚冰凉');
     return;
   }
-  const area = document.getElementById('footbathResult');
   const res = await fetchAPI('/care/footbath', {
     method: 'POST',
     body: JSON.stringify({ status }),
   });
-  if (res.success && res.data && area) {
+  if (res.success && res.data) {
     const d = res.data;
-    area.style.display = 'block';
-    area.innerHTML = `
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-        <span class="tag tag-primary">为你推荐</span>
-        <b style="font-size:16px;">${escapeHtml(d.name)}</b>
-        <span style="font-size:13px;color:var(--text-mid);">${escapeHtml(d.herbs)}</span>
-        <span style="font-size:12px;color:var(--text-light);">水温${escapeHtml(d.temp)} / ${escapeHtml(d.duration)}</span>
+    openModal(`
+      <div class="modal-head">
+        <div><div class="modal-title">\u{1F6C3} ${escapeHtml(d.name)} <span class="tag tag-primary">为你推荐</span></div></div>
+        <span class="modal-close" onclick="closeModal()">×</span>
       </div>
-      <button class="btn btn-primary btn-sm" style="margin-top:10px;" onclick="footbathToTodo('${escapeHtml(d.name)}泡脚','${escapeHtml(d.duration)}')">加入今日待办</button>`;
+      <div class="modal-body">
+        <div class="cc-row"><span class="cc-label">状态</span><span class="cc-value">${escapeHtml(status)}</span></div>
+        <div class="cc-row"><span class="cc-label">配伍</span><span class="cc-value">${escapeHtml(d.herbs)}</span></div>
+        <div class="cc-row"><span class="cc-label">水温</span><span class="cc-value">${escapeHtml(d.temp)}</span></div>
+        <div class="cc-row"><span class="cc-label">时长</span><span class="cc-value">${escapeHtml(d.duration)}</span></div>
+        <div class="modal-tip">经期、皮肤破损、糖尿病周围神经病变者慎用；水温先试后加，泡后头晕不适立即停止。</div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-outline" onclick="closeModal()">关闭</button>
+        <button class="btn btn-primary" onclick="footbathToTodo('${escapeHtml(d.name)}泡脚','${escapeHtml(d.duration)}')">加入今日待办</button>
+      </div>`);
   } else {
     toast(res.message || '配方生成失败，请稍后重试', 'error');
   }
 }
 
-// ============ 饮食调理 ============
+// ============ 饮食推荐 ============
 // 红黑榜标签渲染：兼容旧字符串数组与新的 {items, topName, topReason, tip} 结构
 function renderFoodTags(el, data, cls) {
   if (!el) return;
@@ -1560,11 +1575,27 @@ function pickCity(adcode, name) {
   toast('已切换到 ' + name);
 }
 
-// 浏览器精确定位（需用户授权；非 HTTPS / 拒绝授权时提示用手动搜索）
+// 浏览器精确定位失败时，降级到 IP 粗定位（HTTP 站点下 Chrome 禁用浏览器定位，必须兜底）
+async function locateByIpFallback(msg) {
+  const tip = document.getElementById('cpTip');
+  if (tip && msg) tip.textContent = msg;
+  try {
+    const res = await fetchAPI('/weather/ip-locate');
+    if (res.success && res.data && res.data.adcode) {
+      pickCity(res.data.adcode, res.data.city);
+      return;
+    }
+    if (tip) tip.textContent = res.message || '自动定位失败，请直接输入城市名';
+  } catch (e) {
+    if (tip) tip.textContent = '自动定位失败，请直接输入城市名';
+  }
+}
+
+// 浏览器精确定位（需用户授权；非 HTTPS / 拒绝授权时自动降级 IP 粗定位）
 function locateByBrowser() {
   const tip = document.getElementById('cpTip');
   if (!navigator.geolocation) {
-    if (tip) tip.textContent = '当前浏览器不支持定位，请直接输入城市名';
+    locateByIpFallback('当前浏览器不支持精确定位，正在用 IP 粗定位…');
     return;
   }
   if (tip) tip.textContent = '正在获取定位，请在浏览器弹窗中点「允许」…';
@@ -1574,18 +1605,16 @@ function locateByBrowser() {
       const res = await fetchAPI(qs);
       if (res.success && res.data && res.data.adcode) {
         pickCity(res.data.adcode, res.data.city);
-      } else if (tip) {
-        tip.textContent = res.message || '定位失败，请直接输入城市名';
+      } else {
+        locateByIpFallback(res.message || '精确定位失败，正在用 IP 粗定位…');
       }
     } catch (e) {
-      if (tip) tip.textContent = '定位失败，请直接输入城市名';
+      locateByIpFallback('精确定位失败，正在用 IP 粗定位…');
     }
   }, (err) => {
-    if (tip) {
-      tip.textContent = err.code === 1
-        ? '你拒绝了定位授权，可直接输入城市名搜索'
-        : '定位不可用，请直接输入城市名';
-    }
+    locateByIpFallback(err.code === 1
+      ? '浏览器定位未授权（HTTP 站点浏览器默认禁止），正在用 IP 粗定位…'
+      : '精确定位不可用，正在用 IP 粗定位…');
   }, { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 });
 }
 
@@ -1636,7 +1665,7 @@ function applyWeatherSwitch(on) {
 function switchRhythmTab(tab, ev) {
   document.querySelectorAll('#page-rhythm .tab-bar .tab').forEach(t => t.classList.remove('active'));
   if (ev && ev.currentTarget) ev.currentTarget.classList.add('active');
-  const tabs = ['sleep', 'exercise', 'mood'];
+  const tabs = ['sleep', 'exercise'];
   tabs.forEach((t, i) => {
     const el = document.getElementById('rhythmTab' + (i + 1));
     if (el) el.style.display = tab === t ? 'block' : 'none';
@@ -2253,6 +2282,1321 @@ document.addEventListener('click', (e) => {
 
 let chatSending = false; // 流式回答进行中，防止重复发送
 
+// ============ 情绪急救包：生理性叹息 / 情绪粉碎机 / AI树洞 ============
+let sighTimers = [];
+function openSighGuide() {
+  document.getElementById('sighOverlay').style.display = 'flex';
+  const circle = document.getElementById('sighCircle');
+  const phase = document.getElementById('sighPhase');
+  const count = document.getElementById('sighCount');
+  circle.style.transitionDuration = '0.5s';
+  circle.style.transform = 'scale(0.85)';
+  phase.textContent = '准备…';
+  count.textContent = '\u00A0';
+  let round = 0;
+  const total = 5;
+  const step = (fn, ms) => sighTimers.push(setTimeout(fn, ms));
+  const runRound = () => {
+    round++;
+    count.textContent = `第 ${round} / ${total} 轮`;
+    phase.textContent = '吸气…';
+    circle.style.transitionDuration = '2s';
+    circle.style.transform = 'scale(1.12)';
+    step(() => { phase.textContent = '再吸一口…'; circle.style.transitionDuration = '1s'; circle.style.transform = 'scale(1.22)'; }, 2000);
+    step(() => { phase.textContent = '缓缓呼——'; circle.style.transitionDuration = '8s'; circle.style.transform = 'scale(0.85)'; }, 3000);
+    step(() => {
+      if (round < total) runRound();
+      else { phase.textContent = '完成 ✨ 感觉好点了吗'; count.textContent = '\u00A0'; }
+    }, 11000);
+  };
+  step(runRound, 600);
+}
+function stopSighGuide() {
+  sighTimers.forEach(clearTimeout);
+  sighTimers = [];
+  document.getElementById('sighOverlay').style.display = 'none';
+}
+
+function openShredder() {
+  const ov = document.getElementById('shredOverlay');
+  ov.style.display = 'flex';
+  const ta = document.getElementById('shredInput');
+  ta.value = '';
+  ta.style.display = '';
+  const stage = document.getElementById('shredStage');
+  stage.style.display = 'none';
+  stage.innerHTML = '';
+  delete stage.dataset.done;
+  setTimeout(() => ta.focus(), 80);
+}
+// 粉碎后飘来的安慰语（随机一条）
+const SHRED_COMFORTS = [
+  '烦恼烦恼，消失喽～',
+  '把它留在风里吧，你现在轻多了',
+  '碎掉的烦恼，不会再长回来',
+  '今天已经辛苦很久了，剩下的明天再说～',
+  '你的努力和坚持，一直都值得被认可',
+  '呼——都散啦，辛苦你了',
+  '这一件，就到这儿为止吧',
+];
+// ==== 轻量合成音效（Web Audio，无需音频文件；首次用户点击后自动激活） ====
+let _sfxCtx = null, _lastPopSfx = 0;
+function sfxCtx() {
+  if (!_sfxCtx) { try { _sfxCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (_) { return null; } }
+  if (_sfxCtx.state === 'suspended') _sfxCtx.resume();
+  return _sfxCtx;
+}
+function sfxPop() { // 泡泡：低频「噗噜」为主 + 极轻低通噪声衬底，圆润不尖锐；连划时 30ms 节流
+  const ctx = sfxCtx(); if (!ctx) return;
+  const now = performance.now();
+  if (now - _lastPopSfx < 30) return;
+  _lastPopSfx = now;
+  const t = ctx.currentTime;
+  // 主音：低频正弦下滑（像水泡破开），软起音避免「咔」
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  const f = 220 + Math.random() * 120;
+  o.type = 'sine';
+  o.frequency.setValueAtTime(f, t);
+  o.frequency.exponentialRampToValueAtTime(f * 0.55, t + 0.09);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(0.14, t + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.11);
+  o.connect(g).connect(ctx.destination); o.start(t); o.stop(t + 0.12);
+  // 衬底：极轻的低通噪声蹭一下（破膜质感，不抢主音）
+  const dur = 0.03, buf = ctx.createBuffer(1, Math.max(1, ctx.sampleRate * dur | 0), ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2);
+  const src = ctx.createBufferSource(); src.buffer = buf;
+  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 850;
+  const ng = ctx.createGain(); ng.gain.value = 0.045;
+  src.connect(lp).connect(ng).connect(ctx.destination); src.start(t);
+}
+function sfxNote(f) { // 数字舒压格：钢琴音色（泛音列+快起音+自然衰减），柔和电钢质感
+  const ctx = sfxCtx(); if (!ctx) return;
+  const t = ctx.currentTime;
+  // 钢琴音色：基频+2/3次谐波（泛音列）、6ms 快起音、0.9s 自然衰减，3000Hz 低通控亮度
+  const master = ctx.createGain();
+  master.gain.setValueAtTime(0.0001, t);
+  master.gain.linearRampToValueAtTime(0.16, t + 0.006);
+  master.gain.exponentialRampToValueAtTime(0.001, t + 0.9);
+  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 3000;
+  master.connect(lp).connect(ctx.destination);
+  [[1, 1], [2, 0.32], [3, 0.12]].forEach(([mult, amp]) => {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'sine'; o.frequency.value = f * mult;
+    g.gain.value = amp;
+    o.connect(g).connect(master); o.start(t); o.stop(t + 0.95);
+  });
+}
+function sfxChime() { // 完成：三个上行音，轻轻收尾
+  const ctx = sfxCtx(); if (!ctx) return;
+  [523.25, 659.25, 783.99].forEach((f, i) => {
+    const t = ctx.currentTime + i * 0.12;
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(0.12, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+    o.connect(g).connect(ctx.destination);
+    o.start(t); o.stop(t + 0.36);
+  });
+}
+function sfxBurst() { // 粉碎机：低沉砰一声 + 高频碎裂沙
+  const ctx = sfxCtx(); if (!ctx) return;
+  const t = ctx.currentTime;
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(150, t);
+  o.frequency.exponentialRampToValueAtTime(45, t + 0.18);
+  g.gain.setValueAtTime(0.28, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+  o.connect(g).connect(ctx.destination); o.start(t); o.stop(t + 0.21);
+  const dur = 0.22, buf = ctx.createBuffer(1, Math.max(1, ctx.sampleRate * dur | 0), ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2);
+  const src = ctx.createBufferSource(); src.buffer = buf;
+  const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 3000;
+  const g2 = ctx.createGain(); g2.gain.value = 0.1;
+  src.connect(hp).connect(g2).connect(ctx.destination); src.start(t);
+}
+
+function shredIt() {
+  const ta = document.getElementById('shredInput');
+  const stage = document.getElementById('shredStage');
+  const text = ta.value.trim();
+  if (!text) {
+    if (stage.dataset.done === '1') { // 上一次已碎完：回到输入态，方便再写一件
+      stage.style.display = 'none';
+      stage.innerHTML = '';
+      delete stage.dataset.done;
+      ta.style.display = '';
+      ta.focus();
+      toast('写下新的烦心事吧');
+    } else {
+      toast('先把烦心事写出来，再粉碎它');
+    }
+    return;
+  }
+  ta.style.display = 'none';
+  stage.style.display = 'block';
+  stage.innerHTML = '';
+  const chars = [...text];
+  const block = document.createElement('div');
+  block.style.cssText = 'display:flex;flex-wrap:wrap;justify-content:center;gap:2px;';
+  chars.forEach(ch => {
+    const s = document.createElement('span');
+    s.textContent = ch;
+    s.style.cssText = 'display:inline-block;white-space:pre;will-change:transform;';
+    block.appendChild(s);
+  });
+  stage.appendChild(block);
+  // 1) 话从输入框位置挪到屏幕中间
+  block.animate(
+    [{ transform: 'translateY(110px) scale(0.92)', opacity: '0.4' }, { transform: 'translateY(0) scale(1)', opacity: '1' }],
+    { duration: 550, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'backwards' }
+  );
+  // 2) 颤抖（幅度越抖越大）
+  const kf = [];
+  for (let i = 0; i < 14; i++) {
+    const a = 1 + (i / 14) * 6;
+    kf.push({
+      transform: `translate(${((Math.random() * 2 - 1) * a).toFixed(1)}px, ${((Math.random() * 2 - 1) * a).toFixed(1)}px) rotate(${((Math.random() * 2 - 1) * a * 0.35).toFixed(2)}deg)`,
+    });
+  }
+  kf.push({ transform: 'translate(0,0)' });
+  setTimeout(() => block.animate(kf, { duration: 950, easing: 'linear' }), 620);
+  // 3) 粉碎：文字四散 + 金色粒子迸开
+  const shatterAt = 1550;
+  setTimeout(() => {
+    sfxBurst();
+    const sr = stage.getBoundingClientRect();
+    const PCOLORS = ['#D4A017', '#F5EFE4', '#C4651F'];
+    block.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.07)' }, { transform: 'scale(1)' }], { duration: 170 });
+    [...block.children].forEach((s, i) => {
+      const r = s.getBoundingClientRect();
+      const x = r.left - sr.left + r.width / 2, y = r.top - sr.top + r.height / 2;
+      s.animate(
+        [{ transform: 'translate(0,0)', opacity: 1 }, { transform: `translate(${((Math.random() - 0.5) * 260).toFixed(0)}px, ${(((Math.random() - 0.5) * 200) - 30).toFixed(0)}px) rotate(${((Math.random() * 440 - 220) | 0)}deg) scale(0.3)`, opacity: 0 }],
+        { duration: 680, delay: i * 10, easing: 'cubic-bezier(.25,.6,.4,1)', fill: 'forwards' }
+      );
+      if (i * 6 > 160) return; // 粒子总量兜底，长文本不卡顿
+      for (let p = 0; p < 6; p++) {
+        const d = document.createElement('span');
+        const sz = (2 + Math.random() * 3).toFixed(1);
+        d.style.cssText = `position:absolute;left:${x.toFixed(1)}px;top:${y.toFixed(1)}px;width:${sz}px;height:${sz}px;border-radius:50%;background:${PCOLORS[(Math.random() * 3) | 0]};pointer-events:none;box-shadow:0 0 6px rgba(212,160,23,.5);`;
+        stage.appendChild(d);
+        const ang = Math.random() * Math.PI * 2, dist = 40 + Math.random() * 110;
+        d.animate(
+          [{ transform: 'translate(0,0)', opacity: 1 }, { transform: `translate(${(Math.cos(ang) * dist).toFixed(0)}px, ${(Math.sin(ang) * dist + 26).toFixed(0)}px)`, opacity: 0 }],
+          { duration: 620 + Math.random() * 480, easing: 'cubic-bezier(.2,.7,.4,1)' }
+        ).onfinish = () => d.remove();
+      }
+    });
+  }, shatterAt);
+  // 4) 粒子渐散时，安慰语飘来
+  const comfortAt = shatterAt + 780 + Math.min(chars.length * 8, 380);
+  setTimeout(() => {
+    const msg = SHRED_COMFORTS[(Math.random() * SHRED_COMFORTS.length) | 0];
+    const c = document.createElement('div');
+    c.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px;';
+    c.innerHTML = `<div style="font-size:19px;font-weight:500;color:#F5EFE4;letter-spacing:1px;">${msg}</div><div style="font-size:12px;color:rgba(245,239,228,0.55);">还想碎下一件？再点一次「粉碎它」 · 或点「先不说了」轻轻回去</div>`;
+    stage.appendChild(c);
+    c.animate(
+      [{ opacity: 0, transform: 'translateY(26px) scale(0.94)', filter: 'blur(6px)' }, { opacity: 1, transform: 'translateY(0) scale(1)', filter: 'blur(0px)' }],
+      { duration: 900, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'both' }
+    );
+    stage.dataset.done = '1';
+    ta.value = ''; // 清空旧内容，再点「粉碎它」时回到输入态写下一件
+  }, comfortAt);
+}
+function stopShredder() {
+  document.getElementById('shredOverlay').style.display = 'none';
+  const stage = document.getElementById('shredStage');
+  stage.style.display = 'none';
+  stage.innerHTML = '';
+  delete stage.dataset.done;
+  const ta = document.getElementById('shredInput');
+  ta.value = '';
+  ta.style.display = '';
+}
+
+// 情绪急救包「低落了」：跳 AI 树洞，自动发出吐槽开场
+function aiVent() {
+  showPage('chat');
+  const input = document.getElementById('chatInput');
+  if (!input) return;
+  if (input.value.trim()) return; // 用户在打字就不打扰
+  input.value = '我现在情绪很差，想找个树洞吐吐槽。先别急着给建议，接住我的情绪听我说就好。';
+  sendMessage();
+}
+
+// 解压一刻 AI 互动游戏：复用对话流，开场白带完整游戏规则
+const AI_GAME_OPENERS = {
+  guess: '我们来玩「情绪猜猜猜」：我心里藏着一件最近让我不舒服的事或一种情绪。请你扮演猜心师，每次只问我一个二选一的小问题（比如“这件事更多跟人有关，还是跟事有关？”），根据我的回答逐步收窄，最多问 5 个问题，然后给出你的猜测：我在烦什么、现在是什么情绪，并用一两句话安慰我。规则：一次只问一个问题，语气轻松像朋友猜心，不要同时给建议。开始吧，先问第一个问题。',
+  theater: '我们来玩「减压小剧场」：请给我生成一个治愈放松的小情境（山间茶馆、雨夜小屋、海边清晨等，随机选一个），先用两三句描述画面，然后给我 2-3 个选项让我选。我选之后你继续推进剧情，每次 1-2 句描述 + 新选项，玩 5-6 轮后把我带到一个特别放松的结局（比如泡好一壶茶、看完一场日落），结尾用一句话总结这次小旅行。语气温柔、画面感强，每次回复保持短小。开始吧。',
+  story: '我们来玩「故事接龙」：规则是我说一句、你接一句，共建一个温暖治愈的小故事，每人每次只说一句话，一共接 10 轮。你来开个头（设定一个轻松的开场，比如“清晨的古镇，一只橘猫跳上了屋顶”），然后等我接。记住：你每次只说一句，别把故事讲完，把空间留给我。',
+  praise: '现在你是「夸夸解忧机」：接下来我说的每一件烦心事，你都用幽默脱口秀的角度帮我「歪解」——找到它好笑、荒诞或可以自嘲的一面，逗我笑，最后再用一句话真诚地夸夸我。每次回复控制在 3 句话以内，语气俏皮但温暖，不讲大道理。准备好了就回我一句开场白，然后等我来吐槽。',
+};
+function aiGame(key) {
+  showPage('chat');
+  const input = document.getElementById('chatInput');
+  if (!input) return;
+  if (input.value.trim()) return; // 用户在打字就不打扰
+  input.value = AI_GAME_OPENERS[key] || '';
+  if (input.value) sendMessage();
+}
+
+// ============ 解压一刻：捏泡泡纸 / 舒尔特方格 / 烦恼刮刮乐 / 涂鸦减压板 ============
+let schulteTimer = null;
+let currentGameKey = '';
+const GAME_GUIDE = {
+  bubble: '按住鼠标拖动，划过的泡泡会「啵」地破掉，连划可以一次破一串。49 个全破完，会浮现一幅放晴的小画，算一局完成。没有计时、没有失败，慢慢戳、慢慢松。',
+  schulte: '格子从 1 开始按顺序点。每个格子是一个音符，点对了会发声并自动进入下一个。引导模式下，下一个该点的格子会微微加深放大，方便跟弹。整首点完会自动回放一遍，可按进度条重播或换下一首。点右上「引导」可关掉提示。',
+  scratch: '灰色涂层下面藏着一句安慰话。用鼠标在涂层上划动，被划到的地方会变透明、露出下面的字（轻点一下涂层也能切到擦除模式，再点一下取消）。擦到一定比例会自动全部显出来，并响起一小段提示音。',
+  doodle: '一块大画布，10 种颜色，按住鼠标就能画线条。画笔停不下来？松开鼠标就停。全屏模式下也能换颜色。没有题目、没有评判，想画什么画什么，画完清空再来一张也行。',
+  piano: '8 个白键对应键盘 A S D F G H J K（屏幕上也会标字母和简谱数字）。按下按键就响一个钢琴音。上方可以选一首曲子，会显示对应简谱和每个音该按的键，点「试听」让 AI 弹一遍，然后自己跟着弹。'
+};
+function openGame(key) {
+  const titles = { bubble: '\u{1FAE7} 捏泡泡纸', schulte: '\u26A1 数字舒压格', scratch: '\u{1F3F1} 烦恼刮刮乐', doodle: '\u{1F3A8} 涂鸦减压板', piano: '\u{1F3B9} 自由弹琴' };
+  document.getElementById('gameTitle').textContent = titles[key] || '解压一刻';
+  document.getElementById('gameOverlay').style.display = 'flex';
+  const box = document.getElementById('gameBody');
+  box.innerHTML = '';
+  currentGameKey = key;
+  const gBtn = document.getElementById('gameGuideBtn');
+  if (gBtn) gBtn.style.display = GAME_GUIDE[key] ? 'inline-block' : 'none';
+  if (key === 'bubble') gameBubble(box);
+  else if (key === 'schulte') gameSchulte(box);
+  else if (key === 'scratch') gameScratch(box);
+  else if (key === 'doodle') gameDoodle(box);
+  else if (key === 'piano') gamePiano(box);
+}
+function closeGame() {
+  if (schulteTimer) { clearInterval(schulteTimer); schulteTimer = null; }
+  document.getElementById('gameBody').innerHTML = '';
+  document.getElementById('gameOverlay').style.display = 'none';
+  const gBtn = document.getElementById('gameGuideBtn');
+  if (gBtn) gBtn.style.display = 'none';
+  const gModal = document.getElementById('gameGuideModal');
+  if (gModal) gModal.style.display = 'none';
+  currentGameKey = '';
+}
+function showGameGuide() {
+  const txt = GAME_GUIDE[currentGameKey];
+  if (!txt) return;
+  const el = document.getElementById('gameGuideText');
+  if (el) el.textContent = txt;
+  const m = document.getElementById('gameGuideModal');
+  if (m) m.style.display = 'flex';
+}
+
+// 1) 捏泡泡纸：每破一个冒鼓励小字；全破后浮现放晴小画
+const BUBBLE_CHEERS = ['啵～好爽', '压力-1', '烦恼-1', '继续继续', '很解压吧', '呼，松了', '干得漂亮', '就这么戳', '气都散了', '顺气了', '痛快！', '又少一烦'];
+
+// 捏泡泡完成页：按 节日 > 天气 > 季节 匹配场景图与邀约文案（每场景多条文案随机，避免重复）
+const BUBBLE_HOLIDAYS = [
+  { from: [12, 20], to: [12, 26], img: 'christmas', texts: ['圣诞快到啦，一起去看灯吧~', '听说圣诞的灯会很好看，一起去吧~', '想在圣诞树下许个愿，你陪我吗~'] },
+  { from: [12, 30], to: [1, 2], img: 'festival', texts: ['新的一年开始，一起出去走走吧~', '新年第一天，一起去晒晒太阳吧~', '新的一年，第一站想和你一起去~'] },
+  { from: [2, 10], to: [2, 20], img: 'festival', texts: ['过年啦，一起去逛逛灯会吧~', '年味正浓，一起去热闹热闹吧~', '春节的庙会，一起去看看呀~'] },
+  { from: [5, 1], to: [5, 5], img: 'festival', texts: ['小长假，一起出去走走吧~', '难得的假期，一起去透透气吧~', '五一的阳光正好，出去走走呀~'] },
+  { from: [10, 1], to: [10, 7], img: 'festival', texts: ['国庆啦，一起去看看秋天吧~', '假期模式开启，一起去逛逛吧~', '十一长假，找个好地方走走呀~'] },
+];
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+function bubbleScene(weather) {
+  const now = new Date();
+  const m = now.getMonth() + 1, d = now.getDate();
+  const inRange = (f, t) => (f[0] === t[0]) ? (m === f[0] && d >= f[1] && d <= t[1]) : ((m === f[0] && d >= f[1]) || (m === t[0] && d <= t[1]));
+  for (const h of BUBBLE_HOLIDAYS) {
+    if (inRange(h.from, h.to)) return { img: 'scene/' + h.img + '.jpg', text: pick(h.texts) };
+  }
+  const wt = weather && weather.weatherText || '';
+  const t = weather && weather.temp != null ? parseFloat(weather.temp) : NaN;
+  const temp = isNaN(t) ? null : t;
+  if (/雪/.test(wt)) return { img: 'scene/snow.jpg', text: pick(['下雪啦，我们一起去踩雪吧~', '外面飘雪了，一起去看雪吧~', '雪天的世界好安静，一起去走走吧~']) };
+  if (/雨/.test(wt)) return { img: 'scene/rain.jpg', text: pick(['下雨天，一起窝在窗边喝杯热茶吧~', '雨声很治愈，一起听听雨吧~', '下雨了，一起喝杯热茶暖暖吧~']) };
+  if (/晴|多云/.test(wt) && temp !== null && temp >= 20) return { img: 'scene/sea.jpg', text: pick(['天气正好，有时间我们一起去海边吧~', '这么好的天气，适合去海边吹吹风~', '阳光暖暖，一起去看海吧~']) };
+  if (m === 3 || m === 4) return { img: 'scene/sakura.jpg', text: pick(['花都开好了，一起去看樱花吧~', '樱花季到了，错过要等明年啦~', '春风正好，一起去赏花吧~']) };
+  if (m >= 9 && m <= 11) return { img: 'scene/leaves.jpg', text: pick(['秋天到了，我们一起去看落叶吧~', '银杏黄了，一起去踩落叶吧~', '秋天的颜色最美了，一起去看看吧~']) };
+  if (m === 12 || m <= 2) return { img: 'scene/snow.jpg', text: pick(['冬天啦，一起去看雪吧~', '冬天适合找个暖和的地方待着，一起吗~', '等一场雪，一起去看吧~']) };
+  return { img: 'scene/sea.jpg', text: pick(['有时间我们一起去海边吧~', '想去看海了，一起吗~']) };
+}
+let bubbleWeatherCache = null;
+let lastBubbleImg = '';
+async function loadBubbleWeather() {
+  if (bubbleWeatherCache) return bubbleWeatherCache;
+  try {
+    const r = await fetch('/api/clothing');
+    const j = await r.json();
+    bubbleWeatherCache = (j && j.data) || null;
+  } catch (_) { bubbleWeatherCache = null; }
+  return bubbleWeatherCache;
+}
+// 通用励志图：避开上次出现的那张
+function genericBubblePick() {
+  let src;
+  do {
+    src = 'img/scratch/s' + (1 + Math.floor(Math.random() * 11)) + '.jpg';
+  } while (src === lastBubbleImg);
+  return {
+    src, fit: 'contain',
+    text: pick(['烦恼全戳破啦 · 心情放晴', '破完啦，给自己点个赞吧~', '压力戳光光，今天也要开心呀~', '啵啵啵，烦恼都跑掉了~']),
+  };
+}
+// 完成页选图：场景/通用随机；若与上次相同则换另一类，保证不重复
+async function pickBubbleDone() {
+  if (Math.random() < 0.5) {
+    const w = await loadBubbleWeather();
+    const sc = bubbleScene(w);
+    const src = 'img/' + sc.img;
+    if (src === lastBubbleImg) return genericBubblePick();
+    return { src, fit: 'cover', text: sc.text };
+  }
+  return genericBubblePick();
+}
+
+function gameBubble(box) {
+  const imgIdx = 1 + Math.floor(Math.random() * 11);
+  box.innerHTML = `
+    <div style="font-size:13px;color:var(--text-mid);margin:6px auto 14px;text-align:center;">按住划过，连着破 · 剩 <b id="bubbleLeft">49</b> 个</div>
+    <div id="bubbleDoneText" style="display:none;font-size:17px;font-weight:600;color:var(--text-dark);text-align:center;margin-bottom:12px;"></div>
+    <div id="bubbleWrap" style="position:relative;max-width:440px;margin:0 auto;">
+      <div id="bubbleGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:10px;touch-action:none;user-select:none;"></div>
+      <div id="bubbleReveal" style="position:absolute;inset:0;display:none;align-items:center;justify-content:center;border-radius:16px;background:linear-gradient(180deg,#FDF6E9,#F5E9D2);opacity:0;transition:opacity .8s ease;overflow:hidden;">
+        <img src="img/scratch/s${imgIdx}.jpg" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:16px;">
+      </div>
+    </div>
+    <div id="bubbleDoneWrap" style="display:none;justify-content:center;margin-top:12px;">
+      <button class="btn btn-primary btn-sm" id="bubbleAgain">再捏一张</button>
+    </div>`;
+  const grid = box.querySelector('#bubbleGrid');
+  const wrap = box.querySelector('#bubbleWrap');
+  const reveal = box.querySelector('#bubbleReveal');
+  const leftEl = box.querySelector('#bubbleLeft');
+  let left = 49;
+  const build = () => {
+    left = 49; leftEl.textContent = left;
+    reveal.style.display = 'none';
+    reveal.style.opacity = '0';
+    reveal.style.position = 'absolute';
+    reveal.style.aspectRatio = '';
+    grid.style.display = 'grid';
+    box.querySelector('#bubbleDoneText').style.display = 'none';
+    box.querySelector('#bubbleDoneWrap').style.display = 'none';
+    grid.innerHTML = '';
+    for (let i = 0; i < 49; i++) {
+      const b = document.createElement('div');
+      b.style.cssText = 'aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 32% 30%,rgba(255,255,255,.95),#EFE6D4 45%,#D3C09D);box-shadow:inset -2px -3px 6px rgba(0,0,0,0.06);cursor:pointer;transition:transform .12s ease;';
+      b.dataset.alive = '1';
+      grid.appendChild(b);
+    }
+  };
+  const pop = (b) => {
+    if (!b || b.dataset.alive !== '1' || b.parentElement !== grid) return;
+    b.dataset.alive = '0';
+    sfxPop();
+    b.style.background = 'var(--card-beige)';
+    b.style.boxShadow = 'inset 2px 3px 8px rgba(0,0,0,0.08)';
+    b.style.transform = 'scale(0.82)';
+    leftEl.textContent = --left;
+    // 冒鼓励小字：从泡泡位置上浮消散
+    const tip = document.createElement('span');
+    tip.textContent = BUBBLE_CHEERS[Math.floor(Math.random() * BUBBLE_CHEERS.length)];
+    tip.style.cssText = 'position:absolute;font-size:13px;font-weight:600;color:var(--primary);pointer-events:none;white-space:nowrap;z-index:5;';
+    tip.style.left = (b.offsetLeft + b.offsetWidth / 2 - 24) + 'px';
+    tip.style.top = b.offsetTop + 'px';
+    wrap.appendChild(tip);
+    tip.animate([
+      { transform: 'translateY(0)', opacity: 1 },
+      { transform: 'translateY(-26px)', opacity: 0 },
+    ], { duration: 900, easing: 'ease-out' }).onfinish = () => tip.remove();
+    // 全破：隐藏网格，图片放大为 4:3 满宽；图片与文案保证和上次不同
+    if (left === 0) {
+      sfxChime();
+      pickBubbleDone().then(p => {
+        lastBubbleImg = p.src;
+        const im = reveal.querySelector('img');
+        im.src = p.src;
+        im.style.objectFit = p.fit;
+        const dt = box.querySelector('#bubbleDoneText');
+        dt.textContent = p.text;
+        dt.style.display = 'block';
+      });
+      setTimeout(() => {
+        grid.style.display = 'none';
+        reveal.style.position = 'relative';
+        reveal.style.aspectRatio = '4 / 3';
+        reveal.style.display = 'flex';
+        requestAnimationFrame(() => { reveal.style.opacity = '1'; });
+        box.querySelector('#bubbleDoneWrap').style.display = 'flex';
+      }, 500);
+    }
+  };
+  grid.addEventListener('click', (e) => pop(e.target));
+  // 按住拖动：划过的泡泡连着破；指针锁定后划出网格再回来继续破，松开左键才停
+  let dragging = false, lastPos = null;
+  grid.addEventListener('pointerdown', (e) => {
+    dragging = true;
+    lastPos = { x: e.clientX, y: e.clientY };
+    try { grid.setPointerCapture(e.pointerId); } catch (_) {}
+    pop(e.target);
+  });
+  grid.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    // 两点间距大时按 ~18px 步长插值补采样，快速连划不漏泡
+    const from = lastPos, to = { x: e.clientX, y: e.clientY };
+    const steps = Math.max(1, Math.ceil(Math.hypot(to.x - from.x, to.y - from.y) / 18));
+    for (let i = 1; i <= steps; i++) {
+      const el = document.elementFromPoint(from.x + (to.x - from.x) * i / steps, from.y + (to.y - from.y) * i / steps);
+      if (el && el.parentElement === grid) pop(el);
+    }
+    lastPos = to;
+  });
+  ['pointerup', 'pointercancel'].forEach(ev => grid.addEventListener(ev, () => { dragging = false; lastPos = null; }));
+  box.querySelector('#bubbleAgain').addEventListener('click', () => {
+    reveal.querySelector('img').src = 'img/scratch/s' + (1 + Math.floor(Math.random() * 11)) + '.jpg';
+    build();
+  });
+  build();
+}
+
+// 2) 舒尔特方格：1→25 按顺序点，注意力强制转移
+function gameSchulte(box) {
+  // 音符版：每局一首小曲，格子数 = 节拍数，按顺序点 = 弹出整首曲子
+  // 完成后出现播放条（重播/暂停/点进度跳拍）；底部「重玩」= 同曲洗牌，「下一首」= 换关
+  const NOTE = { C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, G4: 392.00, A4: 440.00, B4: 493.88, C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99, A5: 880.00 };
+  const MELODIES = [ // 完整版曲谱：「音名:拍数」（默认 1 拍，2=二拍长音，.5=半拍），beat = 一拍毫秒
+    { name: '小星星', beat: 400, notes: 'C4 C4 G4 G4 A4 A4 G4:2 F4 F4 E4 E4 D4 D4 C4:2 G4 G4 F4 F4 E4 E4 D4:2 G4 G4 F4 F4 E4 E4 D4:2 C4 C4 G4 G4 A4 A4 G4:2 F4 F4 E4 E4 D4 D4 C4:2' },
+    { name: '两只老虎', beat: 300, notes: 'C4 D4 E4 C4 C4 D4 E4 C4 E4 F4 G4:2 E4 F4 G4:2 G4 A4 G4 F4 E4 C4 G4 A4 G4 F4 E4 C4 C4 G4 C4:2 C4 G4 C4:2' },
+    { name: '生日快乐', beat: 420, notes: 'G4:.5 G4:.5 A4 G4 C5 B4:2 G4:.5 G4:.5 A4 G4 D5 C5:2 G4:.5 G4:.5 G5 E5 C5 B4 A4:2 F5:.5 F5:.5 E5 C5 D5 C5:2' },
+    { name: '小蜜蜂', beat: 300, notes: 'G4 E4 E4:2 F4 D4 D4:2 C4:.5 D4:.5 E4:.5 F4:.5 G4 G4 G4:2 G4 E4 E4:2 F4 D4 D4:2 C4:.5 E4:.5 G4 G4 E4:2' },
+    { name: '欢乐颂', beat: 380, notes: 'E4 E4 F4 G4 G4 F4 E4 D4 C4 C4 D4 E4 E4:1.5 D4:.5 D4:2 E4 E4 F4 G4 G4 F4 E4 D4 C4 C4 D4 E4 D4:1.5 C4:.5 C4:2' },
+    { name: '粉刷匠', beat: 300, notes: 'G4 E4 G4 E4 G4 E4 C4:2 D4 F4 E4 D4 G4:2 G4 E4 G4 E4 G4 E4 C4:2 D4 F4 E4 D4 C4:2' },
+    { name: '铃儿响叮当', beat: 340, notes: 'E4 E4 E4:2 E4 E4 E4:2 E4 G4 C4 D4 E4:3 F4 F4 F4 F4 F4 E4 E4 E4 E4 D4 D4 E4 D4:2' },
+    { name: '卡农', beat: 340, notes: 'E5:2 D5:2 C5 B4 A4 G4 A4 B4 C5 B4 A4 G4 A4 G4 E4 F4 F5 G5 A5 G5 F5 E5 D5 C5 B4 C5 D5 C5 B4 A4 G4 F4' },
+    { name: '青花瓷', beat: 360, notes: 'E4 G4 A4 C5 A4 G4 E4 D4:2 E4 G4 A4 C5 A4 G4 E4 D4:2 E4 G4 A4 C5 D5 C5 A4 G4 E4 D4 C4:2 C5 A4 G4 E4 D4:2' },
+    { name: '康康舞曲', beat: 260, notes: 'C5 C5 C5 C5 F5 F5 E5 E5 D5 D5 D5 D5 G5 G5 F5 E5 D5 C5 D5 E5 F5 E5 D5 C5:2' },
+    { name: '婚礼进行曲', beat: 400, notes: 'C5 F5 F5 G5 A5 A5 F5:2 G5 A5 G5 F5 E5:2 C5 F5 F5 G5 A5 A5 F5:2 E5 F5 G5 E5 C5:2' },
+    { name: 'Do-Re-Mi', beat: 380, notes: 'C4 D4 E4 C4 E4 C4 E4:2 D4 E4 F4 D4 F4 D4 F4:2 E4 F4 G4 E4 G4 E4 G4:2 G4 A4 B4 G4 B4 G4 B4:2' },
+  ].map(m => {
+    const notes = m.notes.split(' ').map(s => { const [k, b] = s.split(':'); return { f: NOTE[k], b: b ? parseFloat(b) : 1 }; });
+    const cum = []; let acc = 0;
+    notes.forEach(n => { cum.push(acc); acc += n.b; }); // 每个音符的起始拍，用于按时值排播
+    return { name: m.name, beat: m.beat, notes, cum, total: acc };
+  });
+  let mi = (Math.random() * MELODIES.length) | 0;
+  box.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin:6px 0 14px;flex-wrap:wrap;">
+      <span style="font-size:14px;color:var(--text-mid);">按顺序点数字，弹出小曲 · 下一个是 <b id="schulteNext" style="font-size:20px;color:var(--primary);">1</b></span>
+      <button class="btn btn-outline btn-sm" id="schulteGuide" style="padding:3px 12px;font-size:12px;border-radius:999px;">引导模式：开</button>
+    </div>
+    <div id="schulteGrid" style="display:grid;gap:9px;margin:0 auto;"></div>
+    <div id="schultePlayer" style="display:none;max-width:400px;margin:16px auto 0;padding:10px 14px;border-radius:999px;background:var(--card-beige);align-items:center;gap:10px;">
+      <button id="schultePlay" style="width:34px;height:34px;border-radius:50%;border:none;background:var(--primary);color:#fff;font-size:14px;cursor:pointer;flex:none;">▶</button>
+      <span id="schulteSong" style="font-size:13px;font-weight:600;color:var(--text-dark);flex:none;"></span>
+      <div id="schulteBar" style="flex:1;height:18px;display:flex;align-items:center;cursor:pointer;">
+        <div style="width:100%;height:6px;border-radius:999px;background:rgba(107,78,46,.15);overflow:hidden;">
+          <div id="schulteFill" style="width:0%;height:100%;background:var(--primary);border-radius:999px;transition:width .28s linear;"></div>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:14px;">
+      <button class="btn btn-outline btn-sm" id="schulteReplay">🔀 重玩（打乱重排）</button>
+      <button class="btn btn-primary btn-sm" id="schulteNextSong">🎵 下一首</button>
+    </div>`;
+  const grid = box.querySelector('#schulteGrid');
+  const nextEl = box.querySelector('#schulteNext');
+  const gbtn = box.querySelector('#schulteGuide');
+  const playerBox = box.querySelector('#schultePlayer');
+  const playBtn = box.querySelector('#schultePlay');
+  const songEl = box.querySelector('#schulteSong');
+  const bar = box.querySelector('#schulteBar');
+  const fill = box.querySelector('#schulteFill');
+  let next = 1, guide = true, guideEl = null, cells = {}, melody = MELODIES[mi], N = 0;
+  let playTimers = [], playing = false;
+  const setGuideHighlight = () => {
+    if (guideEl) { guideEl.style.background = 'var(--card-beige)'; guideEl.style.transform = 'scale(1)'; guideEl = null; }
+    if (guide && next <= N) {
+      const c = cells[next];
+      if (c) { guideEl = c; c.style.background = '#E4D3B4'; c.style.transform = 'scale(1.06)'; }
+    }
+  };
+  const stopPlayback = () => {
+    playTimers.forEach(clearTimeout); playTimers = [];
+    playing = false; playBtn.textContent = '▶';
+  };
+  const playFrom = (startIdx) => { // 从第 startIdx 个音符起播，按曲谱时值（长音长、半拍短）
+    stopPlayback();
+    playing = true; playBtn.textContent = '⏸';
+    melody.notes.forEach((n, i) => {
+      if (i < startIdx) return;
+      const delay = (melody.cum[i] - melody.cum[startIdx]) * melody.beat;
+      playTimers.push(setTimeout(() => {
+        sfxNote(n.f);
+        fill.style.width = ((melody.cum[i] + n.b) / melody.total * 100).toFixed(1) + '%';
+      }, delay));
+    });
+    playTimers.push(setTimeout(() => { playing = false; playBtn.textContent = '▶'; }, (melody.total - melody.cum[startIdx]) * melody.beat));
+  };
+  const build = () => { // 重玩/下一首都走这里：重建格子
+    melody = MELODIES[mi]; N = melody.notes.length;
+    next = 1; guideEl = null; cells = {};
+    stopPlayback();
+    fill.style.width = '0%';
+    playerBox.style.display = 'none';
+    // 选最整齐的行列：优先整除且接近正方形（42→7×6、32→8×4、25→5×5、24→6×4、30→6×5）
+    let cols = 0;
+    for (let c = Math.ceil(Math.sqrt(N)); c <= Math.ceil(Math.sqrt(N)) + 6; c++) { if (N % c === 0) { cols = c; break; } }
+    if (!cols) cols = Math.ceil(Math.sqrt(N));
+    const rows = Math.ceil(N / cols);
+    grid.style.gridTemplateColumns = `repeat(${cols},1fr)`;
+    grid.style.maxWidth = Math.min(cols * 54, 680) + 'px';
+    grid.innerHTML = '';
+    nextEl.style.fontSize = '20px';
+    nextEl.textContent = '1';
+    [...Array(N).keys()].map(i => i + 1).sort(() => Math.random() - 0.5).forEach(n => {
+      const c = document.createElement('div');
+      c.textContent = n;
+      c.style.cssText = 'aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:12px;background:var(--card-beige);font-size:18px;font-weight:600;color:var(--text-dark);cursor:pointer;user-select:none;transition:transform .15s ease, background .15s ease;';
+      cells[n] = c;
+      c.addEventListener('click', () => {
+        if (n !== next) return; // 点错：无任何反应
+        if (guideEl === c) guideEl = null;
+        stopPlayback();
+        const note = melody.notes[n - 1];
+        sfxNote(note.f);
+        fill.style.width = ((melody.cum[n - 1] + note.b) / melody.total * 100).toFixed(1) + '%';
+        c.style.background = 'var(--primary)';
+        c.style.color = '#fff';
+        c.style.cursor = 'default';
+        c.style.transform = 'scale(1)';
+        next++;
+        if (next > N) {
+          nextEl.textContent = '✓';
+          nextEl.style.fontSize = '16px';
+          // 完整弹完：播放条亮出曲名，自动重播一遍，之后可反复重播/拖进度
+          songEl.textContent = `《${melody.name}》`;
+          playerBox.style.display = 'flex';
+          playFrom(0);
+          toast(`🎵 你弹出了《${melody.name}》，真好听`);
+          return;
+        }
+        nextEl.textContent = next;
+        setGuideHighlight();
+      });
+      grid.appendChild(c);
+    });
+    setGuideHighlight();
+  };
+  gbtn.addEventListener('click', () => {
+    guide = !guide;
+    gbtn.textContent = guide ? '引导模式：开' : '引导模式：关';
+    gbtn.classList.toggle('btn-primary', guide);
+    gbtn.classList.toggle('btn-outline', !guide);
+    setGuideHighlight();
+  });
+  playBtn.addEventListener('click', () => { playing ? stopPlayback() : playFrom(0); });
+  bar.addEventListener('click', (e) => { // 点进度条任意位置，按节拍定位到对应音符接着播
+    const r = bar.getBoundingClientRect();
+    const target = Math.min(melody.total - 0.01, Math.max(0, (e.clientX - r.left) / r.width * melody.total));
+    let idx = 0;
+    for (let i = 0; i < N; i++) { if (melody.cum[i] <= target) idx = i; else break; }
+    playFrom(idx);
+  });
+  box.querySelector('#schulteReplay').addEventListener('click', build); // 同一首，数字重新洗牌
+  box.querySelector('#schulteNextSong').addEventListener('click', () => { mi = (mi + 1) % MELODIES.length; build(); }); // 换下一关
+  build();
+}
+
+// 3) 烦恼刮刮乐：刮开涂层露出温柔句子
+const SCRATCH_QUOTES = [
+  '情绪不是敌人呀，它只是提醒你：该歇歇啦～',
+  '允许自己什么都不想做，一会儿就好啦～',
+  '肝喜条达，人也一样——顺一点，松一点嘛～',
+  '今天已经很努力了鸭，先吃饭，再说别的～',
+  '深呼吸三次，事情没有想的那么急哒～',
+  '你不用立刻好起来，慢慢来就好呀～',
+  '睡个好觉，比想通更重要哦～',
+  '花有花期，人有节奏，不急的呀～',
+  '把肩膀放下来嘛，你一直端着呢～',
+  '吃口热乎的，胃暖了，心就暖啦～',
+  '今天的太阳落了，明天照常升起鸭～',
+  '允许一切发生，也允许自己休息一下嘛～',
+  '你已经撑了很久了鸭，辛苦啦～',
+  '情绪降一档就好，不用一步到晴天哒～',
+  '烦的时候，先把手头的事放十秒嘛～',
+  '天凉了，记得照顾好自己鸭～',
+  '照顾别人之前，先给自己留一点温柔呀～',
+  '不用每一次难过都自己消化，说出来就轻了呀～',
+  '允许自己不完美，你已经做得非常好啦～',
+  '慢慢来就好，你的节奏就是对的。',
+  '先吃饭，再睡觉，天大的事明天再说。',
+  '事情会一件一件理顺的，急不来。',
+  '你不必时刻坚强，累了就说出来。',
+  '此刻的不开心，就停在今天吧。',
+  '你已经迈出最难的一步了，剩下的交给我。',
+  '世界偶尔刻薄，但你值得被温柔以待。',
+  '你的努力和坚持，值得被看见。',
+];
+function gameScratch(box) {
+  const quote = SCRATCH_QUOTES[Math.floor(Math.random() * SCRATCH_QUOTES.length)];
+  box.innerHTML = `
+    <div style="font-size:13px;color:var(--text-mid);margin:6px 0 12px;text-align:center;">用手指刮开涂层，看看今天想对你说什么<br><span style="font-size:11px;color:var(--text-light);">轻点涂层，随时开关擦除模式</span></div>
+    <div style="position:relative;max-width:420px;margin:0 auto;min-height:220px;border-radius:16px;background:var(--card-beige);display:flex;align-items:center;justify-content:center;padding:28px;">
+      <div style="font-size:17px;color:var(--text-dark);line-height:2;text-align:center;text-wrap:balance;">${quote.replace(/(.)(～)$/, '<span style="white-space:nowrap">$1～</span>')}</div>
+      <canvas id="scratchCv" style="position:absolute;inset:0;width:100%;height:100%;border-radius:16px;cursor:crosshair;transition:opacity .6s;"></canvas>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:14px;">
+      <button class="btn btn-outline btn-sm" onclick="openGame('scratch')">再来一张</button>
+    </div>`;
+  const cv = box.querySelector('#scratchCv');
+  const rect = cv.parentElement.getBoundingClientRect();
+  cv.width = rect.width; cv.height = rect.height;
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = '#D3C09D';
+  ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.font = '15px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('刮 我', cv.width / 2, cv.height / 2);
+  let down = false, moves = 0, erasing = false, downPos = null;
+  const scratch = (x, y) => {
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.fillStyle = '#000'; // destination-out 只看 alpha；用不透明填充，一刮即透（之前残留 0.35 导致要蹭很多遍）
+    ctx.beginPath(); ctx.arc(x, y, 24, 0, Math.PI * 2); ctx.fill();
+    if (++moves % 6 === 0) {
+      const img = ctx.getImageData(0, 0, cv.width, cv.height).data;
+      let clear = 0, total = 0;
+      for (let i = 3; i < img.length; i += 4 * 24) { total++; if (img[i] === 0) clear++; }
+      if (clear / total > 0.55) { cv.style.opacity = '0'; cv.style.pointerEvents = 'none'; sfxChime(); }
+    }
+  };
+  const at = e => { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+  const setErase = on => {
+    erasing = on;
+    cv.style.cursor = on ? 'cell' : 'crosshair';
+    toast(on ? '擦除模式开：划过去就擦，不用按住' : '擦除模式关：按住再刮');
+  };
+  const stopDraw = () => { down = false; downPos = null; };
+  cv.addEventListener('pointerdown', e => {
+    down = true; downPos = { x: e.clientX, y: e.clientY };
+    const p = at(e); scratch(p.x, p.y);
+    try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+  cv.addEventListener('pointermove', e => {
+    if (!down && !erasing) return;
+    const p = at(e); scratch(p.x, p.y);
+  });
+  cv.addEventListener('pointerup', e => {
+    // 轻点涂层（几乎没移动）= 开关擦除模式，不用去点按钮
+    if (downPos && Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y) < 8) setErase(!erasing);
+    stopDraw();
+  });
+  cv.addEventListener('pointercancel', stopDraw);
+}
+
+// 4) 涂鸦减压板：随手乱画，可清空/保存
+function gameDoodle(box) {
+  const COLORS = ['#6B4E2E','#B08968','#C4651F','#D4A017','#7A9B6E','#4E7A6A','#6B7FA3','#8E6B9B','#C47A8E','#3F3B37'];
+  box.innerHTML = `
+    <div style="display:flex;gap:8px;align-items:center;margin:6px 0 12px;flex-wrap:wrap;">
+      ${COLORS.map((c, i) => `<span data-c="${c}" class="doodle-c" style="width:24px;height:24px;border-radius:50%;background:${c};cursor:pointer;border:3px solid ${i === 0 ? 'var(--primary)' : 'transparent'};"></span>`).join('')}
+      <span style="flex:1;"></span>
+      <button class="btn btn-outline btn-sm" onclick="openGame('doodle')">清空</button>
+      <button class="btn btn-outline btn-sm" id="doodleFull">全屏</button>
+      <button class="btn btn-primary btn-sm" id="doodleSave">保存图片</button>
+    </div>
+    <canvas id="doodleCv" style="width:100%;border-radius:16px;background:#fff;touch-action:none;cursor:crosshair;max-width:680px;display:block;margin:0 auto;"></canvas>
+    <div style="font-size:12px;color:var(--text-light);margin-top:10px;text-align:center;">说不出的烦，就让线条替你说</div>`;
+  const cv = box.querySelector('#doodleCv');
+  const ctx = cv.getContext('2d');
+  let color = COLORS[0], down = false, last = null;
+  const resetCtx = () => { ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = 4; };
+  // 改变画布尺寸并保留已画内容（缩放铺回）
+  const resizeCv = (w, h) => {
+    if (w < 50 || h < 50) return;
+    let snap = null;
+    if (cv.width && cv.height) {
+      snap = document.createElement('canvas');
+      snap.width = cv.width; snap.height = cv.height;
+      snap.getContext('2d').drawImage(cv, 0, 0);
+    }
+    cv.width = w; cv.height = h;
+    resetCtx();
+    if (snap) ctx.drawImage(snap, 0, 0, w, h);
+  };
+  const fitCanvas = () => {
+    if (box.dataset.full === '1') {
+      cv.style.maxWidth = '1200px';
+      resizeCv(cv.clientWidth, Math.max(300, window.innerHeight - 120));
+    } else {
+      cv.style.maxWidth = '680px';
+      resizeCv(cv.clientWidth, Math.round(cv.clientWidth * 0.85));
+    }
+  };
+  fitCanvas();
+  // 全屏：把整个画板挂到覆盖层，工具栏照常可用；Esc 或按钮退出
+  const fullBtn = box.querySelector('#doodleFull');
+  const setFull = on => {
+    box.dataset.full = on ? '1' : '0';
+    let ov = document.getElementById('doodleOverlay');
+    if (on) {
+      if (!ov) {
+        ov = document.createElement('div');
+        ov.id = 'doodleOverlay';
+        ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:#F5EFE4;padding:14px 16px;overflow:auto;';
+        document.body.appendChild(ov);
+      }
+      box._doodleParent = box.parentNode; box._doodleNext = box.nextSibling;
+      ov.appendChild(box);
+      document.body.style.overflow = 'hidden';
+    } else if (ov) {
+      box._doodleParent.insertBefore(box, box._doodleNext);
+      ov.remove();
+      document.body.style.overflow = '';
+    }
+    fullBtn.textContent = on ? '退出全屏' : '全屏';
+    fitCanvas();
+  };
+  fullBtn.addEventListener('click', () => setFull(box.dataset.full !== '1'));
+  if (!window._doodleEsc) {
+    window._doodleEsc = e => {
+      if (e.key === 'Escape' && document.getElementById('doodleOverlay')) {
+        const cur = document.getElementById('doodleOverlay').firstChild;
+        if (cur && cur._doodleParent) {
+          cur._doodleParent.insertBefore(cur, cur._doodleNext);
+          document.getElementById('doodleOverlay').remove();
+          document.body.style.overflow = '';
+          cur.dataset.full = '0';
+          const b = cur.querySelector('#doodleFull'); if (b) b.textContent = '全屏';
+        }
+      }
+    };
+    document.addEventListener('keydown', window._doodleEsc);
+  }
+  box.querySelectorAll('.doodle-c').forEach(dot => dot.addEventListener('click', () => {
+    color = dot.dataset.c;
+    box.querySelectorAll('.doodle-c').forEach(d => d.style.border = '3px solid transparent');
+    dot.style.border = '3px solid var(--primary)';
+  }));
+  const pos = e => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) * cv.width / r.width, y: (e.clientY - r.top) * cv.height / r.height }; };
+  const stopDraw = () => { down = false; last = null; };
+  cv.addEventListener('pointerdown', e => {
+    down = true; last = pos(e);
+    try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+  cv.addEventListener('pointermove', e => {
+    if (!down || !last) return;
+    const p = pos(e);
+    ctx.strokeStyle = color;
+    ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+    last = p;
+  });
+  cv.addEventListener('pointerup', stopDraw);
+  cv.addEventListener('pointercancel', stopDraw);
+  box.querySelector('#doodleSave').addEventListener('click', () => {
+    const a = document.createElement('a');
+    a.download = 'breezith-doodle.png';
+    a.href = cv.toDataURL('image/png');
+    a.click();
+    toast('已保存涂鸦');
+  });
+}
+// 5) 自由弹琴：音高/按键可自定义，多首曲谱
+function gamePiano(box) {
+  const ALL_NOTES = [
+    {note:'C4',f:261.63},{note:'D4',f:293.66},{note:'E4',f:329.63},{note:'F4',f:349.23},
+    {note:'G4',f:392.00},{note:'A4',f:440.00},{note:'B4',f:493.88},{note:'C5',f:523.25},
+    {note:'D5',f:587.33},{note:'E5',f:659.25},{note:'F5',f:698.46},{note:'G5',f:783.99},
+    {note:'A5',f:880.00},{note:'B5',f:987.77},{note:'C6',f:1046.50},
+  ];
+  // 音名 -> 简谱数字（1=C 体系）
+  const N2NUM = {'C4':'1','D4':'2','E4':'3','F4':'4','G4':'5','A4':'6','B4':'7','C5':'1·','D5':'2·','E5':'3·','F5':'4·','G5':'5·','A5':'6·','B5':'7·','C6':'1··'};
+  const DEFAULT_BIND = {0:'a',1:'s',2:'d',3:'f',4:'g',5:'h',6:'j',7:'k',8:'q',9:'w',10:'e',11:'r',12:'t',13:'y',14:'u'};
+  let keys = [], semis = 0, keyCount = 8, si = 0, demoTimers = [], bindIdx = -1, notePicker = null, curHi = null, practiceMode = false, practiceIdx = 0, demoSpeed = 1, practiceTimer = null;
+  const SCORES = [
+    {name:'自由弹奏', nums:''},
+    {name:'小星星', nums:'1:1 1:1 5:1 5:1 6:1 6:1 5:2 4:1 4:1 3:1 3:1 2:1 2:1 1:2 5:1 5:1 4:1 4:1 3:1 3:1 2:2 5:1 5:1 4:1 4:1 3:1 3:1 2:2 1:1 1:1 5:1 5:1 6:1 6:1 5:2 4:1 4:1 3:1 3:1 2:1 2:1 1:2'},
+    {name:'两只老虎', nums:'1:1 2:1 3:1 1:1 1:1 2:1 3:1 1:1 3:1 4:1 5:2 3:1 4:1 5:2 5:.5 6:.5 5:.5 4:.5 3:1 1:1 5:.5 6:.5 5:.5 4:.5 3:1 1:1 2:1 5:1 1:2 2:1 5:1 1:2'},
+    {name:'生日快乐', nums:'5:.5 5:.5 6:1 5:1 1·:2 7:1 5:.5 5:.5 6:1 5:1 2·:2 1·:1 5:.5 5:.5 5·:1 3·:1 1·:1 7:1 6:1.5 4·:.5 4·:1 3·:1 1·:1 2·:1 1·:2'},
+    {name:'欢乐颂', nums:'3:1 3:1 4:1 5:1 5:1 4:1 3:1 2:1 1:1 1:1 2:1 3:1 3:1.5 1:.5 1:2 2:1 2:1 3:1 3:1 4:1 4:1 5:1 5:1 5:1 4:1 3:1 2:1 1:1 1:1 2:1 3:1 2:1.5 1:.5 1:2'},
+    {name:'粉刷匠', nums:'5:1 3:1 5:1 3:1 5:1 3:1 1:2 2:1 4:1 3:1 2:1 5:2 5:1 3:1 5:1 3:1 5:1 3:1 1:2 2:1 4:1 3:1 2:1 1:2'},
+    {name:'送别', nums:'5:1 6:.5 5:.5 3:.5 5:.5 1·:2 6:1 1·:.5 6:.5 5:.5 6:.5 3:2 2:1.5 3:.5 5:1 4:1 3:1 2:1 7:1 1:3 r:1 5:1 3:.5 5:.5 1·:2 6:1 1·:1 5:2 5:1 1:.5 2:.5 3:1 2:.5 1:.5 2:3 r:1 5:1 3:.5 5:.5 1·:1.5 7:.5 6:1 1·:1 5:2 5:1 2:.5 3:.5 4:1.5 7:.5 1:3 r:1 6:1 1·:1 1·:2 7:1 6:.5 7:.5 1·:2 6:.5 7:.5 1·:1 6:1 6:.5 5:.5 3:1 1:1 2:3 r:1 5:1 3:.5 5:.5 1·:1.5 7:.5 6:1 1·:1 5:2 5:1 2:.5 3:.5 4:1.5 7:.5 1:3 r:1 5:1 3:.5 5:.5 1·:2 6:1 1·:1 5:2 5:1 1:.5 2:.5 3:1 2:.5 1:.5 2:3 r:1 5:1 3:.5 5:.5 1·:1.5 7:.5 6:1 1·:1 5:2 5:1 2:.5 3:.5 4:1.5 7:.5 1:3'},
+    {name:'虫儿飞', nums:'3·:1 3·:.5 3·:.5 4·:1 5·:1 3·:1.5 2·:.5 2·:2 1·:1 1·:.5 1·:.5 2·:1 3·:1 3·:1.5 7:.5 7:2 6:1 3·:1 2·:2 6:1 3·:1 2·:2 6:1 3·:1 2·:1.5 1·:.5 1·:4 3·:1 3·:.5 3·:.5 4·:1 5·:1 3·:1.5 2·:.5 2·:2 1·:1 1·:.5 1·:.5 2·:1 3·:1 3·:1.5 7:.5 7:2 6:1 3·:1 2·:2 6:1 3·:1 2·:2 6:1 3·:1 2·:1.5 1·:.5 1·:3 3·:.5 2·:.5 5·:3 4·:.5 3·:.5 3·:.5 2·:.5 2·:2 5·:.5 4·:.5 3·:1 4·:.5 5·:1.5 3·:1 2·:3.5 1·:.5 6:1 3·:1 2·:1.5 1·:.5 5·:1 2·:.5 1·:.5 1·:2 4·:.5 3·:.5 4·:.5 3·:.5 1·:2 4·:.5 3·:.5 4·:.5 3·:.5 1·:1.5 2·:.5 1·:4'},
+    {name:'青花瓷', nums:'5·:3 2·:1 1·:1 6:1 1·:1 1·:1 6:1 1·:1 1·:1 6:1 1·:1 6:1 5:1 2·:1 1·:1 6:1 1·:1 1·:1 6:1 1·:1 1·:1 3·:1 2·:1 1·:1 1·:1 5:1 6:1 3·:1 3·:1 3·:1 2·:1 3·:1 3·:1 2·:1 3·:1 5·:1 3·:1 3·:1 3·:1 3·:1 2·:1 2·:1 2·:1 2·:1 1·:1 3·:1 3·:1 2·:2 2·:1 1·:1 6:1 1·:1 1·:1 6:1 1·:1 6:1 5:1 5·:1 6:1 3·:1 5·:1 5·:1 3·:1 5·:1 5·:1 3·:1 2·:1 1·:1 1·:1 2·:1 1·:1 2·:1 3·:1 2·:1 2·:1 1·:1 2·:1 1·:1 6:1 2·:1 1·:1 1·:1 6:1 1··:1 2·:1 2·:1 1·:3'},
+    {name:'铃儿响叮当', nums:'3:.5 3:.5 3:1 3:.5 3:.5 3:1 3:.5 5:.5 1:.5 2:.5 3:2 4:.5 4:.5 4:1 4:.5 3:.5 3:.5 3:.5 2:.5 2:.5 3:.5 2:.5 2:1 5:1 3:.5 3:.5 3:1 3:.5 3:.5 3:1 3:.5 5:.5 1:.5 2:.5 3:2 4:.5 4:.5 4:1 4:.5 3:.5 3:.5 3:.5 2:.5 2:.5 3:.5 2:.5 2:1 5:1 5:2 1:2'},
+    {name:'平安夜', nums:'5:1 6:1 5:2 5:1 6:1 5:2 1·:2 3·:2 2·:1 3·:1 2·:1 1·:1 5:1 6:1 5:1 6:1 5:2 3:2 5:1 6:1 5:2'},
+  ];
+
+  box.innerHTML = `
+    <div style="max-width:720px;margin:0 auto;">
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+        <button id="pianoPrev" class="btn btn-outline" style="padding:4px 10px;font-size:16px;">‹</button>
+        <span id="pianoSongName" style="font-size:16px;font-weight:600;color:var(--text-dark);min-width:80px;text-align:center;"></span>
+        <button id="pianoNext" class="btn btn-outline" style="padding:4px 10px;font-size:16px;">›</button>
+        <button id="pianoDemo" class="btn btn-outline" style="padding:4px 12px;font-size:13px;margin-left:8px;">试听</button>
+        <button id="pianoPractice" class="btn btn-outline" style="padding:4px 12px;font-size:13px;margin-left:8px;">跟练</button>
+        <select id="pianoSpeed" style="margin-left:8px;padding:3px 6px;font-size:12px;border:1px solid var(--border-light);border-radius:8px;background:#fff;color:var(--text-dark);">
+          <option value="0.5">0.5x</option>
+          <option value="0.75">0.75x</option>
+          <option value="1" selected>1x</option>
+          <option value="1.25">1.25x</option>
+          <option value="1.5">1.5x</option>
+        </select>
+      </div>
+      <div style="display:flex;justify-content:center;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+        <span style="font-size:12px;color:var(--text-mid);">调音</span>
+        <input id="pianoTune" type="range" min="-12" max="12" step="1" value="0" style="width:120px;vertical-align:middle;">
+        <span id="pianoTuneVal" style="font-size:12px;color:var(--text-dark);min-width:56px;">原调</span>
+        <span style="font-size:12px;color:var(--text-mid);margin-left:6px;">键数</span>
+        <button data-kc="8" class="kc-btn btn btn-primary" style="padding:2px 9px;font-size:12px;">8</button>
+        <button data-kc="15" class="kc-btn btn btn-outline" style="padding:2px 9px;font-size:12px;">15</button>
+        <button id="pianoReset" class="btn btn-outline" style="padding:2px 9px;font-size:12px;margin-left:6px;">恢复默认</button>
+      </div>
+      <div id="pianoScore" style="background:var(--card-beige);border-radius:10px;padding:10px 8px;min-height:56px;display:flex;flex-wrap:wrap;justify-content:center;gap:2px 6px;align-content:center;"></div>
+      <div id="pianoKeys" style="display:flex;justify-content:center;gap:2px;margin:18px 0 10px;flex-wrap:wrap;"></div>
+      <div style="text-align:center;font-size:12px;color:var(--text-light);">点键上字母重新绑定按键 · 点音名改音高 · 按键盘弹琴</div>
+    </div>
+  `;
+
+  const keysEl = box.querySelector('#pianoKeys');
+
+  function renderKeys() {
+    keys = []; keysEl.innerHTML = '';
+    for (let i = 0; i < keyCount; i++) {
+      const base = ALL_NOTES[i] || ALL_NOTES[ALL_NOTES.length - 1];
+      const k = { note: base.note, f: base.f, key: DEFAULT_BIND[i] || '', el: null };
+      const el = document.createElement('div');
+      el.style.cssText = 'width:clamp(34px,7vw,52px);height:138px;background:#fff;border:1px solid var(--border-light);border-radius:0 0 8px 8px;display:flex;flex-direction:column;align-items:center;padding:6px 0 8px;cursor:pointer;user-select:none;transition:background .03s,transform .03s;flex-shrink:0;';
+      el.innerHTML = '<div class="pk-note" style="font-size:10px;color:var(--text-light);cursor:pointer;padding:1px 3px;border-radius:4px;">' + k.note + '</div>' +
+        '<div class="pk-num" style="font-size:9px;color:var(--text-light);margin-top:1px;">' + (N2NUM[k.note] || '') + '</div>' +
+        '<div style="flex:1;"></div>' +
+        '<div class="pk-key" style="font-size:17px;font-weight:700;color:var(--text-dark);text-transform:uppercase;padding:2px 5px;border-radius:4px;">' + (k.key || '·') + '</div>';
+      el.addEventListener('pointerdown', e => { if (e.target.classList.contains('pk-note') || e.target.classList.contains('pk-key')) return; e.preventDefault(); playKey(k, -1); });
+      el.addEventListener('pointerup', () => stopKey(k));
+      el.addEventListener('pointerleave', () => stopKey(k));
+      el.querySelector('.pk-note').addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); openNotePicker(k); });
+      el.querySelector('.pk-key').addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); startBind(k); });
+      keysEl.appendChild(el);
+      k.el = el;
+      keys.push(k);
+    }
+  }
+
+  // 真钢琴采样（Salamander，CC授权真实三角钢琴录音）：
+  // 采样库每八度只有 A/C/D#/F# 四个真实录音，其余音由播放速率变调生成（±2半音内听感无损）
+  const SAMPLE_MAP = {
+    C4:['C4',0], D4:['Ds4',-1], E4:['Ds4',1], F4:['Fs4',-1], G4:['Fs4',1], A4:['A4',0], B4:['A4',2],
+    C5:['C5',0], D5:['Ds5',-1], E5:['Ds5',1], F5:['Fs5',-1], G5:['Fs5',1], A5:['A5',0], B5:['A5',2], C6:['C6',0],
+  };
+  const pianoBufs = {};
+  let pianoTried = false;
+  function loadPianoSamples() {
+    if (pianoTried) return; pianoTried = true;
+    Object.keys(SAMPLE_MAP).map(n => SAMPLE_MAP[n][0]).filter((v, i, a) => a.indexOf(v) === i).forEach(base => {
+      pianoBufs[base] = null;  // null = 加载中
+      fetch('audio/piano/' + base + '.mp3')
+        .then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+        .then(ab => sfxCtx().decodeAudioData(ab))
+        .then(buf => { pianoBufs[base] = buf; })
+        .catch(() => { delete pianoBufs[base]; });  // 加载失败回落合成音色
+    });
+  }
+  function curFreq(k) { return k.f * Math.pow(2, semis / 12); }
+  function playKey(k, holdMs) {
+    const ctx = sfxCtx(); if (!ctx) return;
+    if (k._master) stopKey(k);  // 重复按先停旧音，避免叠音
+    const t = ctx.currentTime;
+    // 真钢琴采样优先：真实录音音色，变调用播放速率实现；未加载完成时回落下方合成音色
+    const sm = SAMPLE_MAP[k.note];
+    const buf = sm && pianoBufs[sm[0]];
+    if (buf) {
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.playbackRate.value = Math.pow(2, (sm[1] + semis) / 12);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.85, t);
+      src.connect(g).connect(ctx.destination);
+      src.start(t);
+      if (holdMs === -1) {
+        // 手动按住：采样自然衰减，松手时 stopKey 淡出收尾（stopKey 对 BufferSource 同样适用）
+        k._master = g; k._oscs = [src];
+      } else {
+        const dur = Math.max((holdMs || 380) / 1000, 0.15);
+        g.gain.setTargetAtTime(0.001, t + Math.max(dur - 0.1, 0.03), 0.06);
+        src.stop(t + dur + 0.3);
+        setTimeout(() => { k.el.style.background = '#fff'; k.el.style.transform = ''; }, dur * 1000);
+      }
+      k.el.style.background = 'var(--primary)';
+      k.el.style.transform = 'translateY(3px)';
+      if (practiceMode) checkPractice(k);
+      return;
+    }
+    const f = curFreq(k);
+    const PEAK = 0.14;
+    const master = ctx.createGain();
+    master.gain.setValueAtTime(0.0001, t);
+    master.gain.linearRampToValueAtTime(PEAK, t + 0.004);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 4500; lp.Q.value = 0.5;
+    master.connect(lp).connect(ctx.destination);
+    const oscs = [];
+    // 仿钢琴：正弦泛音叠加，越高频的泛音衰减越快（钢琴余音“越来越柔”的来源）
+    // [倍频, 起振幅度, 衰减到30%所需秒数]
+    [[1, 1.0, 2.4], [2, 0.42, 1.1], [3, 0.18, 0.5], [4, 0.08, 0.22], [5, 0.03, 0.12]].forEach(([mult, amp, dec]) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine'; o.frequency.value = f * mult;
+      g.gain.setValueAtTime(amp, t);
+      g.gain.exponentialRampToValueAtTime(Math.max(amp * 0.3, 0.001), t + dec);
+      o.connect(g).connect(master); o.start(t);
+      oscs.push(o);
+    });
+    // 琴槌敲击声：8ms 短噪声，给音头“敲下去”的感觉
+    const nlen = Math.floor(ctx.sampleRate * 0.008);
+    const nbuf = ctx.createBuffer(1, nlen, ctx.sampleRate);
+    const nd = nbuf.getChannelData(0);
+    for (let i = 0; i < nlen; i++) nd[i] = (Math.random() * 2 - 1) * (1 - i / nlen);
+    const nsrc = ctx.createBufferSource(); nsrc.buffer = nbuf;
+    const ng = ctx.createGain(); ng.gain.value = 0.25;
+    const nhp = ctx.createBiquadFilter(); nhp.type = 'highpass'; nhp.frequency.value = 1800;
+    nsrc.connect(nhp).connect(ng).connect(master); nsrc.start(t);
+    // 音头之后整体缓慢回落到延音量，模拟琴弦自然衰减
+    master.gain.setTargetAtTime(PEAK * 0.55, t + 0.04, 0.35);
+    if (holdMs === -1) {
+      // 手动按住模式：不自动停，存起来等 stopKey（音量按自然衰减走，松手时 stopKey 收尾）
+      k._master = master; k._oscs = oscs;
+    } else {
+      const dur = Math.max((holdMs || 380) / 1000, 0.15);
+      const rel = t + Math.max(dur - 0.12, 0.05);
+      master.gain.setTargetAtTime(0.001, rel, 0.045);
+      oscs.forEach(o => o.stop(t + dur + 0.05));
+      // 试听/定时模式：按键高亮与声音同长，音停才恢复
+      setTimeout(() => { k.el.style.background = '#fff'; k.el.style.transform = ''; }, dur * 1000);
+    }
+    k.el.style.background = 'var(--primary)';
+    k.el.style.transform = 'translateY(3px)';
+    if (practiceMode) checkPractice(k);
+  }
+  function stopKey(k) {
+    if (k._master) {
+      const ctx = sfxCtx(), t = ctx.currentTime;
+      k._master.gain.cancelScheduledValues(t);
+      k._master.gain.setValueAtTime(k._master.gain.value, t);
+      k._master.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+      k._oscs.forEach(o => o.stop(t + 0.15));
+      k._master = null; k._oscs = null;
+    }
+    k.el.style.background = '#fff';
+    k.el.style.transform = '';
+    if (practiceMode) advancePractice(k);
+  }
+
+  function startBind(k) {
+    bindIdx = keys.indexOf(k);
+    const kl = k.el.querySelector('.pk-key');
+    kl.textContent = '按…'; kl.style.background = 'var(--primary)'; kl.style.color = '#fff';
+  }
+  function cancelBind() {
+    if (bindIdx < 0) return;
+    const k = keys[bindIdx], kl = k.el.querySelector('.pk-key');
+    kl.textContent = k.key || '·'; kl.style.background = ''; kl.style.color = '';
+    bindIdx = -1;
+  }
+  function onKeyDown(e) {
+    if (e.repeat) return;
+    if (!document.body.contains(keysEl)) { document.removeEventListener('keydown', onKeyDown); return; }
+    if (bindIdx >= 0) {
+      if (e.key === 'Escape') { cancelBind(); return; }
+      const kk = e.key.toLowerCase();
+      if (kk.length === 1 && /[a-z0-9]/.test(kk)) {
+        e.preventDefault();
+        const k = keys[bindIdx];
+        keys.forEach(o => { if (o !== k && o.key === kk) { o.key = ''; o.el.querySelector('.pk-key').textContent = '·'; } });
+        k.key = kk;
+        const kl = k.el.querySelector('.pk-key');
+        kl.textContent = kk; kl.style.background = ''; kl.style.color = '';
+        bindIdx = -1;
+        renderScore();
+      }
+      return;
+    }
+    const k = keys.find(o => o.key === e.key.toLowerCase());
+    if (k) { e.preventDefault(); playKey(k, -1); }
+  }
+  function onKeyUp(e) {
+    const k = keys.find(o => o.key === e.key.toLowerCase());
+    if (k) stopKey(k);
+  }
+  document.addEventListener('keydown', onKeyDown);
+  document.addEventListener('keyup', onKeyUp);
+  // 绑定模式下，点击非字母区域（空白/琴键主体/音名）即取消绑定
+  document.addEventListener('click', function onDocClick(e) {
+    if (!document.body.contains(keysEl)) { document.removeEventListener('click', onDocClick); return; }
+    if (bindIdx >= 0 && !e.target.closest('.pk-key')) cancelBind();
+  }, true);
+
+  function openNotePicker(k) {
+    closeNotePicker(); cancelBind();
+    notePicker = document.createElement('div');
+    notePicker.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:2100;display:flex;align-items:center;justify-content:center;';
+    notePicker.innerHTML = '<div style="background:#FDFAF3;border-radius:12px;padding:14px 16px;max-width:360px;width:calc(100% - 32px);"><div style="font-size:13px;color:var(--text-mid);margin-bottom:10px;">选音高（当前 ' + k.note + '）</div><div id="npGrid" style="display:flex;flex-wrap:wrap;gap:4px;"></div></div>';
+    notePicker.addEventListener('pointerdown', e => { if (e.target === notePicker) closeNotePicker(); });
+    document.body.appendChild(notePicker);
+    const grid = notePicker.querySelector('#npGrid');
+    ALL_NOTES.forEach(n => {
+      const b = document.createElement('button');
+      b.textContent = n.note + (N2NUM[n.note] ? ' ' + N2NUM[n.note] : '');
+      b.className = 'btn ' + (n.note === k.note ? 'btn-primary' : 'btn-outline');
+      b.style.cssText = 'padding:4px 8px;font-size:11px;';
+      b.addEventListener('click', () => {
+        k.note = n.note; k.f = n.f;
+        k.el.querySelector('.pk-note').textContent = n.note;
+        k.el.querySelector('.pk-num').textContent = N2NUM[n.note] || '';
+        renderScore(); closeNotePicker();
+      });
+      grid.appendChild(b);
+    });
+  }
+  function closeNotePicker() { if (notePicker) { notePicker.remove(); notePicker = null; } }
+
+  function hiNote(idx) {
+    if (curHi) { curHi.style.background = ''; curHi.style.transform = ''; }
+    const ns = box.querySelector('#pianoScore')._notes;
+    if (ns && ns[idx]) { ns[idx].style.background = 'var(--primary)'; ns[idx].style.transform = 'scale(1.18)'; curHi = ns[idx]; }
+  }
+  function num2key(num) { const k = keys.find(o => N2NUM[o.note] === num); return k ? (k.key || '') : ''; }
+  function setKeyNote(k, note, f) {
+    k.note = note; k.f = f;
+    if (k.el) { k.el.querySelector('.pk-note').textContent = note; k.el.querySelector('.pk-num').textContent = N2NUM[note] || ''; }
+  }
+  // 解析曲谱：每项 { num: 简谱数字, beats: 拍数 }，格式 "音名:拍数"（拍数默认1）
+  function parseScore(score) {
+    if (!score.nums) return null;
+    return score.nums.split(' ').map(t => {
+      const [n, b] = t.split(':');
+      return { num: n, beats: b ? parseFloat(b) : 1 };
+    });
+  }
+  // 统计曲目需要多少个不同的键（不含休止符 r）
+  function songNeedKeys(score) {
+    if (!score.nums) return 0;
+    const nums = parseScore(score).map(n => n.num).filter(n => n !== 'r');
+    const uniq = []; nums.forEach(n => { if (uniq.indexOf(n) < 0) uniq.push(n); });
+    return uniq.length;
+  }
+  // 若当前曲目音名超过 8 个且处于 8 键模式，自动切到 15 键并提示
+  function ensureKeyCountForSong() {
+    const score = SCORES[si];
+    const need = songNeedKeys(score);
+    if (keyCount === 8 && need > 8) {
+      keyCount = 15;
+      box.querySelectorAll('.kc-btn').forEach(x => { x.classList.remove('btn-primary'); x.classList.add('btn-outline'); });
+      const b15 = box.querySelector('.kc-btn[data-kc="15"]');
+      if (b15) { b15.classList.remove('btn-outline'); b15.classList.add('btn-primary'); }
+      cancelBind(); closeNotePicker();
+      renderKeys();
+      toast('「' + score.name + '」用了 ' + need + ' 个不同的音，8 键放不下，已自动切到 15 键');
+    }
+  }
+  // 8键模式：按当前曲目自动调整8个键的音高，避免试听断点；自由弹奏时恢复默认C4-C5
+  function adaptKeysToSong() {
+    if (keyCount !== 8) return;
+    const score = SCORES[si];
+    let used;
+    if (!score.nums) {
+      used = ALL_NOTES.slice(0, 8).map(o => o.note);
+    } else {
+      // 过滤休止符 r，避免它挤占真实音名的键位
+      const nums = parseScore(score).map(n => n.num).filter(n => n !== 'r');
+      const uniq = []; nums.forEach(n => { if (uniq.indexOf(n) < 0) uniq.push(n); });
+      const order = ALL_NOTES.map(o => N2NUM[o.note]);
+      uniq.sort((a, b) => order.indexOf(a) - order.indexOf(b));
+      used = uniq.slice(0, 8).map(num => Object.keys(N2NUM).find(nt => N2NUM[nt] === num));
+      const rest = ALL_NOTES.filter(o => used.indexOf(o.note) < 0);
+      while (used.length < 8 && rest.length) used.push(rest.shift().note);
+    }
+    for (let i = 0; i < 8 && i < used.length; i++) {
+      const base = ALL_NOTES.find(o => o.note === used[i]);
+      if (base) setKeyNote(keys[i], base.note, base.f);
+    }
+  }
+  // 按曲谱标定的调自动移调（score.shift：相对C调需升高的半音数，如1=F → 5）
+  function applySongShift() {
+    const sh = SCORES[si].shift || 0;
+    if (semis === sh) return;
+    semis = sh;
+    const tune = box.querySelector('#pianoTune'); if (tune) tune.value = semis;
+    const tv = box.querySelector('#pianoTuneVal');
+    if (tv) tv.textContent = semis === 0 ? '原调' : '已按曲谱移调 +' + semis;
+  }
+  function renderScore() {
+    const score = SCORES[si];
+    applySongShift();
+    adaptKeysToSong();
+    box.querySelector('#pianoSongName').textContent = score.name;
+    const el = box.querySelector('#pianoScore');
+    if (!score.nums) { el.innerHTML = '<span style="color:var(--text-mid);font-size:14px;width:100%;text-align:center;line-height:36px;">自由弹奏，想弹什么就弹什么</span>'; el._notes = null; return; }
+    if (practiceMode) {
+      const notes = parseScore(score);
+      const rowSize = 12;
+      const startIdx = Math.floor(practiceIdx / rowSize) * rowSize;
+      const endIdx = Math.min(startIdx + rowSize, notes.length);
+      const rowNotes = [];
+      for (let i = startIdx; i < endIdx; i++) rowNotes.push({ ...notes[i], _i: i });
+      el.innerHTML = rowNotes.map(n => {
+        const kl = num2key(n.num);
+        const hold = n.beats > 1;
+        const isCurrent = n._i === practiceIdx;
+        const isDone = n._i < practiceIdx;
+        const bg = isCurrent ? 'var(--primary)' : (isDone ? 'rgba(180,160,130,0.15)' : 'transparent');
+        const numColor = isCurrent ? '#fff' : 'var(--text-dark)';
+        const klColor = isCurrent ? 'rgba(255,255,255,0.8)' : (isDone ? 'var(--text-light)' : (kl ? 'var(--text-light)' : '#d49a9a'));
+        const scale = isCurrent ? 'transform:scale(1.15);' : '';
+        return '<div class="pnote" data-idx="' + n._i + '" style="display:inline-flex;flex-direction:column;align-items:center;min-width:30px;border-radius:6px;padding:3px 2px;transition:all .15s;background:' + bg + ';' + scale + '">' +
+          '<span style="font-size:16px;font-weight:600;color:' + numColor + ';line-height:24px;">' + (n.num === 'r' ? '0' : n.num) + (hold ? '<span style="opacity:.6;">—</span>'.repeat(Math.max(1, Math.ceil(n.beats) - 1)) : '') + '</span>' +
+          '<span style="font-size:11px;color:' + klColor + ';text-transform:uppercase;margin-top:1px;">' + (kl || (n.num === 'r' ? '休' : '?')) + '</span></div>';
+      }).join('');
+      el._notes = el.querySelectorAll('.pnote');
+      return;
+    }
+    el.innerHTML = parseScore(score).map((n, i) => {
+      const kl = num2key(n.num);
+      const hold = n.beats > 1;
+      return '<div class="pnote" data-idx="' + i + '" style="display:inline-flex;flex-direction:column;align-items:center;min-width:26px;border-radius:6px;padding:2px 1px;transition:background .04s,transform .04s;">' +
+        '<span style="font-size:16px;font-weight:600;color:var(--text-dark);line-height:24px;">' + (n.num === 'r' ? '0' : n.num) + (hold ? '<span style="color:var(--text-light);">—</span>'.repeat(Math.max(1, Math.ceil(n.beats) - 1)) : '') + '</span>' +
+        '<span style="font-size:11px;color:' + (kl ? 'var(--text-light)' : '#d49a9a') + ';text-transform:uppercase;margin-top:1px;">' + (kl || (n.num === 'r' ? '休' : '?')) + '</span></div>';
+    }).join('');
+    el._notes = el.querySelectorAll('.pnote');
+  }
+
+  function stopDemo() {
+    demoTimers.forEach(clearTimeout); demoTimers = [];
+    if (curHi) { curHi.style.background = ''; curHi.style.transform = ''; curHi = null; }
+  }
+  function startPractice() {
+    stopDemo();
+    practiceMode = true; practiceIdx = 0;
+    const btn = box.querySelector('#pianoPractice');
+    if (btn) { btn.textContent = '退出跟练'; btn.classList.remove('btn-outline'); btn.classList.add('btn-primary'); }
+    renderScore();
+    skipRestIfNeeded();  // 开局若遇到休止符，自动等待后进位
+  }
+  function stopPractice() {
+    if (practiceTimer) { clearTimeout(practiceTimer); practiceTimer = null; }
+    practiceMode = false; practiceIdx = 0;
+    const btn = box.querySelector('#pianoPractice');
+    if (btn) { btn.textContent = '跟练'; btn.classList.remove('btn-primary'); btn.classList.add('btn-outline'); }
+    renderScore();
+  }
+  // 跟练遇休止符 r：不要求按键，按其拍数等待后自动进位
+  function skipRestIfNeeded() {
+    if (practiceTimer) { clearTimeout(practiceTimer); practiceTimer = null; }
+    if (!practiceMode) return;
+    const score = SCORES[si];
+    if (!score.nums) return;
+    const notes = parseScore(score);
+    if (practiceIdx >= notes.length) return;
+    const cur = notes[practiceIdx];
+    if (cur.num === 'r') {
+      const beat = 420 / demoSpeed;
+      const wait = cur.beats * beat;
+      practiceTimer = setTimeout(() => {
+        practiceIdx++;
+        if (practiceIdx >= notes.length) {
+          toast('整曲完成！' + score.name);
+          setTimeout(() => stopPractice(), 1500);
+        } else {
+          skipRestIfNeeded();  // 连续休止符继续跳
+        }
+        renderScore();
+      }, wait);
+    }
+  }
+  function checkPractice(k) {
+    if (!practiceMode) return;
+    const score = SCORES[si];
+    if (!score.nums) return;
+    const notes = parseScore(score);
+    if (practiceIdx >= notes.length) return;
+    if (N2NUM[k.note] === notes[practiceIdx].num) {
+      k._hit = true;  // 按对先记录，等松手再进位
+    }
+  }
+  function advancePractice(k) {
+    if (!practiceMode || !k._hit) return;
+    k._hit = false;
+    const score = SCORES[si];
+    const notes = parseScore(score);
+    practiceIdx++;
+    if (practiceIdx >= notes.length) {
+      toast('整曲完成！' + score.name);
+      setTimeout(() => stopPractice(), 1500);
+    }
+    renderScore();
+    skipRestIfNeeded();  // 下一个是休止符则自动等待进位
+  }
+  function playDemo() {
+    stopDemo();
+    if (practiceMode) stopPractice();
+    const score = SCORES[si];
+    if (!score.nums) return;
+    const beat = 420 / demoSpeed;
+    let delay = 0;
+    parseScore(score).forEach((n, i) => {
+      const k = keys.find(o => N2NUM[o.note] === n.num);
+      const holdMs = n.beats * beat;
+      // 画面高亮与发声放同一个定时器回调，保证起音与高亮同一帧、不漂移
+      demoTimers.push(setTimeout(() => { hiNote(i); if (k) playKey(k, holdMs); }, delay));
+      delay += holdMs;
+    });
+    demoTimers.push(setTimeout(() => { if (curHi) { curHi.style.background = ''; curHi.style.transform = ''; curHi = null; } }, delay));
+  }
+
+  box.querySelector('#pianoTune').addEventListener('input', e => {
+    semis = parseInt(e.target.value);
+    box.querySelector('#pianoTuneVal').textContent = semis === 0 ? '原调' : (semis > 0 ? '+' + semis + ' 升' : semis + ' 降') + ' 半音';
+  });
+  box.querySelectorAll('.kc-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      const wantKc = parseInt(b.dataset.kc);
+      if (wantKc === 8) {
+        const need = songNeedKeys(SCORES[si]);
+        if (need > 8) {
+          toast('「' + SCORES[si].name + '」用了 ' + need + ' 个不同的音，8 键放不下，请用 15 键');
+          return;
+        }
+      }
+      keyCount = wantKc;
+      box.querySelectorAll('.kc-btn').forEach(x => { x.classList.remove('btn-primary'); x.classList.add('btn-outline'); });
+      b.classList.remove('btn-outline'); b.classList.add('btn-primary');
+      cancelBind(); closeNotePicker();
+      renderKeys(); renderScore();
+    });
+  });
+  box.querySelector('#pianoReset').addEventListener('click', () => {
+    semis = 0; si = 0;
+    const tune = box.querySelector('#pianoTune'); if (tune) tune.value = 0;
+    const tv = box.querySelector('#pianoTuneVal'); if (tv) tv.textContent = '原调';
+    cancelBind(); closeNotePicker();
+    renderKeys(); renderScore();
+    toast('已恢复默认设置');
+  });
+  box.querySelector('#pianoPrev').addEventListener('click', () => { stopDemo(); if (practiceMode) stopPractice(); si = (si - 1 + SCORES.length) % SCORES.length; ensureKeyCountForSong(); renderScore(); });
+  box.querySelector('#pianoNext').addEventListener('click', () => { stopDemo(); if (practiceMode) stopPractice(); si = (si + 1) % SCORES.length; ensureKeyCountForSong(); renderScore(); });
+  box.querySelector('#pianoDemo').addEventListener('click', playDemo);
+  box.querySelector('#pianoSpeed').addEventListener('change', e => { demoSpeed = parseFloat(e.target.value); if (demoTimers.length) playDemo(); });
+  box.querySelector('#pianoPractice').addEventListener('click', () => { practiceMode ? stopPractice() : startPractice(); });
+  loadPianoSamples();
+  renderKeys();
+  ensureKeyCountForSong();
+  renderScore();
+}
+
+function aiCustomize() {
+  showPage('chat');
+  const input = document.getElementById('chatInput');
+  if (!input || input.value.trim()) return;
+  input.value = '请根据我的健康档案和今日状态，定制一套调理方案（作息 / 饮食 / 穴位）';
+  sendMessage();
+}
+
 async function sendMessage() {
   if (chatSending) return;
   const input = document.getElementById('chatInput');
@@ -2739,7 +4083,7 @@ async function refreshChatOverview() {
     const d = res.data;
     const scoreEl = document.getElementById('chScore');
     const todosEl = document.getElementById('chTodos');
-    if (scoreEl && d.score !== undefined) scoreEl.textContent = d.score;
+    if (scoreEl && d.score !== undefined) scoreEl.textContent = d.score == null ? '未测' : d.score;
     if (todosEl) {
       const done = (d.todos || []).filter(t => t.done).length;
       todosEl.textContent = (d.todos || []).length ? done + '/' + d.todos.length : '0';
@@ -3623,32 +4967,141 @@ async function punchMed(el) {
   loadMedicines();
 }
 
-// 症状近 7 天柱状趋势
+// ===== 健康记录页「记录日历」：可翻月，有记录/无记录分色，今天圈出 =====
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth() + 1; // 1-12
+const calCache = {}; // 'YYYY-MM' -> Map(date -> count)
+
 async function loadSymptomStats() {
-  const el = document.getElementById('symptomTrend');
+  delete calCache[`${calYear}-${String(calMonth).padStart(2, '0')}`]; // 新增记录后强制刷新当前月
+  renderSymptomCalendar();
+}
+
+async function renderSymptomCalendar() {
+  const el = document.getElementById('symptomCal');
   if (!el) return;
-  const res = await fetchAPI('/record/symptoms/stats');
-  if (!res.success || !res.data) return;
-  const days = res.data.days || [];
-  const max = Math.max(1, ...days.map(d => d.count));
-  const WEEK_CN = ['日', '一', '二', '三', '四', '五', '六'];
-  el.innerHTML = days.map(d => {
-    const pct = d.count ? Math.max(12, (d.count / max) * 90) : 4;
-    const color = d.count === 0 ? 'var(--border)' : d.count >= max && max >= 3 ? 'var(--danger)' : d.count >= 2 ? 'var(--warn)' : 'var(--primary)';
-    const dow = WEEK_CN[new Date(d.date + 'T00:00:00').getDay()];
-    return `<div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
-      <div style="font-size:11px;color:var(--text-mid);">${d.count || ''}</div>
-      <div style="width:22px;height:${pct}%;border-radius:4px 4px 0 0;background:${color};"></div>
-      <div style="font-size:12px;color:var(--text-light);">${dow}</div>
-    </div>`;
-  }).join('');
-  const tip = document.getElementById('symptomTrendTip');
-  const total = days.reduce((a, b) => a + b.count, 0);
-  if (tip) {
-    tip.innerHTML = total === 0
-      ? '\u{1F49A} 近 7 天没有不适记录，状态保持得不错'
-      : `\u{1F9FE} 近 7 天共记录 ${total} 次，本月累计 ${res.data.monthCount} 次，留意发作当天的作息和饮食`;
+  const title = document.getElementById('calTitle');
+  if (title) title.textContent = `${calYear}年${calMonth}月`;
+  const key = `${calYear}-${String(calMonth).padStart(2, '0')}`;
+  let dayMap = calCache[key];
+  if (!dayMap) {
+    el.innerHTML = '<div style="color:var(--text-light);font-size:13px;margin:auto;">加载中…</div>';
+    const res = await fetchAPI(`/record/symptoms/calendar?year=${calYear}&month=${calMonth}`);
+    if (!res.success || !res.data) {
+      el.innerHTML = '<div style="color:var(--text-light);font-size:13px;margin:auto;">日历加载失败，稍后再试</div>';
+      return;
+    }
+    dayMap = new Map((res.data.days || []).map(d => [d.date, d.count]));
+    calCache[key] = dayMap;
   }
+  const todayStr = new Date().toLocaleDateString('sv'); // 本地日期 YYYY-MM-DD
+  const startPad = new Date(calYear, calMonth - 1, 1).getDay(); // 首日前的空白格
+  const daysInMonth = new Date(calYear, calMonth, 0).getDate();
+  let html = '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px 4px;">';
+  ['日', '一', '二', '三', '四', '五', '六'].forEach(w => {
+    html += `<div style="text-align:center;font-size:12px;color:var(--text-light);padding:2px 0;">${w}</div>`;
+  });
+  for (let i = 0; i < startPad; i++) html += '<div></div>';
+  for (let n = 1; n <= daysInMonth; n++) {
+    const ds = `${key}-${String(n).padStart(2, '0')}`;
+    const cnt = dayMap.get(ds) || 0;
+    const isToday = ds === todayStr;
+    const isFuture = ds > todayStr;
+    // 圆点式：有记录=实心圆（悬停气泡+点击详情）；今天=「今」字圆；无记录=灰数字；未来=淡数字
+    const circle = 'width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;';
+    let inner = '';
+    if (cnt) {
+      inner = `<div class="cal-day" style="position:relative;cursor:pointer;" onclick="openDayRecords('${ds}')">
+        <div class="cal-dot" style="${circle}background:var(--primary);color:#fff;font-weight:600;">${n}</div>
+        <span class="cal-tip">${cnt}条记录</span>
+      </div>`;
+    } else if (isToday) {
+      inner = `<div style="${circle}background:var(--accent);color:#fff;font-weight:600;">今</div>`;
+    } else {
+      const color = isFuture ? 'var(--border)' : 'var(--text-light)';
+      inner = `<div style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:14px;color:${color};">${n}</div>`;
+    }
+    html += `<div style="display:flex;align-items:center;justify-content:center;height:44px;">${inner}</div>`;
+  }
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+// 点击日历有记录的日期：弹窗展示当天全部症状记录
+async function openDayRecords(ds) {
+  const res = await fetchAPI('/record/symptoms');
+  if (!res.success || !Array.isArray(res.data)) {
+    toast('记录加载失败，请稍后重试', 'error');
+    return;
+  }
+  const day = res.data.filter(r => String(r.time).slice(0, 10) === ds);
+  const rows = day.length ? day.map(r => `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);">
+      <div>
+        <b style="font-size:14px;color:var(--text-dark);">${escapeHtml(r.symptom)}</b>
+        <div style="font-size:12px;color:var(--text-light);margin-top:2px;">${escapeHtml(r.time)}${r.cause ? ' · ' + escapeHtml(r.cause) : ''}</div>
+      </div>
+      <span class="tag tag-gray" style="flex-shrink:0;">${escapeHtml(r.severity)}</span>
+    </div>`).join('')
+    : '<div style="color:var(--text-light);font-size:14px;">这一天没有记录</div>';
+  openModal(`
+    <div class="modal-head">
+      <div><div class="modal-title">\u{1F4C5} ${calMonth}月${Number(ds.slice(8, 10))}日记录 <span class="tag tag-primary">${day.length}条</span></div></div>
+      <span class="modal-close" onclick="closeModal()">×</span>
+    </div>
+    <div class="modal-body">${rows}</div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal()">关闭</button>
+    </div>`);
+}
+
+function calShift(delta) {
+  calMonth += delta;
+  if (calMonth > 12) { calMonth = 1; calYear++; }
+  if (calMonth < 1) { calMonth = 12; calYear--; }
+  renderSymptomCalendar();
+}
+
+// 月份快选面板：点标题「2026年10月」弹出，年份步进 + 12月宫格，一步跳转
+let pickerYear = calYear;
+function openMonthPicker() {
+  pickerYear = calYear;
+  renderMonthPicker();
+}
+function renderMonthPicker() {
+  const now = new Date();
+  const nowY = now.getFullYear(), nowM = now.getMonth() + 1;
+  const months = Array.from({ length: 12 }, (_, i) => {
+    const m = i + 1;
+    const isCur = pickerYear === calYear && m === calMonth;
+    const isFuture = pickerYear > nowY || (pickerYear === nowY && m > nowM);
+    const style = isCur
+      ? 'background:var(--primary);color:#fff;font-weight:600;'
+      : isFuture
+        ? 'color:var(--border);'
+        : 'background:var(--card-beige);color:var(--text-dark);';
+    return `<div ${isFuture ? '' : `onclick="pickMonth(${m})"`} style="height:40px;display:flex;align-items:center;justify-content:center;border-radius:10px;font-size:14px;cursor:${isFuture ? 'default' : 'pointer'};${style}">${m}月</div>`;
+  }).join('');
+  openModal(`
+    <div class="modal-head">
+      <div><div class="modal-title">选择年月</div></div>
+      <span class="modal-close" onclick="closeModal()">×</span>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:14px;">
+        <span onclick="pickerYear--;renderMonthPicker()" style="cursor:pointer;font-size:20px;color:var(--text-mid);user-select:none;">&#8249;</span>
+        <b style="font-size:16px;color:var(--text-dark);">${pickerYear}年</b>
+        <span onclick="pickerYear++;renderMonthPicker()" style="cursor:pointer;font-size:20px;color:var(--text-mid);user-select:none;">&#8250;</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">${months}</div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-outline" onclick="closeModal()">取消</button></div>`);
+}
+function pickMonth(m) {
+  calYear = pickerYear;
+  calMonth = m;
+  closeModal();
+  renderSymptomCalendar();
 }
 
 // 慢病页「调理跟踪」：近4周（滚动7天窗口）症状发作次数柱状图
@@ -3827,6 +5280,9 @@ async function savePrefEditor() {
 }
 
 async function loadProfile() {
+  document.getElementById('profileMenuView').style.display = '';
+  const dv = document.getElementById('profileDetailView');
+  if (dv) dv.style.display = 'none';
   const res = await fetchAPI('/profile');
   if (!res.success || !res.data) return;
   const p = res.data;
@@ -3863,30 +5319,41 @@ async function loadProfileStats() {
 }
 
 // 我的：档案 / 慢病 / 收藏视图切换
-function switchProfileView(view, mi) {
-  document.querySelectorAll('.profile-menu .mi').forEach(m => m.classList.remove('active'));
-  if (mi) mi.classList.add('active');
-  const EXTRA = { favorites: 'viewFavorites', chronic: 'viewChronic', reminders: 'viewReminders', security: 'viewSecurity', feedback: 'viewFeedback' };
-  const targetId = EXTRA[view] || null;
-  ['viewFavorites', 'viewChronic', 'viewReminders', 'viewSecurity', 'viewFeedback'].forEach(id => {
+function switchProfileView(view) {
+  document.getElementById('profileMenuView').style.display = 'none';
+  document.getElementById('profileDetailView').style.display = '';
+  // 隐藏所有详情卡
+  ['viewFavorites','viewChronic','viewReminders','viewSecurity','viewFeedback'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.style.display = id === targetId ? '' : 'none';
+    if (el) el.style.display = 'none';
   });
-  const cards = document.querySelectorAll('.pf-view-card');
-  if (targetId) {
-    cards.forEach(c => c.style.display = 'none');
+  document.querySelectorAll('.pf-view-card').forEach(c => c.style.display = 'none');
+  // 显示当前视图
+  if (view === 'profile') {
+    document.querySelectorAll('.pf-view-card').forEach(c => { if (c.id !== 'pfStatCard') c.style.display = ''; });
+  } else if (view === 'stats') {
+    const sc = document.getElementById('pfStatCard');
+    if (sc) sc.style.display = '';
   } else {
-    cards.forEach(c => c.style.display = '');
-    if (view === 'stats') {
-      setTimeout(() => {
-        const statCard = document.getElementById('pfStatCard');
-        if (statCard) statCard.scrollIntoView({ behavior: 'smooth' });
-      }, 60);
-    }
+    const MAP = { favorites:'viewFavorites', chronic:'viewChronic', reminders:'viewReminders', security:'viewSecurity', feedback:'viewFeedback' };
+    const el = document.getElementById(MAP[view]);
+    if (el) el.style.display = '';
   }
   if (view === 'favorites') renderFavList();
   if (view === 'chronic') loadChronicProfile();
   if (view === 'security') loadSecurityInfo();
+  window.scrollTo(0, 0);
+}
+
+function backToProfileMenu() {
+  document.getElementById('profileMenuView').style.display = '';
+  document.getElementById('profileDetailView').style.display = 'none';
+  window.scrollTo(0, 0);
+}
+
+function showProfileSection(view) {
+  openPanel('profile');
+  switchProfileView(view);
 }
 
 // ============ 提醒设置（本地存储，与穿衣建议页天气开关同步） ============
@@ -4463,7 +5930,7 @@ async function renderFavList() {
   }
   const favs = getFavs();
   if (!favs.length) {
-    el.innerHTML = '<div style="color:var(--text-light);font-size:14px;">还没有收藏，去「饮食调理」点亮食谱的收藏吧</div>';
+    el.innerHTML = '<div style="color:var(--text-light);font-size:14px;">还没有收藏，去「饮食推荐」点亮食谱的收藏吧</div>';
     return;
   }
   el.innerHTML = '<div class="fav-grid">' + favs.map(f => `

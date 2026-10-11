@@ -49,6 +49,9 @@ async function locateByIp(ip) {
   const city = (Array.isArray(json.city) ? '' : json.city)
     || (Array.isArray(json.province) ? '' : json.province)
     || '未知城市';
+  // 直辖市省级编码 → 市辖区编码（天气查询不接受省级编码）
+  const muni = MUNICIPALITIES[adcode];
+  if (muni) return { city: muni.name, adcode: muni.adcode };
   return { city: city.replace(/市$/, ''), adcode };
 }
 
@@ -437,4 +440,5 @@ module.exports = {
   getSceneReminders,
   searchCity,
   locateByLngLat,
+  locateByIp,
 };

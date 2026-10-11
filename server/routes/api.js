@@ -11,7 +11,7 @@ const fs = require('fs').promises;
 const path = require('path');
 const { pool } = require('../db/pool');
 const { signToken, requireAuth, optionalAuth, hashPassword, verifyPassword } = require('../middleware/auth');
-const { getClothingByWeather, getClothingByAdcode, getSceneReminders, searchCity, locateByLngLat } = require('../services/weather');
+const { getClothingByWeather, getClothingByAdcode, getSceneReminders, searchCity, locateByLngLat, locateByIp } = require('../services/weather');
 const {
   ApiError, ok, wrap, cleanStr, optionalDate, timeField, enumOr, TIME_RE,
 } = require('../utils/http');
@@ -57,17 +57,20 @@ router.get('/health/dashboard', requireAuth, wrap(async (req, res) => {
       WHERE user_id = ? AND todo_date = CURDATE()
       ORDER BY todo_time`, [userId],
   );
-  const user = users[0] || { score: 62, level: '轻度肝郁' };
-  const desc = user.score >= 80 ? '肝郁明显，建议及时调理并关注情绪'
-    : user.score >= 50 ? '气机略滞，适合按揉太冲穴疏解'
-      : '状态平稳，继续保持良好作息';
+  const user = users[0] || { score: null, level: null };
+  const assessed = user.score != null;
+  const desc = !assessed ? '还没做过肝郁指数测评，花1分钟测一测，获取专属调理建议'
+    : user.score >= 80 ? '肝郁明显，建议及时调理并关注情绪'
+      : user.score >= 50 ? '气机略滞，适合按揉太冲穴疏解'
+        : '状态平稳，继续保持良好作息';
   // 天气取真实服务（按来源 IP 定位），失败时留空而不是写死城市
   const w = await getClothingByWeather(req);
   res.json({
     success: true,
     data: {
-      score: user.score,
-      level: user.level,
+      score: assessed ? user.score : null,
+      level: assessed ? user.level : '未测评',
+      assessed,
       desc,
       weather: w ? `${w.weather} ${w.temp}°C` : '',
       city: w ? w.city : '',
@@ -203,28 +206,28 @@ router.get('/clothing', optionalAuth, wrap(async (req, res) => {
   } else {
     data = await getClothingByWeather(req);
   }
-  if (data) {
-    let userCtx = null;
-    if (req.userId) {
-      try {
-        const [users] = await pool.query('SELECT score FROM users WHERE id = ?', [req.userId]);
-        const [syms] = await pool.query(
-          `SELECT symptom, COUNT(*) AS c FROM symptoms
-            WHERE user_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-            GROUP BY symptom ORDER BY c DESC LIMIT 4`, [req.userId],
-        );
-        const [pf] = await pool.query(
-          'SELECT body_sense FROM health_profiles WHERE user_id = ?', [req.userId],
-        ).catch(() => [[]]);
-        userCtx = { score: (users[0] && users[0].score) || 0, symptoms: syms.map(s => s.symptom), prefs: parsePrefs(pf[0] || {}) };
-      } catch (e) {
-        userCtx = null; // 查个人数据失败不影响天气提醒
-      }
+  // 天气上游失败时也用兜底数据生成场景提醒，避免前端退回静态文案
+  if (!data) data = clothingData;
+  let userCtx = null;
+  if (req.userId) {
+    try {
+      const [users] = await pool.query('SELECT score FROM users WHERE id = ?', [req.userId]);
+      const [syms] = await pool.query(
+        `SELECT symptom, COUNT(*) AS c FROM symptoms
+          WHERE user_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+          GROUP BY symptom ORDER BY c DESC LIMIT 4`, [req.userId],
+      );
+      const [pf] = await pool.query(
+        'SELECT body_sense FROM health_profiles WHERE user_id = ?', [req.userId],
+      ).catch(() => [[]]);
+      userCtx = { score: (users[0] && users[0].score) || 0, symptoms: syms.map(s => s.symptom), prefs: parsePrefs(pf[0] || {}) };
+    } catch (e) {
+      userCtx = null; // 查个人数据失败不影响天气提醒
     }
-    // 缓存对象是共享的，必须浅拷贝后再注入个性化提醒
-    data = { ...data, reminders: getSceneReminders(data, userCtx) };
   }
-  ok(res, data || clothingData);
+  // 缓存对象是共享的，必须浅拷贝后再注入个性化提醒
+  data = { ...data, reminders: getSceneReminders(data, userCtx) };
+  ok(res, data);
 }));
 
 // 城市搜索：用户输入城市名，返回高德候选城市（供手动切换城市）
@@ -245,6 +248,13 @@ router.get('/weather/locate', wrap(async (req, res) => {
   }
   const loc = await locateByLngLat(lng.toFixed(6), lat.toFixed(6));
   ok(res, loc);
+}));
+
+// IP 粗定位兜底：HTTP 下浏览器定位被 Chrome 禁用时使用（高德 IP 定位，城市级精度）
+router.get('/weather/ip-locate', wrap(async (req, res) => {
+  const fwd = String(req.headers['x-forwarded-for'] || '');
+  const ip = fwd.split(',')[0].trim() || req.socket?.remoteAddress || '';
+  ok(res, await locateByIp(ip.replace(/^::ffff:/, '')));
 }));
 
 // 运动建议
@@ -486,6 +496,25 @@ router.get('/record/symptoms/stats', requireAuth, wrap(async (req, res) => {
     weeks.push({ label: w === 0 ? '本周' : w + '周前', start: startKey, end: endKey, count });
   }
   ok(res, { days, monthCount, weeks });
+}));
+
+// 记录日历：某月每日症状记录数（供健康记录页日历翻月展示）
+router.get('/record/symptoms/calendar', requireAuth, wrap(async (req, res) => {
+  const now = new Date();
+  const year = Number(req.query.year) || now.getFullYear();
+  const month = Number(req.query.month) || now.getMonth() + 1;
+  if (!(year >= 2000 && year <= 2100) || !(month >= 1 && month <= 12)) {
+    throw new ApiError(400, '日期参数无效');
+  }
+  const first = `${year}-${String(month).padStart(2, '0')}-01`;
+  const [rows] = await pool.query(
+    `SELECT DATE(created_at) AS day, COUNT(*) AS cnt
+       FROM symptoms
+      WHERE user_id = ? AND created_at >= ? AND created_at < ? + INTERVAL 1 MONTH
+      GROUP BY DATE(created_at)`,
+    [req.userId, first, first],
+  );
+  ok(res, { year, month, days: rows.map(r => ({ date: String(r.day).slice(0, 10), count: Number(r.cnt) })) });
 }));
 
 // ============ 用户收藏（跟随账号，多端同步） ============
