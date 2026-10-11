@@ -75,21 +75,21 @@ const clothingData = {
 };
 
 const exerciseData = [
-  { name: '八段锦·两手托天', duration: '3分钟', tag: '舒肝理气', icon: '\u{1F9D8}' },
+  { name: '八段锦·两手托天', duration: '1.5分钟', tag: '舒肝理气', icon: '\u{1F9D8}' },
   { name: '梳头功', duration: '2分钟', tag: '疏肝明目', icon: '\u{1F48E}' },
   { name: '扩胸运动', duration: '2分钟', tag: '宽胸理气', icon: '\u{1F4AA}' },
-  { name: '侧腰拉伸', duration: '3分钟', tag: '疏通胆经', icon: '\u{1F9D5}' },
+  { name: '侧腰拉伸', duration: '2分钟', tag: '疏通胆经', icon: '\u{1F9D5}' },
   { name: '搓胁肋', duration: '2分钟', tag: '疏肝解郁', icon: '\u{1F9B6}' },
-  { name: '深呼吸478', duration: '4分钟', tag: '安神定志', icon: '\u{1F33F}' },
+  { name: '深呼吸478', duration: '1.5分钟', tag: '安神定志', icon: '\u{1F33F}' },
 ];
 
 // 功法带练：八段锦走数据库，其余两组为静态动作
 const practiceStretchData = [
   { name: '搓胁肋', duration: '2分钟', desc: '双手沿肋间隙来回推搓，疏肝解郁' },
-  { name: '侧腰拉伸', duration: '3分钟', desc: '左右各15次，疏通两侧胆经' },
+  { name: '侧腰拉伸', duration: '2分钟', desc: '左右各15次，疏通两侧胆经' },
   { name: '扩胸展肩', duration: '2分钟', desc: '双手背后交握上提，宽胸理气' },
   { name: '旋腰转脊', duration: '3分钟', desc: '缓慢左右转腰各10圈，放松腰背' },
-  { name: '深呼吸478', duration: '4分钟', desc: '吸4秒屏7秒呼8秒，4轮安神' },
+  { name: '深呼吸478', duration: '1.5分钟', desc: '吸4秒屏7秒呼8秒，4轮安神' },
 ];
 
 const practiceOfficeData = [
