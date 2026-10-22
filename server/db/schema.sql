@@ -249,17 +249,19 @@ SELECT * FROM (
 ) AS seed
 WHERE NOT EXISTS (SELECT 1 FROM footbath_recipes);
 
--- 功法动作（八段锦八式）
+-- 功法动作（八段锦十式：预备式 + 八式 + 收式）
 INSERT INTO practice_moves (sort_order, name, duration)
 SELECT * FROM (
-  SELECT 1 AS sort_order,'两手托天理三焦' AS name,'30s' AS duration
-  UNION ALL SELECT 2,'左右开弓似射雕','30s'
-  UNION ALL SELECT 3,'调理脾胃须单举','30s'
-  UNION ALL SELECT 4,'五劳七伤往后瞧','30s'
-  UNION ALL SELECT 5,'摇头摆尾去心火','30s'
-  UNION ALL SELECT 6,'两手攀足固肾腰','30s'
-  UNION ALL SELECT 7,'攒拳怒目增气力','30s'
-  UNION ALL SELECT 8,'背后七颠百病消','30s'
+  SELECT 1 AS sort_order,'预备式' AS name,'30s' AS duration
+  UNION ALL SELECT 2,'两手托天理三焦','30s'
+  UNION ALL SELECT 3,'左右开弓似射雕','30s'
+  UNION ALL SELECT 4,'调理脾胃须单举','30s'
+  UNION ALL SELECT 5,'五劳七伤往后瞧','30s'
+  UNION ALL SELECT 6,'摇头摆尾去心火','30s'
+  UNION ALL SELECT 7,'两手攀足固肾腰','30s'
+  UNION ALL SELECT 8,'攥拳怒目增气力','30s'
+  UNION ALL SELECT 9,'背后七颠百病消','30s'
+  UNION ALL SELECT 10,'收式','30s'
 ) AS seed
 WHERE NOT EXISTS (SELECT 1 FROM practice_moves);
 

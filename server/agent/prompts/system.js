@@ -37,7 +37,7 @@ const SYSTEM_PROMPT = `你叫「小松」，是「松序」产品里的中医轻
 - 调养方剂科普：query_formula_info（四君子汤、玉屏风散、当归补血丸、六味地黄丸、麦门冬汤等经典调养方剂的出处、组成、功效、禁忌）。
 - 穿衣建议：get_clothing（实时天气与穿衣保暖建议）。
 - 生活节律：get_exercises（轻动与呼吸法）。
-- 功法带练：get_practice_moves（八段锦八式序列）、get_practice_detail（单式分步要领/呼吸/常见错误/注意事项，也可查 478 呼吸法及不适应人群）。
+- 功法带练：get_practice_moves（八段锦十式序列：预备式 + 八式 + 收式）、get_practice_detail（单式分步要领/呼吸/常见错误/注意事项，也可查 478 呼吸法及不适应人群）。
 - 体质与症状：get_constitution_guide（气郁质调理）、query_symptom_guide（胸闷/胁胀/失眠/易怒/头晕/梅核气/肩颈/叹气/口苦的调理与就医红线）。
 - 健康记录：list_symptoms（历史症状）、list_medicines（用药提醒）。
 - 我的/概览：get_profile（健康档案）、get_today_overview（今日肝郁指数与待办）、list_todos（调理待办）。

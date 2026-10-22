@@ -265,7 +265,7 @@ const TOOL_DEFS = [
   // ---- 功法带练 ----
   {
     name: 'get_practice_moves',
-    description: '获取八段锦完整八式动作序列（名称、每式时长），用于带练或讲解。用户问八段锦、功法带练、整套动作时调用。',
+    description: '获取八段锦完整十式动作序列（预备式+八式+收式，含名称、每式时长），用于带练或讲解。用户问八段锦、功法带练、整套动作时调用。',
     parameters: { type: 'object', properties: {} },
     run: async () => {
       const rows = kb.getPracticeMoves();
@@ -286,7 +286,7 @@ const TOOL_DEFS = [
     run: async (args) => {
       const name = requireStr(args, 'name', 30);
       const d = kb.getPracticeDetail(name);
-      if (!d) throw new ToolArgError(`未找到“${name}”，请用 get_practice_moves 查询八式名称，或传“478呼吸”`);
+      if (!d) throw new ToolArgError(`未找到“${name}”，请用 get_practice_moves 查询十式名称，或传“478呼吸”`);
       const lines = [`${d.name}`];
       if (d.steps) lines.push(`分步要领：${d.steps}`);
       if (d.breath) lines.push(`呼吸配合：${d.breath}`);
