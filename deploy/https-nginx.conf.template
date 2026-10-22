@@ -1,19 +1,29 @@
 # 松序 Breezith HTTPS 配置模板（备案通过后启用）
 #
+# 【重要】启用 HTTPS 后，用服务器 IP（http://__SERVER_IP__）访问依然可用：
+#   - 域名（__DOMAIN__ / www.__DOMAIN__）走 80 → 301 跳转 HTTPS
+#   - 80 端口保留一个 default_server 兜底站点，IP 或任何其他 Host 直接提供
+#     HTTP 服务，不会被强制跳转（因此不存在"跳到 https://IP 报证书错误"的问题）
+#
 # 启用步骤（约 10 分钟）：
 #   1. 替换域名占位符：
-#      sed -i 's/__DOMAIN__/你的域名/g' /opt/breezith/https-nginx.conf.template
-#   2. 申请证书（只申请，不改现有配置）：
-#      certbot certonly --nginx -d 你的域名
+#      sed -i 's/__DOMAIN__/__DOMAIN__/g' /opt/breezith/https-nginx.conf.template
+#   2. 只申请证书，先不动现有配置（此时 80 端口已有 acme 验证路径）：
+#      certbot certonly --webroot -w /var/www/certbot -d __DOMAIN__ -d www.__DOMAIN__
 #   3. 备份并替换配置：
 #      cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.http.bak
 #      cp /opt/breezith/https-nginx.conf.template /etc/nginx/nginx.conf
 #   4. 验证并重载：
 #      nginx -t && nginx -s reload
-#   5. 浏览器打开 https://你的域名 验证；摄像头等需安全上下文的 API 将直接可用
+#   5. 验证三件事：
+#      https://__DOMAIN__   正常打开
+#      http://__DOMAIN__    301 跳转到 HTTPS
+#      http://__SERVER_IP__       仍返回 200（IP 访问保持可用，本次改动重点）
 #
 # 证书续期：certbot 自带 systemd timer 自动续期，可用 certbot renew --dry-run 验证
-# 注意：HSTS 一旦生效，浏览器将强制 HTTPS 访问一年；如需回退 HTTP 需清浏览器 HSTS 缓存
+# 注意：HSTS 一旦生效，浏览器将强制该域名 HTTPS 访问一年；回退需清浏览器 HSTS 缓存
+# 注意：直接用 https://__SERVER_IP__ 访问会报证书警告（证书签发对象是域名，
+#       公共 CA 不给纯 IP 签证书）——这是 TLS 固有特性；HTTP 走 IP 不受影响。
 
 user nginx;
 worker_processes auto;
@@ -44,11 +54,11 @@ http {
 
     include /etc/nginx/conf.d/*.conf;
 
-    # ---------- HTTP：强制跳转 HTTPS ----------
+    # ---------- HTTP：域名强制跳转 HTTPS ----------
     server {
-        listen       80 default_server;
-        listen       [::]:80 default_server;
-        server_name  __DOMAIN__;
+        listen       80;
+        listen       [::]:80;
+        server_name  __DOMAIN__ www.__DOMAIN__;
 
         # certbot HTTP-01 续期验证路径直连（不走跳转）
         location /.well-known/acme-challenge/ {
@@ -60,11 +70,58 @@ http {
         }
     }
 
+    # ---------- HTTP 兜底站点：IP / 未匹配域名照常访问，不做跳转 ----------
+    # 保留 default_server 是"IP 永远能进"的关键，升级时不要删掉这个块
+    server {
+        listen       80 default_server;
+        listen       [::]:80 default_server;
+        server_name  _;
+
+        # 松序 Breezith 静态文件（仅 public 目录）
+        root         /opt/breezith/public;
+        index        index.html;
+
+        # /api 反代到本机 Node 服务（仅监听 127.0.0.1）
+        location /api/ {
+            proxy_pass http://127.0.0.1:3100;
+            add_header Cache-Control "no-store" always;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            # AI 对话响应较慢，放宽超时
+            proxy_read_timeout 120s;
+        }
+
+        # HTML 入口页一律不缓存，避免更新后看到旧页面
+        location ~* \.html$ {
+            add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+            add_header Pragma "no-cache" always;
+            expires off;
+        }
+
+        # 带后缀的静态资源不存在时直接 404（避免把 index.html 当 JS/CSS 返回）
+        location ~* \.(js|mjs|css|png|jpg|jpeg|gif|webp|svg|ico|woff2?|ttf|map|task|wasm|bin|tflite|mp4|webm)$ {
+            try_files $uri =404;
+            add_header Cache-Control "public, max-age=604800" always;
+        }
+
+        location / {
+            try_files $uri $uri/ /index.html;
+            add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+            add_header Pragma "no-cache" always;
+            expires off;
+        }
+
+        error_page 404 /404.html;
+        error_page 500 502 503 504 /50x.html;
+    }
+
     # ---------- HTTPS 站点 ----------
     server {
         listen       443 ssl http2 default_server;
         listen       [::]:443 ssl http2 default_server;
-        server_name  __DOMAIN__;
+        server_name  __DOMAIN__ www.__DOMAIN__;
 
         ssl_certificate     /etc/letsencrypt/live/__DOMAIN__/fullchain.pem;
         ssl_certificate_key /etc/letsencrypt/live/__DOMAIN__/privkey.pem;
@@ -84,6 +141,7 @@ http {
         # /api 反代到本机 Node 服务（仅监听 127.0.0.1）
         location /api/ {
             proxy_pass http://127.0.0.1:3100;
+            add_header Cache-Control "no-store" always;
             proxy_http_version 1.1;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
@@ -100,12 +158,16 @@ http {
         }
 
         # 带后缀的静态资源不存在时直接 404（避免把 index.html 当 JS/CSS 返回）
-        location ~* \.(js|css|png|jpg|jpeg|gif|webp|svg|ico|woff2?|ttf|map)$ {
+        location ~* \.(js|mjs|css|png|jpg|jpeg|gif|webp|svg|ico|woff2?|ttf|map|task|wasm|bin|tflite|mp4|webm)$ {
             try_files $uri =404;
+            add_header Cache-Control "public, max-age=604800" always;
         }
 
         location / {
             try_files $uri $uri/ /index.html;
+            add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+            add_header Pragma "no-cache" always;
+            expires off;
         }
 
         error_page 404 /404.html;

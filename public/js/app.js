@@ -4096,18 +4096,34 @@ let currentPracticeGroup = 'baduanjin';
 let practiceMovesCache = [];
 let practiceTimer = null;
 const PRACTICE_META = {
-  baduanjin: { title: '八段锦 · 动作序列', hint: '每式约 30 秒，整套约 4 分钟，循序渐进、不憋气' },
+  baduanjin: { title: '八段锦 · 动作序列', hint: '含预备式与收式共 10 式，循序渐进、不憋气' },
   stretch: { title: '疏肝拉伸序列', hint: '拉伸到有牵拉感即可，不要疼痛，每侧动作左右都做' },
   office: { title: '办公室微运动', hint: '坐在工位上也能完成，每工作 1 小时起来做一组' },
 };
 // 动作 → 视频文件映射（用户上传后补充路径）
 const VIDEO_MAP = {
+  '预备式': 'img/anims/yubeishi.mp4',
   '两手托天理三焦': 'img/anims/tuotian.mp4',
+  '左右开弓似射雕': 'img/anims/shediao.mp4',
+  '调理脾胃须单举': 'img/anims/danju.mp4',
+  '五劳七伤往后瞧': 'img/anims/houqiao.mp4',
+  '摇头摆尾去心火': 'img/anims/baiwei.mp4',
+  '两手攀足固肾腰': 'img/anims/panzu.mp4',
+  '攥拳怒目增气力': 'img/anims/numu.mp4',
+  '背后七颠百病消': 'img/anims/qidian.mp4',
+  '收式': 'img/anims/shoushi.mp4',
 };
-// 从 duration 字符串解析循环次数，如 "6次，1分40秒" → 6
+// 视频真实时长（秒），实测后写死：列表时间 = 时长 × 次数，避免现场探测受网络波动影响
+// 换视频文件后须同步更新此表（浏览器对 mp4 缓存 7 天，替换文件时给 VIDEO_MAP 的 URL 加 ?v=2 等穿透）
+const VIDEO_DUR = {
+  yubeishi: 16.18, tuotian: 19.39, shediao: 28.89, danju: 24.17,
+  houqiao: 24.82, baiwei: 37.11, panzu: 17.79, numu: 17.44,
+  qidian: 4.39, shoushi: 10.54,
+};
+// 从 duration 字符串解析循环次数，如 "6次，1分40秒" → 6；无"次"字样（如"30秒"）视为 1 次
 function parseReps(durationStr) {
   const m = String(durationStr || '').match(/(\d+)\s*次/);
-  return m ? parseInt(m[1], 10) : 6;
+  return m ? parseInt(m[1], 10) : 1;
 }
 let currentDetailIndex = -1;
 
@@ -4126,30 +4142,18 @@ async function loadPracticeMoves(group) {
     fetchAPI('/practice/moves?group=' + group),
   ]);
   const moves = r1.success && Array.isArray(r1.data) ? r1.data : [];
-  // 对有视频的动作，预加载视频并用真实时长×次数覆盖 m.secs，随后刷新 DOM
-  const videoUpdates = [];
+  // 有视频的动作：用实测时长表（VIDEO_DUR）× 次数覆盖 m.secs，确定性计算无网络依赖
   for (const m of moves) {
     const vsrc = VIDEO_MAP[m.name];
     if (vsrc) {
-      videoUpdates.push(new Promise((resolve) => {
-        const v = document.createElement('video');
-        v.preload = 'metadata';
-        v.muted = true;
-        v.src = vsrc;
-        const onMeta = () => {
-          const reps = parseReps(m.duration);
-          const newSecs = Math.round(v.duration * reps);
-          if (Number.isFinite(newSecs) && newSecs > 0) m.secs = newSecs;
-          resolve();
-        };
-        const onErr = () => resolve();
-        v.addEventListener('loadedmetadata', onMeta, { once: true });
-        v.addEventListener('error', onErr, { once: true });
-        setTimeout(onErr, 5000);
-      }));
+      const key = vsrc.split('/').pop().replace(/\.mp4.*$/i, '');
+      const dur = VIDEO_DUR[key];
+      if (dur) {
+        const newSecs = Math.round(dur * parseReps(m.duration));
+        if (Number.isFinite(newSecs) && newSecs > 0) m.secs = newSecs;
+      }
     }
   }
-  if (videoUpdates.length) await Promise.all(videoUpdates);
 
   practiceMovesCache = moves;
   const list = document.getElementById('moveList');
@@ -4180,7 +4184,7 @@ async function loadPracticeMoves(group) {
   const hintEl = document.getElementById('practiceSeqHint');
   if (hintEl) {
     hintEl.textContent = group === 'baduanjin' && moves.length
-      ? `每式练习 6 次、约 1-2 分钟，整套约 ${Math.round(total / 60)} 分钟，循序渐进、不憋气`
+      ? `预备式与收式各练 1 次，其余每式约 6 次，整套约 ${Math.round(total / 60)} 分钟，循序渐进、不憋气`
       : (meta ? meta.hint : '');
   }
   const timeEl = document.getElementById('practiceTime');
@@ -4435,11 +4439,13 @@ function startAIPoseEngine() {
 }
 // ============ AI 跟练弹窗（左：演示+易错点 / 中：摄像头实时画面 / 右：选动作+文字提醒） ============
 const AI_ACTION_GROUPS = {
-  baduanjin: ['两手托天理三焦', '左右开弓似射雕', '调理脾胃须单举', '五劳七伤往后瞧', '摇头摆尾去心火', '两手攀足固肾腰', '攥拳怒目增气力', '背后七颠百病消'],
+  baduanjin: ['预备式', '两手托天理三焦', '左右开弓似射雕', '调理脾胃须单举', '五劳七伤往后瞧', '摇头摆尾去心火', '两手攀足固肾腰', '攥拳怒目增气力', '背后七颠百病消', '收式'],
   stretch: ['搓胁肋', '侧腰拉伸', '扩胸展肩', '旋腰转脊', '深呼吸478'],
   office: ['颈部放松', '肩部环绕', '腰部扭转', '手腕伸展'],
 };
 const AI_GUIDE_MAP = {
+  '预备式': { tip: '两脚与肩同宽，屈膝合抱如捧球，肩肘下沉全身放松，平稳呼吸2-3次，心静下来再开始。', mistakes: ['开步过大重心不稳', '合抱时耸肩抬肘', '急于开始、忽略调息静心'] },
+  '收式': { tip: '两掌相叠轻贴丹田，闭目静养片刻，意想气息归入丹田；搓热双手浴面，缓缓收功。', mistakes: ['收式仓促、立即走动', '忽略静养直接结束', '呼吸急促、气未归元'] },
   '两手托天理三焦': { tip: '上托时吸气，手臂贴近耳侧垂直向上，掌根发力如托重物；下落时呼气，双肩下沉不耸肩。', mistakes: ['上托时手臂向前推，而非垂直向上', '手掌到顶后大拇指分开', '呼吸与动作脱节、憋气耸肩'] },
   '左右开弓似射雕': { tip: '开弓展胸时吸气，沉肩坠肘，马步站稳；收回还原时呼气，切忌憋气。', mistakes: ['开弓时端肩、塌腰、重心偏移', '马步跪腿、收脚时脚擦地晃动', '拉弓手臂与肩部没有放松'] },
 };

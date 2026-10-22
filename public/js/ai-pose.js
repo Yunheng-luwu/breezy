@@ -168,6 +168,8 @@ function renderDebug(m) {
 
 // 各动作目标次数（与 practices.json 一致；后续可由调用方传入）
 const ACTION_TARGET_REPS = {
+  '预备式': 1,
+  '收式': 1,
   '两手托天理三焦': 6,
   '左右开弓似射雕': 6,
   '调理脾胃须单举': 6,
