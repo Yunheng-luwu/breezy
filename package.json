@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "松序 - 顺气舒心，慢养日常 | 疏肝解郁轻养生指南",
   "main": "server/server.js",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "start": "node server/server.js",
     "dev": "node server/server.js",
