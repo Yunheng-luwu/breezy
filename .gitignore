@@ -12,7 +12,7 @@ node_modules/
 # 用户上传文件（运行时数据，不入库）
 public/uploads/
 
-# MediaPipe 模型与 wasm 运行时（约 26MB，部署时手工上传或走 OSS/CDN）
+# MediaPipe 模型与 wasm 运行时（约 26MB，未纳入仓库；克隆后执行 npm run models 获取）
 public/ai-models/
 
 # 备案相关素材（含个人备案信息，部署时单独添加，不入库）
