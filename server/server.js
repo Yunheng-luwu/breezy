@@ -17,6 +17,9 @@ const { notFoundApi, errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
 
+// 关键配置校验：生产环境缺 JWT_SECRET / DB_PASSWORD 直接拒绝启动
+config.validate();
+
 app.use(cors());
 // 1mb：容纳头像上传的 base64 dataURL（前端已压缩，一般 < 60KB）
 app.use(express.json({ limit: '1mb' }));

@@ -194,7 +194,7 @@ npm run init-db
 npm start
 ```
 
-启动后访问 <http://localhost:3000>。
+启动后访问 <http://localhost:3100>。
 
 > `public/ai-models/` 体积约 26MB（MediaPipe 运行时、WASM 与两个模型文件），未纳入 Git 仓库。
 > `npm run models` 会从 jsDelivr 与 MediaPipe 官方源固定版本下载；重复执行会跳过已存在的文件。
@@ -226,8 +226,8 @@ npm start
 
 生产环境为阿里云 ECS + Nginx：
 
-- Nginx 负责 HTTPS 终结与反向代理到 `127.0.0.1:3000`
-- Node 进程由进程管理器常驻，`HOST` 绑定本机回环地址，不对公网暴露 3000 端口
+- Nginx 负责 HTTPS 终结与反向代理到 `127.0.0.1:3100`（须与 `.env` 的 `PORT` 一致）
+- Node 进程由进程管理器常驻，`HOST` 绑定本机回环地址，不对公网暴露 3100 端口
 - 静态资源由 Express 提供，图片/JS/CSS 带版本号（`?v=`）配合 7 天缓存
 - MediaPipe 模型与 WASM 自托管于 `public/ai-models/`，不依赖第三方 CDN
 
