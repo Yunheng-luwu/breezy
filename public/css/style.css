@@ -711,6 +711,18 @@ body.drawer-open .mobile-drawer { right:0; }
 .afm-camera-box video { width:100%; height:100%; object-fit:cover; display:block; transform:scaleX(-1); }
 .af-pose-canvas { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; transform:scaleX(-1); pointer-events:none; z-index:1; }
 .afm-pose-status { position:absolute; left:12px; right:12px; bottom:12px; z-index:2; padding:8px 14px; border-radius:999px; background:rgba(30,35,40,.72); color:#fff; font-size:13px; text-align:center; backdrop-filter:blur(4px); pointer-events:none; transition:background .2s; }
+
+/* 动作完成 · 成绩卡片 */
+.afm-result { position:absolute; inset:0; z-index:6; display:none; align-items:center; justify-content:center; background:rgba(18,22,26,.78); backdrop-filter:blur(6px); border-radius:14px; }
+.afm-result.show { display:flex; }
+.afm-result-card { text-align:center; padding:26px 34px; border-radius:18px; background:linear-gradient(160deg,#2f5d4d,#1f3f35); color:#fff; box-shadow:0 12px 40px rgba(0,0,0,.45); min-width:260px; }
+.afm-result-title { font-size:15px; letter-spacing:2px; color:#bfe8d4; margin-bottom:8px; }
+.afm-result-score { font-size:56px; font-weight:800; line-height:1.1; color:#3ee6a8; text-shadow:0 2px 12px rgba(62,230,168,.35); }
+.afm-result-score small { font-size:16px; font-weight:500; color:#cfeee0; margin-left:4px; }
+.afm-result-sub { font-size:13px; color:#d6efe4; margin-top:8px; }
+.afm-result-actions { display:flex; gap:10px; justify-content:center; margin-top:18px; }
+.afm-result-btn { padding:9px 18px; border:0; border-radius:999px; background:#3ee6a8; color:#053; font-size:14px; font-weight:700; cursor:pointer; }
+.afm-result-btn.ghost { background:transparent; color:#cfe9dd; border:1px solid rgba(207,233,221,.45); font-weight:500; }
 .afm-reps { font-size:13px; color:var(--text-mid); white-space:nowrap; flex-shrink:0; }
 .afm-camera-box .ai-camera-overlay { border-radius:14px; }
 .afm-score { flex-shrink:0; display:flex; align-items:center; gap:14px; padding:16px 4px 0; }

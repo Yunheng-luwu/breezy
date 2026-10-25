@@ -4106,7 +4106,7 @@ const VIDEO_MAP = {
   '两手托天理三焦': 'img/anims/tuotian.mp4',
   '左右开弓似射雕': 'img/anims/shediao.mp4',
   '调理脾胃须单举': 'img/anims/danju.mp4',
-  '五劳七伤往后瞧': 'img/anims/houqiao.mp4',
+  '五劳七伤往后瞧': 'img/anims/houqiao.mp4?v=2',
   '摇头摆尾去心火': 'img/anims/baiwei.mp4',
   '两手攀足固肾腰': 'img/anims/panzu.mp4',
   '攥拳怒目增气力': 'img/anims/numu.mp4',
@@ -4117,7 +4117,7 @@ const VIDEO_MAP = {
 // 换视频文件后须同步更新此表（浏览器对 mp4 缓存 7 天，替换文件时给 VIDEO_MAP 的 URL 加 ?v=2 等穿透）
 const VIDEO_DUR = {
   yubeishi: 16.18, tuotian: 19.39, shediao: 28.89, danju: 24.17,
-  houqiao: 24.82, baiwei: 37.11, panzu: 17.79, numu: 17.44,
+  houqiao: 23.92, baiwei: 37.11, panzu: 17.79, numu: 17.44,
   qidian: 4.39, shoushi: 10.54,
 };
 // 从 duration 字符串解析循环次数，如 "6次，1分40秒" → 6；无"次"字样（如"30秒"）视为 1 次
@@ -4416,6 +4416,7 @@ function stopAICamera() {
 
 // 当前 AI 跟练选中的动作
 let aiCurrentAction = '两手托天理三焦';
+let aiLastScore = 100;
 
 // 摄像头出画后启动 MediaPipe 姿态识别
 function startAIPoseEngine() {
@@ -4425,7 +4426,7 @@ function startAIPoseEngine() {
   if (!video || !canvas || !window.AIPose) return;
   window.AIPose.start(video, canvas, {
     action: aiCurrentAction,
-    onScore: setAIScore,
+    onScore: (v) => { aiLastScore = v; setAIScore(v); },
     onStatus: (msg) => { if (statusEl) statusEl.textContent = msg; },
     onRep: (done, total, problems) => {
       const repEl = document.getElementById('afReps');
@@ -4434,14 +4435,58 @@ function startAIPoseEngine() {
         const s = document.getElementById('afPoseStatus');
         if (s) s.textContent = '第 ' + done + ' 次：' + problems.join('、');
       }
+      // 次数达标 → 自动结束并展示成绩（用户离电脑较远，无需回来点按钮）
+      if (done >= total) {
+        if (/[?&]posebug=1\b/.test(location.search)) {
+          // 阈值测定模式：不自动结束，保留调试面板，方便继续采数并导出
+          const s = document.getElementById('afPoseStatus');
+          if (s) s.textContent = '已完成 ' + total + ' 次 · 测量模式不自动结束，请点「复制数据」';
+        } else {
+          finishAIFollow(done, total);
+        }
+      }
     },
   });
+}
+
+// 次数达标：停止识别，弹出成绩卡片
+function finishAIFollow(done, total) {
+  if (window.AIPose) window.AIPose.stop();
+  const box = document.getElementById('afmResult');
+  const t = document.getElementById('afmResultTitle');
+  const sc = document.getElementById('afmResultScore');
+  const sub = document.getElementById('afmResultSub');
+  if (t) t.textContent = aiCurrentAction + ' · 完成';
+  if (sc) sc.textContent = Math.round(aiLastScore);
+  if (sub) sub.textContent = '已完成 ' + Math.min(done, total) + ' / ' + total + ' 次，可走近后点「返回」';
+  if (box) box.classList.add('show');
+  const s = document.getElementById('afPoseStatus');
+  if (s) s.textContent = '已完成，识别已停止';
+}
+
+// 再来一次：重开识别
+function restartAIFollow() {
+  const box = document.getElementById('afmResult');
+  if (box) box.classList.remove('show');
+  const repEl = document.getElementById('afReps');
+  if (repEl) repEl.textContent = '0 / ' + (AI_ACTION_REPS[aiCurrentAction] || 6) + ' 次';
+  aiLastScore = 100;
+  setAIScore(100);
+  if (window.AIPose) window.AIPose.setAction(aiCurrentAction);
+  startAIPoseEngine();
 }
 // ============ AI 跟练弹窗（左：演示+易错点 / 中：摄像头实时画面 / 右：选动作+文字提醒） ============
 const AI_ACTION_GROUPS = {
   baduanjin: ['预备式', '两手托天理三焦', '左右开弓似射雕', '调理脾胃须单举', '五劳七伤往后瞧', '摇头摆尾去心火', '两手攀足固肾腰', '攥拳怒目增气力', '背后七颠百病消', '收式'],
   stretch: ['搓胁肋', '侧腰拉伸', '扩胸展肩', '旋腰转脊', '深呼吸478'],
   office: ['颈部放松', '肩部环绕', '腰部扭转', '手腕伸展'],
+};
+// 各动作目标次数（与 ai-pose.js ACTION_TARGET_REPS 保持一致）
+const AI_ACTION_REPS = {
+  '预备式': 1, '收式': 1,
+  '两手托天理三焦': 6, '左右开弓似射雕': 6, '调理脾胃须单举': 6,
+  '五劳七伤往后瞧': 6, '摇头摆尾去心火': 6, '两手攀足固肾腰': 6,
+  '攥拳怒目增气力': 6, '背后七颠百病消': 7,
 };
 const AI_GUIDE_MAP = {
   '预备式': { tip: '两脚与肩同宽，屈膝合抱如捧球，肩肘下沉全身放松，平稳呼吸2-3次，心静下来再开始。', mistakes: ['开步过大重心不稳', '合抱时耸肩抬肘', '急于开始、忽略调息静心'] },
@@ -4472,10 +4517,12 @@ function toggleAIFollowFullscreen() {
 }
 
 function openAIFollowModal() {
+  const initialAction = AI_ACTION_GROUPS.baduanjin[0];
   const itemsHtml = AI_ACTION_GROUPS.baduanjin.map((n, i) =>
     `<div class="ai-action-item${i === 0 ? ' active' : ''}" onclick="selectAIAction('${n}', this)">${n}</div>`).join('');
-  const g = aiGuide('两手托天理三焦');
-  const demoHtml = aiDemoHtml('两手托天理三焦');
+  const g = aiGuide(initialAction);
+  const demoHtml = aiDemoHtml(initialAction);
+  aiCurrentAction = initialAction;
   const html =
     '<div class="afm">' +
       '<div class="modal-head"><div class="modal-title">🤖 AI 跟练</div>' +
@@ -4501,11 +4548,22 @@ function openAIFollowModal() {
             '<div class="ai-camera-overlay" id="afCameraOverlay">' +
               '<div class="ai-camera-icon">📷</div><div>摄像头实时画面</div><div class="ai-camera-sub">正在开启…</div>' +
             '</div>' +
+            '<div class="afm-result" id="afmResult">' +
+              '<div class="afm-result-card">' +
+                '<div class="afm-result-title" id="afmResultTitle">动作完成</div>' +
+                '<div class="afm-result-score"><span id="afmResultScore">100</span><small>分</small></div>' +
+                '<div class="afm-result-sub" id="afmResultSub">已完成</div>' +
+                '<div class="afm-result-actions">' +
+                  '<button type="button" class="afm-result-btn" onclick="restartAIFollow()">再来一次</button>' +
+                  '<button type="button" class="afm-result-btn ghost" onclick="closeModal()">返回</button>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
           '</div>' +
           '<div class="afm-score"><span class="afm-score-label">实时得分</span>' +
             '<span class="ai-score-value" id="afScore">100</span>' +
             '<div class="ai-score-bar" style="flex:1;"><div class="ai-score-fill" id="afScoreFill" style="width:100%"></div></div>' +
-            '<span class="afm-reps" id="afReps">0 / 6 次</span>' +
+            '<span class="afm-reps" id="afReps">0 / ' + (AI_ACTION_REPS[initialAction] || 6) + ' 次</span>' +
           '</div>' +
         '</div>' +
         '<div class="afm-col afm-right">' +
@@ -4551,10 +4609,17 @@ function selectAIAction(name, el) {
   if (tip) tip.textContent = g.tip;
   if (mis) mis.innerHTML = g.mistakes.map(m => `<li>${m}</li>`).join('');
   if (demo) demo.innerHTML = aiDemoHtml(name);
-  // 换动作后重置评分：默认 100，采用减分制
+  // 换动作后重置评分与次数
+  const repEl = document.getElementById('afReps');
+  if (repEl) repEl.textContent = '0 / ' + (AI_ACTION_REPS[name] || 6) + ' 次';
+  const resultBox = document.getElementById('afmResult');
+  const wasFinished = !!(resultBox && resultBox.classList.contains('show'));
+  if (resultBox) resultBox.classList.remove('show');
   aiCurrentAction = name;
   if (window.AIPose) window.AIPose.setAction(name);
   else setAIScore(100);
+  // 完成态下切换动作：重新启动识别
+  if (wasFinished) startAIPoseEngine();
 }
 
 // 更新实时得分（减分制：0-100）。后续 MediaPipe 识别到不标准动作时调用此函数扣分
