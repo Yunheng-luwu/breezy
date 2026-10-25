@@ -180,18 +180,25 @@ Breezith/
 # 1. 安装依赖
 npm install
 
-# 2. 配置环境变量
+# 2. 下载 AI 跟练所需的 MediaPipe 模型（约 26MB，未纳入 Git）
+npm run models
+
+# 3. 配置环境变量
 cp .env.example .env
 # 编辑 .env，填入 DeepSeek API Key、MySQL 密码、JWT 密钥、高德 Key
 
-# 3. 初始化数据库（建库、建表、写入种子数据，可重复执行）
-node server/db/initDb.js
+# 4. 初始化数据库（建库、建表、写入种子数据，可重复执行）
+npm run init-db
 
-# 4. 启动
+# 5. 启动
 npm start
 ```
 
 启动后访问 <http://localhost:3000>。
+
+> `public/ai-models/` 体积约 26MB（MediaPipe 运行时、WASM 与两个模型文件），未纳入 Git 仓库。
+> `npm run models` 会从 jsDelivr 与 MediaPipe 官方源固定版本下载；重复执行会跳过已存在的文件。
+> 不执行该步骤时，其他功能正常，仅 AI 跟练不可用。
 
 ### 环境变量
 

@@ -5,7 +5,9 @@
   "main": "server/server.js",
   "scripts": {
     "start": "node server/server.js",
-    "dev": "node server/server.js"
+    "dev": "node server/server.js",
+    "models": "node scripts/fetch-ai-models.mjs",
+    "init-db": "node server/db/initDb.js"
   },
   "dependencies": {
     "body-parser": "^1.20.2",
