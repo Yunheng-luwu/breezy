@@ -281,6 +281,10 @@ let rafId = null;
 let running = false;
 let lastVideoTime = -1;
 let currentAction = '两手托天理三焦';
+// 换式冷却：刚开始新动作时，身体还停留在上一式的收势姿态，直接评测会把过渡动作误判成一次有效计次。
+// 冷却期内只画骨架、不评测，给人时间回到起始位。
+const ACTION_ARM_DELAY_MS = 2200;
+let armedAt = 0;
 let scoreCb = null;
 let repCb = null;
 let statusCb = null;
@@ -992,8 +996,12 @@ function bjStep(name, m, cfg) {
 const CFG_SHEDIAO = {
   holdMs: 400, gapMs: 1200,
   // 手距是射雕最稳的特征（开弓 0.88~1.65 / 收弓 0.05~0.20），肘角在正视角下会漏检，只作辅助
-  enter: m => m.handGap > 0.85 && m.elbL !== null && m.elbR !== null &&
-              Math.max(m.elbL, m.elbR) > 130,
+  // 降级：两肘都被遮挡（正视角开弓常见）时不要求肘角，改用更高的手距门槛替代 —— 只放宽进入，不扣分
+  enter: m => {
+    if (!(m.handGap > 0.85)) return false;
+    if (m.elbL === null && m.elbR === null) return m.handGap > 1.05;
+    return Math.max(m.elbL || 0, m.elbR || 0) > 130;
+  },
   exit: m => m.handGap < 0.60,
   judge: m => {
     const out = [];
@@ -1002,7 +1010,13 @@ const CFG_SHEDIAO = {
     if (m.feetRatio !== null && m.feetRatio < 0.75) out.push({ text: '两脚再开大些（不扣分）', minus: 0 });
     return out;
   },
-  prompt: () => '拉弓：一手推直、一手拉满，双手拉开',
+  // 进入条件未满足时给出实时数值，避免"一直不计数却不知道差多少"
+  prompt: m => {
+    if (!m) return '请让全身进入画面（含双臂）';
+    if (m.handGap <= 0.85) return '双手再拉开：当前 ' + m.handGap.toFixed(2) + '，需 > 0.85';
+    if (m.elbL === null && m.elbR === null) return '把推直的手臂伸出去（肘部被遮挡，手距需 > 1.05，当前 ' + m.handGap.toFixed(2) + '）';
+    return '推直的手臂再伸展：肘角 ' + Math.round(Math.max(m.elbL || 0, m.elbR || 0)) + '°，需 > 130°';
+  },
   inHint: '开弓到位，收回准备换另一侧',
 };
 
@@ -1259,6 +1273,12 @@ function loop() {
   diag.lastPts = poseLms ? poseLms.length : 0;
   diag.canvasSize = canvasEl.width + 'x' + canvasEl.height;
 
+  // 换式静默期：刚切到新动作时姿态仍在上一式收势位，直接评测会白送一次计次
+  if (performance.now() < armedAt) {
+    if (statusCb) statusCb('请回到起始位置，调整呼吸…');
+    return;
+  }
+
   if (currentAction === '两手托天理三焦') {
     const { liveHint, m } = evalTuotian(poseLms, handLms);
     if (liveHint && statusCb) statusCb(liveHint);
@@ -1293,6 +1313,7 @@ window.AIPose = {
     repCb = opts && opts.onRep;
     statusCb = opts && opts.onStatus;
     currentAction = (opts && opts.action) || '两手托天理三焦';
+    armedAt = performance.now() + (opts && opts.armDelay != null ? opts.armDelay : ACTION_ARM_DELAY_MS);
     tuotian.phase = 'prep'; tuotian.prepOkStart = 0;
     tuotian.up = false; tuotian.reps = 0; tuotian.deduction = 0;
     tuotian.records = []; tuotian.cur = null; renderLastDebug = 0;
@@ -1326,6 +1347,7 @@ window.AIPose = {
   },
   setAction(name) {
     currentAction = name;
+    armedAt = performance.now() + ACTION_ARM_DELAY_MS;
     tuotian.phase = 'prep'; tuotian.prepOkStart = 0;
     tuotian.up = false; tuotian.reps = 0; tuotian.deduction = 0;
     tuotian.records = []; tuotian.cur = null; renderLastDebug = 0;
