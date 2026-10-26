@@ -4441,6 +4441,9 @@ function startAIPoseEngine() {
           // 阈值测定模式：不自动结束，保留调试面板，方便继续采数并导出
           const s = document.getElementById('afPoseStatus');
           if (s) s.textContent = '已完成 ' + total + ' 次 · 测量模式不自动结束，请点「复制数据」';
+        } else if (aiSeq.active) {
+          // 整套跟练：记录本式成绩后自动切下一式，不弹单式结果卡
+          aiSeq.markDone(done, total);
         } else {
           finishAIFollow(done, total);
         }
@@ -4452,6 +4455,7 @@ function startAIPoseEngine() {
 // 次数达标：停止识别，弹出成绩卡片
 function finishAIFollow(done, total) {
   if (window.AIPose) window.AIPose.stop();
+  setResultButtons(false);
   const box = document.getElementById('afmResult');
   const t = document.getElementById('afmResultTitle');
   const sc = document.getElementById('afmResultScore');
@@ -4517,6 +4521,8 @@ function toggleAIFollowFullscreen() {
 }
 
 function openAIFollowModal() {
+  // 每次打开都回到单式状态，避免上次整套跟练的进度残留
+  aiSeq.active = false; aiSeq.idx = 0; aiSeq.results = [];
   const initialAction = AI_ACTION_GROUPS.baduanjin[0];
   const itemsHtml = AI_ACTION_GROUPS.baduanjin.map((n, i) =>
     `<div class="ai-action-item${i === 0 ? ' active' : ''}" onclick="selectAIAction('${n}', this)">${n}</div>`).join('');
@@ -4527,6 +4533,7 @@ function openAIFollowModal() {
     '<div class="afm">' +
       '<div class="modal-head"><div class="modal-title">🤖 AI 跟练</div>' +
         '<div class="afm-head-actions">' +
+          '<span class="afm-fullscreen-btn" id="afmSeqBtn" title="从预备式到收式完整跟练" onclick="toggleAISequence()">🎯 整套跟练</span>' +
           '<span class="afm-fullscreen-btn" id="afmFsBtn" title="全屏" onclick="toggleAIFollowFullscreen()">⛶ 全屏</span>' +
           '<span class="modal-close" onclick="closeModal()">×</span>' +
         '</div>' +
@@ -4565,6 +4572,15 @@ function openAIFollowModal() {
             '<div class="ai-score-bar" style="flex:1;"><div class="ai-score-fill" id="afScoreFill" style="width:100%"></div></div>' +
             '<span class="afm-reps" id="afReps">0 / ' + (AI_ACTION_REPS[initialAction] || 6) + ' 次</span>' +
           '</div>' +
+          '<div id="afSeqBar" style="display:none;align-items:center;gap:10px;margin-top:8px;padding:6px 10px;border-radius:8px;background:rgba(127,212,255,.10);color:#cfe9ff;font-size:12px;flex-wrap:wrap">' +
+            '<span id="afSeqText">第 1 / 10 式</span>' +
+            '<span id="afSeqDots"></span>' +
+            '<span style="margin-left:auto;display:flex;gap:6px">' +
+              '<button type="button" class="afm-result-btn ghost" style="padding:2px 8px;font-size:12px" onclick="aiSeq.prev()">上一式</button>' +
+              '<button type="button" class="afm-result-btn ghost" style="padding:2px 8px;font-size:12px" onclick="aiSeq.skip()">跳过</button>' +
+              '<button type="button" class="afm-result-btn ghost" style="padding:2px 8px;font-size:12px" onclick="aiSeq.exit()">退出整套</button>' +
+            '</span>' +
+          '</div>' +
         '</div>' +
         '<div class="afm-col afm-right">' +
           '<div class="afm-block afm-block-flex"><div class="afm-label">选择动作</div>' +
@@ -4586,6 +4602,8 @@ function openAIFollowModal() {
 
 // 切换动作分类
 function switchAIFollowTab(tab, el) {
+  // 整套跟练只覆盖八段锦十式，切到其他分类即退出整套
+  if (aiSeq.active) aiSeq.exit();
   document.querySelectorAll('.afm-body .ai-action-tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
   const items = document.getElementById('aiActionItems');
@@ -4596,7 +4614,9 @@ function switchAIFollowTab(tab, el) {
 }
 
 // 选中某个动作：更新文字提醒、易错点与演示视频
-function selectAIAction(name, el) {
+// fromSeq=true 表示由整套编排内部调用，此时不退出整套
+function selectAIAction(name, el, fromSeq) {
+  if (!fromSeq && aiSeq.active) aiSeq.exit();
   if (el) {
     const box = document.getElementById('aiActionItems');
     box.querySelectorAll('.ai-action-item').forEach(i => i.classList.remove('active'));
@@ -4620,6 +4640,133 @@ function selectAIAction(name, el) {
   else setAIScore(100);
   // 完成态下切换动作：重新启动识别
   if (wasFinished) startAIPoseEngine();
+}
+
+// ============ 整套跟练（十式顺序编排）============
+// 设计边界：只做「按完成次数推进」的有序编排，不做自动动作分割识别。
+// 换式瞬间的过渡误判由 ai-pose.js 的 armedAt 静默期统一拦截，这里不重复处理。
+const aiSeq = {
+  active: false,
+  idx: 0,
+  results: [],
+
+  list() { return AI_ACTION_GROUPS.baduanjin; },
+
+  start() {
+    this.active = true;
+    this.idx = 0;
+    this.results = [];
+    // 整套只覆盖八段锦十式：先把右侧分组与列表切回八段锦，避免从拉伸/办公室分组进入时高亮错位
+    document.querySelectorAll('.afm-body .ai-action-tab').forEach((t, i) => {
+      t.classList.toggle('active', i === 0);
+    });
+    const items = document.getElementById('aiActionItems');
+    if (items) {
+      items.innerHTML = this.list().map(n =>
+        `<div class="ai-action-item" onclick="selectAIAction('${n}', this)">${n}</div>`).join('');
+    }
+    this.jumpTo(0);
+  },
+
+  // 整套完成后「再练一遍」
+  restart() {
+    const box = document.getElementById('afmResult');
+    if (box) box.classList.remove('show');
+    setResultButtons(false);
+    this.start();
+  },
+
+  // 本式达标：记录成绩，自动进入下一式
+  markDone() {
+    this.results[this.idx] = Math.round(aiLastScore);
+    this.idx += 1;
+    if (this.idx >= this.list().length) { this.finish(); return; }
+    this.jumpTo(this.idx);
+  },
+
+  skip() {
+    if (!this.active) return;
+    this.idx += 1;
+    if (this.idx >= this.list().length) { this.finish(); return; }
+    this.jumpTo(this.idx);
+  },
+
+  prev() {
+    if (!this.active || this.idx <= 0) return;
+    this.idx -= 1;
+    this.jumpTo(this.idx);
+  },
+
+  // 退出整套，回到单式跟练（当前动作保留，可继续单练）
+  exit() {
+    this.active = false;
+    this.render();
+  },
+
+  jumpTo(i) {
+    const name = this.list()[i];
+    const items = document.querySelectorAll('#aiActionItems .ai-action-item');
+    selectAIAction(name, items[i] || null, true);
+    aiLastScore = 100;
+    setAIScore(100);
+    this.render();
+  },
+
+  finish() {
+    this.active = false;
+    this.render();
+    if (window.AIPose) window.AIPose.stop();
+    const scored = this.results.filter(v => typeof v === 'number');
+    const avg = scored.length ? Math.round(scored.reduce((a, b) => a + b, 0) / scored.length) : 0;
+    const box = document.getElementById('afmResult');
+    const t = document.getElementById('afmResultTitle');
+    const sc = document.getElementById('afmResultScore');
+    const sub = document.getElementById('afmResultSub');
+    if (t) t.textContent = '八段锦十式 · 全部完成';
+    if (sc) sc.textContent = avg;
+    if (sub) sub.textContent = '平均 ' + avg + ' 分，已完成 ' + scored.length + ' 式';
+    setResultButtons(true);
+    if (box) box.classList.add('show');
+    const s = document.getElementById('afPoseStatus');
+    if (s) s.textContent = '整套已完成，识别已停止';
+  },
+
+  render() {
+    const btn = document.getElementById('afmSeqBtn');
+    const bar = document.getElementById('afSeqBar');
+    if (btn) btn.textContent = this.active ? '✓ 整套进行中' : '🎯 整套跟练';
+    if (!bar) return;
+    bar.style.display = this.active ? 'flex' : 'none';
+    if (!this.active) return;
+    const list = this.list();
+    const txt = document.getElementById('afSeqText');
+    const dots = document.getElementById('afSeqDots');
+    if (txt) txt.textContent = '第 ' + (this.idx + 1) + ' / ' + list.length + ' 式 · ' + list[this.idx];
+    if (dots) {
+      dots.innerHTML = list.map((name, i) => {
+        const done = typeof this.results[i] === 'number';
+        const color = done ? '#3ee6a8' : (i === this.idx ? '#7fd4ff' : 'rgba(255,255,255,.25)');
+        return '<span title="' + name + '" style="width:7px;height:7px;border-radius:50%;background:' +
+          color + ';display:inline-block;margin-right:3px"></span>';
+      }).join('');
+    }
+  },
+};
+
+function toggleAISequence() {
+  if (aiSeq.active) aiSeq.exit();
+  else aiSeq.start();
+}
+
+// 结果卡片按钮组：单式（再来一次）／整套（再练一遍）
+function setResultButtons(whole) {
+  const acts = document.querySelector('#afmResult .afm-result-actions');
+  if (!acts) return;
+  acts.innerHTML = whole
+    ? '<button type="button" class="afm-result-btn" onclick="aiSeq.restart()">再练一遍</button>' +
+      '<button type="button" class="afm-result-btn ghost" onclick="closeModal()">返回</button>'
+    : '<button type="button" class="afm-result-btn" onclick="restartAIFollow()">再来一次</button>' +
+      '<button type="button" class="afm-result-btn ghost" onclick="closeModal()">返回</button>';
 }
 
 // 更新实时得分（减分制：0-100）。后续 MediaPipe 识别到不标准动作时调用此函数扣分
