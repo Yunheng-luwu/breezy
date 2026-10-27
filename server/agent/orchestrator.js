@@ -16,6 +16,56 @@ const MAX_TOOL_ROUNDS = 2;
 // 模型“没用工具却声称卡片/记录已生成”的幻觉信号（多轮会话模仿历史措辞时会出现）
 const CARD_HALLUCINATION_RE = /确认卡|确认按钮|已经帮你(?:记录|添加|设置|生成|打卡|保存)|已(?:帮你)?(?:记录|添加|设置|生成|打卡|保存)(?:了|好)?(?:一条|一个|一张)?(?:提醒|待办|症状|卡片|心情|档案|用药)?/;
 
+// 意图补卡映射：用户消息匹配关键词且模型没调工具时，后端强制调用对应工具补卡片
+// 只收录无参工具（需参数的工具如 query_acupoints/match_footbath 无法自动推导参数，不在此列）
+const INTENT_CARD_MAP = [
+  {
+    re: /八段锦|功法带练|带练|整套动作|整套|十式|预备式|两手托天|左右开弓|调理脾胃|五劳七伤|摇头摆尾|两手攀足|攥拳怒目|背后七颠|收式/,
+    tool: 'get_practice_moves',
+    guide: '\n\n下面也为你整理了八段锦十式的可点击卡片，点任意招式就能跳转到功法带练面板，查看分步要领、呼吸配合与易错点～',
+  },
+  {
+    re: /今天.*(?:吃|饮食|食谱|菜谱)|吃什么|饮食建议|今日饮食|三餐怎么吃/,
+    tool: 'get_diet',
+    guide: '\n\n下面也为你整理了今日饮食建议卡片，包含疏肝推荐食材与避雷清单～',
+  },
+  {
+    re: /轻运动|运动建议|做什么运动|拉伸|微动|疏肝.*运动/,
+    tool: 'get_exercises',
+    guide: '\n\n下面也为你整理了疏肝轻运动建议卡片，含时长与功效，可直接跟练～',
+  },
+  {
+    re: /穿什么|穿衣建议|今天.*天气|降温|保暖|出门.*穿/,
+    tool: 'get_clothing',
+    guide: '\n\n下面也为你整理了实时天气与穿衣建议卡片～',
+  },
+  {
+    re: /今天.*状态|今日.*概览|今日调理|今天.*怎么样|肝郁指数|今日.*待办/,
+    tool: 'get_today_overview',
+    guide: '\n\n下面也为你整理了今日健康概览卡片，含肝郁指数与调理待办完成情况～',
+  },
+  {
+    re: /症状记录|哪里不舒服|之前.*症状|症状历史|最近.*不适/,
+    tool: 'list_symptoms',
+    guide: '\n\n下面也为你整理了最近的症状记录卡片～',
+  },
+  {
+    re: /用药提醒|吃药提醒|药.*清单|保健品.*提醒|该吃什么药/,
+    tool: 'list_medicines',
+    guide: '\n\n下面也为你整理了用药/保健品提醒清单卡片～',
+  },
+  {
+    re: /待办清单|提醒.*事项|今天.*待办|调理待办|有什么.*待办/,
+    tool: 'list_todos',
+    guide: '\n\n下面也为你整理了今日调理待办卡片～',
+  },
+  {
+    re: /健康档案|我的档案|我.*体质|过敏史|作息规律|个人.*健康/,
+    tool: 'get_profile',
+    guide: '\n\n下面也为你整理了你的健康档案卡片～',
+  },
+];
+
 async function handle({ userId, sessionId, message, clientIp }) {
   const user = await store.resolveUser(userId);
   const session = await store.resolveSession(user, sessionId);
@@ -91,6 +141,20 @@ async function handle({ userId, sessionId, message, clientIp }) {
         const finalRes = await provider.chat(messages);
         const finalText = (finalRes.content || '').trim();
         if (finalText) reply = finalText;
+      }
+    }
+
+    // 意图补卡：模型没调工具但用户消息命中某类卡片意图时，保留文字回答，追加引导语并注入可点击卡片
+    if (cards.length === 0) {
+      for (const item of INTENT_CARD_MAP) {
+        if (item.re.test(message)) {
+          const out = await execute(item.tool, {}, ctx);
+          if (out.ok && out.card) {
+            cards.push(out.card);
+            reply = (reply || '').trim() + item.guide;
+          }
+          break;
+        }
       }
     }
   } else {
@@ -238,6 +302,21 @@ async function handleStream({ userId, sessionId, message, clientIp }, emit) {
         const finalText = (finalRes.content || '').trim();
         reply = finalText || oldReply;
         if (!finalText) emit('delta', oldReply);
+      }
+    }
+
+    // 意图补卡：模型没调工具但用户消息命中某类卡片意图时，保留文字回答，追加引导语并注入可点击卡片
+    if (cards.length === 0) {
+      for (const item of INTENT_CARD_MAP) {
+        if (item.re.test(message)) {
+          const out = await execute(item.tool, {}, ctx);
+          if (out.ok && out.card) {
+            cards.push(out.card);
+            emit('delta', item.guide);
+            reply = (reply || '').trim() + item.guide;
+          }
+          break;
+        }
       }
     }
   }
