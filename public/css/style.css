@@ -488,6 +488,9 @@ body.drawer-open .mobile-drawer { right:0; }
 .cc-label { color:var(--text-light); flex:0 0 64px; }
 .cc-value { color:var(--text-dark); flex:1; }
 .cc-item { display:flex; align-items:flex-start; gap:8px; padding:5px 0; }
+.cc-item-link { cursor:pointer; border-radius:6px; padding:6px 8px; margin:2px -8px; transition:background .15s; }
+.cc-item-link:hover { background:rgba(120,160,120,.12); }
+.cc-item-link:hover .cc-item-main b { color:var(--accent); }
 .cc-item-icon { font-size:18px; line-height:1.3; }
 .cc-item-main { display:flex; flex-direction:column; }
 .cc-item-main b { color:var(--text-dark); font-size:13px; }
