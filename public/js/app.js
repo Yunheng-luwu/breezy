@@ -3943,7 +3943,7 @@ function renderChatCard(card) {
     case 'practice':
       return ccShell('八段锦 · 动作序列', '🤸',
         (card.items || []).map((m, i) =>
-          `<div class="cc-item"><span class="cc-step">${i + 1}</span><span class="cc-item-main"><b>${escapeHtml(m.name)}</b><span class="cc-sub">${escapeHtml(m.duration || '')}</span></span></div>`
+          `<div class="cc-item cc-item-link" onclick="jumpToPracticeMove(${i})" title="点击跳转到「${escapeHtml(m.name)}」"><span class="cc-step">${i + 1}</span><span class="cc-item-main"><b>${escapeHtml(m.name)}</b><span class="cc-sub">${escapeHtml(m.duration || '')}</span></span></div>`
         ).join(''), 'practice');
     case 'practice_detail': {
       const p = card.item || {};
@@ -4236,6 +4236,19 @@ function seekPractice(i) {
   // 右侧动作序列是独立目录，点击只打开详情弹窗，不控制左侧播放器
   highlightMove(i);
   showPracticeDetail(i);
+}
+// 从 AI 对话卡片跳转到功法带练板块的指定招式
+function jumpToPracticeMove(i) {
+  showPage('practice');
+  const tryJump = () => {
+    if (practiceMovesCache.length > i) {
+      highlightMove(i);
+      showPracticeDetail(i);
+    } else {
+      setTimeout(tryJump, 100);
+    }
+  };
+  setTimeout(tryJump, 120);
 }
 // 动作详解弹窗（八段锦含分步/呼吸/易错点；拉伸与微动显示动作说明）
 function showPracticeDetail(i) {
