@@ -34,7 +34,7 @@ export default function HomePage() {
         </nav>
         <div className="border-t p-4">
           <p className="text-xs text-muted-foreground">
-            传智杯 AI+前端赛道作品
+            Breezy · 轻养生 AI 助手
           </p>
         </div>
       </aside>
