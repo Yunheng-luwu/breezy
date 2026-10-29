@@ -120,6 +120,12 @@ export default function Sidebar({
             顺气舒心 · 慢养日常
           </p>
         )}
+        <Link
+          href="/privacy"
+          className="mt-1 block text-center text-[11px] text-muted-foreground transition-colors hover:text-primary"
+        >
+          隐私说明
+        </Link>
       </div>
     </aside>
   );

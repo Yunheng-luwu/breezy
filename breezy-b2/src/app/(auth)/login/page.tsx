@@ -62,6 +62,12 @@ export default function LoginPage({
                 先体验一下 →
               </Link>
             </div>
+            <p className="mt-3 text-center text-[11px] text-muted-foreground">
+              登录即表示你已阅读
+              <Link href="/privacy" className="mx-1 text-primary hover:underline">
+                隐私说明
+              </Link>
+            </p>
           </CardContent>
         </Card>
       </div>
