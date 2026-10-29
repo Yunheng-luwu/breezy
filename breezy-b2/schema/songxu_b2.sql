@@ -89,6 +89,7 @@ CREATE TABLE IF NOT EXISTS chat_messages (
   session_id  BIGINT UNSIGNED NOT NULL,
   role        ENUM('system','user','assistant') NOT NULL,
   content     TEXT NOT NULL,
+  cards       JSON NULL COMMENT '当轮下发的卡片/板块导航，重进会话时还原',
   created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY idx_session (session_id),
@@ -259,3 +260,18 @@ CREATE TABLE IF NOT EXISTS notes (
   KEY idx_user_time (user_id, created_at),
   CONSTRAINT fk_note_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='随手记';
+
+-- ============ 用户反馈 ============
+
+-- 意见反馈（个人中心提交）
+CREATE TABLE IF NOT EXISTS feedback (
+  id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id     BIGINT UNSIGNED NOT NULL,
+  content     VARCHAR(500) NOT NULL,
+  status      VARCHAR(20) NOT NULL DEFAULT 'new' COMMENT 'new/read',
+  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_user (user_id),
+  KEY idx_created (created_at),
+  CONSTRAINT fk_feedback_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='意见反馈';
