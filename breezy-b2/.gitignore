@@ -37,3 +37,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# 用户上传文件（运行时数据，不入库）
+/public/uploads/
+
+# MediaPipe 模型与 wasm 运行时（约 26MB，克隆后执行 npm run models 获取）
+/public/ai-models/
+
+# 八段锦示范视频（约 83MB，部署时单独上传，不入库）
+/public/anims/

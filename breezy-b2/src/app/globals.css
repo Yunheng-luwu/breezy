@@ -2,50 +2,60 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 全局字号：base 16px → 17px，所有 Tailwind rem 单位整体放大 ~6% */
+html {
+  font-size: 17px;
+}
+
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 160 50% 45%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 160 40% 96%;
-    --accent-foreground: 160 50% 35%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 160 50% 45%;
+    /* 中式中医美学 — 宣纸底 + 朱砂主色 + 青绿点缀 */
+    --background: 36 30% 96%;        /* 宣纸米白 */
+    --foreground: 15 25% 15%;       /* 墨色 */
+    --card: 36 25% 98%;             /* 卡片略亮 */
+    --card-foreground: 15 25% 15%;
+    --popover: 36 25% 98%;
+    --popover-foreground: 15 25% 15%;
+    --primary: 2 70% 48%;           /* 朱砂红 */
+    --primary-foreground: 36 30% 96%;
+    --secondary: 150 40% 92%;       /* 青绿淡底 */
+    --secondary-foreground: 160 50% 25%;
+    --muted: 30 15% 92%;            /* 米灰 */
+    --muted-foreground: 20 10% 45%;
+    --accent: 160 40% 88%;          /* 青绿点缀 */
+    --accent-foreground: 160 50% 25%;
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 36 30% 96%;
+    --border: 30 15% 85%;
+    --input: 30 15% 85%;
+    --ring: 2 70% 48%;              /* 朱砂 */
     --radius: 0.75rem;
+
+    /* 中式扩展色 */
+    --ink: 15 25% 15%;              /* 墨 */
+    --cinnabar: 2 70% 48%;          /* 朱砂 */
+    --jade: 160 50% 35%;            /* 青绿 */
+    --paper: 36 30% 96%;            /* 宣纸 */
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 160 50% 55%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 160 50% 55%;
+    --background: 15 25% 8%;
+    --foreground: 36 25% 90%;
+    --card: 15 25% 10%;
+    --card-foreground: 36 25% 90%;
+    --popover: 15 25% 10%;
+    --popover-foreground: 36 25% 90%;
+    --primary: 2 70% 55%;
+    --primary-foreground: 15 25% 8%;
+    --secondary: 160 30% 20%;
+    --secondary-foreground: 160 50% 85%;
+    --muted: 20 10% 20%;
+    --muted-foreground: 36 15% 65%;
+    --accent: 160 30% 20%;
+    --accent-foreground: 160 50% 85%;
+    --border: 20 10% 25%;
+    --input: 20 10% 25%;
+    --ring: 2 70% 55%;
   }
 }
 
@@ -53,7 +63,82 @@
   * {
     @apply border-border;
   }
-  body {
-    @apply bg-background text-foreground;
+  html, body {
+    @apply bg-background text-foreground antialiased;
+    font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+      "Source Han Sans SC", -apple-system, BlinkMacSystemFont, sans-serif;
   }
+}
+
+@layer utilities {
+  .font-brush {
+    /* 毛笔/书法字体（如有本地或 web 书法字体可替换） */
+    font-family: "楷体", "KaiTi", "STKaiti", "Kaiti SC", serif;
+  }
+  .paper-texture {
+    /* 宣纸纹理（纯 CSS，无图片依赖） */
+    background-image: radial-gradient(
+        circle at 20% 30%,
+        rgba(139, 90, 43, 0.04) 0,
+        transparent 40%
+      ),
+      radial-gradient(
+        circle at 80% 70%,
+        rgba(139, 90, 43, 0.03) 0,
+        transparent 40%
+      );
+  }
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+}
+
+/* 情绪解压动效：粉碎颤抖 / 粒子四散 / 浮字上飘 / 安慰语淡入 */
+@keyframes shred-shake {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  8% { transform: translateX(-2px) rotate(-0.6deg); }
+  16% { transform: translateX(3px) rotate(0.8deg); }
+  25% { transform: translateX(-4px) rotate(-1deg); }
+  33% { transform: translateX(5px) rotate(1.2deg); }
+  41% { transform: translateX(-6px) rotate(-1.5deg); }
+  50% { transform: translateX(7px) rotate(1.8deg); }
+  58% { transform: translateX(-8px) rotate(-2.2deg); }
+  66% { transform: translateX(9px) rotate(2.6deg); }
+  75% { transform: translateX(-10px) rotate(-3deg); }
+  83% { transform: translateX(11px) rotate(3.2deg); }
+  91% { transform: translateX(-12px) rotate(-3.5deg); }
+}
+
+@keyframes particle-fly {
+  0% { transform: translate(-50%, -50%) rotate(0deg); opacity: 1; }
+  100% {
+    transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) rotate(var(--rot));
+    opacity: 0;
+  }
+}
+
+@keyframes float-up {
+  0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+  20% { transform: translate(-50%, calc(-50% - 8px)) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, calc(-50% - 36px)) scale(1); opacity: 0; }
+}
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes calm-breathe {
+  0%, 100% { transform: scale(0.95); }
+  50% { transform: scale(1.06); }
+}
+
+.animate-calm-breathe {
+  animation: calm-breathe 7s ease-in-out infinite;
 }
