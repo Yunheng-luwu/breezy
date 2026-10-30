@@ -117,6 +117,7 @@ export function AiPracticeCore({ moves, defaultMove, routine = false }: AiPracti
   const lastReportAt = useRef(0);
   const reportedRef = useRef(false);
   const diagTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [liveDiag, setLiveDiag] = useState<string>("");
   const resultsRef = useRef<Record<string, { score: number; reps: number }>>({});
   // 整套自动切式用：当前式名（onRep 闭包用，避免拿到旧值）、自动切换开关、切换锁
   const actionRef = useRef(action);
@@ -166,6 +167,7 @@ export function AiPracticeCore({ moves, defaultMove, routine = false }: AiPracti
     }
     window.AIPose?.stop();
     releaseCamera();
+    setLiveDiag("");
     setPhase("idle");
     reportScore(action);
     setStatus("已停止，可重新开启摄像头");
@@ -279,14 +281,19 @@ export function AiPracticeCore({ moves, defaultMove, routine = false }: AiPracti
       if (diagTimer.current) clearInterval(diagTimer.current);
       diagTimer.current = setInterval(() => {
         const d = window.AIPose?.diag?.();
-        if (!d || !d.running || d.frames < 45 || d.detOK > 0) return;
+        if (!d || !d.running) return;
+        // 常显读数：帧数 / 检出帧数 / 最近一帧关键点数 / 后端 / 画面分辨率
+        setLiveDiag(
+          `帧${d.frames} · 检出${d.detOK} · 点${d.pts} · ${d.delegate} · 画面${d.video}`
+        );
+        if (d.frames < 45 || d.detOK > 0) return;
         const err = d.inferErr || d.handErr || d.drawErr;
         setStatus(
           err
             ? `推理异常（${d.delegate}）：${err.slice(0, 40)}`
             : `未检出人体 · 帧${d.frames} · ${d.delegate}推理 · 画面${d.video}｜请后退让头到脚都入框`
         );
-      }, 3000);
+      }, 2000);
     } catch (err) {
       if (token !== runToken.current) return;
       const e = err as { name?: string; message?: string };
@@ -520,7 +527,9 @@ export function AiPracticeCore({ moves, defaultMove, routine = false }: AiPracti
           )}
 
           <p className="text-xs text-muted-foreground">
-            {phase === "running" ? "站远一点，让全身进入画面" : "建议光线充足、背景简洁"}
+            {phase === "running"
+              ? liveDiag || "站远一点，让全身进入画面"
+              : "建议光线充足、背景简洁"}
           </p>
         </div>
 
