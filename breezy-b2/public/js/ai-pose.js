@@ -50,7 +50,7 @@ function ensureDebugPanel() {
   debugEl = document.createElement('div');
   debugEl.className = 'af-pose-debug';
   debugEl.style.cssText =
-    'position:absolute;top:8px;right:8px;z-index:3;' +
+    'position:absolute;left:8px;bottom:8px;z-index:3;' +
     'background:rgba(0,0,0,.78);color:#d8ffe9;font:12px/1.55 ui-monospace,Consolas,monospace;' +
     'padding:8px 10px;border-radius:8px;max-width:52%;max-height:92%;overflow:auto;' +
     'text-shadow:0 1px 2px #000;';
