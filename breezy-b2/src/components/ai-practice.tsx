@@ -58,7 +58,8 @@ declare global {
 
 type Phase = "idle" | "loading" | "running" | "error";
 
-const AI_SCRIPT_SRC = "/js/ai-pose.js";
+// 带版本串：引擎改动后强制浏览器重新拉取，避免旧缓存导致自适应逻辑不生效
+const AI_SCRIPT_SRC = "/js/ai-pose.js?v=20261030";
 
 let scriptPromise: Promise<void> | null = null;
 
