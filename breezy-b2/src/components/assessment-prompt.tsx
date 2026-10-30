@@ -1,21 +1,30 @@
 "use client";
 
 /**
- * 测评提醒小弹窗：不强制、不挡操作，各自关闭后 24 小时内不再出现
- * 情绪自评与体质问卷共用一张卡片，同一时刻只显示一个（情绪优先），避免叠加打扰
+ * 测评提醒小弹窗：不强制、不挡操作
+ * - 各自关闭后 24 小时内不再出现
+ * - 关闭一种后另一种 2 小时内也不弹（避免连环打扰）
+ * - 每次页面变化都会重新 fetch 用户状态，不依赖 layout 过时的 props
+ * - 情绪自评与体质问卷共用一张卡片，同一时刻只显示一个（情绪优先）
  */
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { X } from "lucide-react";
+import { checkAssessmentNeeded } from "@/lib/actions";
 
 const KEY_ASSESS = "sx_assessment_prompt_until";
 const KEY_CONST = "sx_constitution_prompt_until";
 const DAY = 24 * 60 * 60 * 1000;
+const COOLDOWN = 2 * 60 * 60 * 1000; // 关一个后另一种也 snooze 2 小时
 
 const snoozed = (key: string) => {
-  const until = Number(localStorage.getItem(key) || 0);
-  return Number.isFinite(until) && Date.now() < until;
+  try {
+    const until = Number(localStorage.getItem(key) || 0);
+    return Number.isFinite(until) && Date.now() < until;
+  } catch {
+    return false;
+  }
 };
 
 export function AssessmentPrompt({
@@ -28,25 +37,62 @@ export function AssessmentPrompt({
   const pathname = usePathname();
   const [kind, setKind] = useState<"assess" | "const" | null>(null);
 
+  /** fetch 最新用户测评状态，覆盖 layout 传下来的旧 props */
+  const refresh = useCallback(async () => {
+    try {
+      const status = await checkAssessmentNeeded();
+      return status;
+    } catch {
+      // fetch 失败时退回 props
+      return null;
+    }
+  }, []);
+
   useEffect(() => {
     // 已在个人中心（两个测评都在本页）就不弹
     if (pathname === "/profile") {
       setKind(null);
       return;
     }
-    if (show && !snoozed(KEY_ASSESS)) setKind("assess");
-    else if (showConstitution && !snoozed(KEY_CONST)) setKind("const");
-    else setKind(null);
-  }, [show, showConstitution, pathname]);
+
+    let cancelled = false;
+    (async () => {
+      const status = await refresh();
+      if (cancelled) return;
+
+      const needAssess = status?.needsAssessment ?? show;
+      const needConst = status?.needsConstitution ?? showConstitution;
+
+      if (needAssess && !snoozed(KEY_ASSESS)) setKind("assess");
+      else if (needConst && !snoozed(KEY_CONST)) setKind("const");
+      else setKind(null);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [show, showConstitution, pathname, refresh]);
 
   if (!kind) return null;
 
-  const close = () => {
-    localStorage.setItem(
-      kind === "assess" ? KEY_ASSESS : KEY_CONST,
-      String(Date.now() + DAY),
-    );
+  const close = async () => {
+    const now = Date.now();
+    if (kind === "assess") {
+      localStorage.setItem(KEY_ASSESS, String(now + DAY));
+      localStorage.setItem(KEY_CONST, String(now + COOLDOWN)); // 另一种也先 snooze
+    } else {
+      localStorage.setItem(KEY_CONST, String(now + DAY));
+      localStorage.setItem(KEY_ASSESS, String(now + COOLDOWN));
+    }
     setKind(null);
+    // 主动再 fetch 一次，防止关闭时用户状态刚好变化
+    const status = await refresh();
+    if (status) {
+      const needAssess = status.needsAssessment;
+      const needConst = status.needsConstitution;
+      // 两种都不需要了，保持 null；否则等下一次路径变化再判断
+      if (!needAssess && !needConst) setKind(null);
+    }
   };
 
   const isAssess = kind === "assess";
