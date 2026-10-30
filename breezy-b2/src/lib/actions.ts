@@ -399,6 +399,24 @@ export async function deleteMedicineAction(id: number) {
   revalidatePath("/record");
 }
 
+/** 轻量检查当前用户是否需要测评（给 AssessmentPrompt 客户端用） */
+export async function checkAssessmentNeeded() {
+  const uid = await currentUserId();
+  if (!uid) return { needsAssessment: false, needsConstitution: false };
+  const user = await queryOne<{ score: number | null }>(
+    "SELECT score FROM users WHERE id = ?",
+    [uid],
+  );
+  const profile = await queryOne<{ constitution: string | null }>(
+    "SELECT constitution FROM health_profiles WHERE user_id = ?",
+    [uid],
+  );
+  return {
+    needsAssessment: user?.score == null,
+    needsConstitution: !profile?.constitution,
+  };
+}
+
 export async function toggleFavoriteAction(type: string, name: string, meta = "") {
   const uid = await currentUserId();
   // 未登录不写库：返回 false（取消状态）
