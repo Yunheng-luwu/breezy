@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { headers } from "next/headers";
+import { headers, cookies } from "next/headers";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { HerbAtlas } from "@/components/herb-atlas";
 import { PageHero } from "@/components/page-hero";
@@ -18,7 +18,7 @@ import { firstSentence, listAcupoints } from "@/lib/knowledge";
 import { acupoints } from "@/lib/data/acupoints";
 import { getSolarTerm } from "@/lib/data/solar-term";
 import { SEASON_DIET, seasonOf, weatherSleepTip } from "@/lib/season";
-import { getClothingByIp } from "@/lib/weather";
+import { CITY_COOKIE, getClothingSmart } from "@/lib/weather";
 
 export const dynamic = "force-dynamic";
 
@@ -45,9 +45,10 @@ export default async function HomePage() {
   const now = new Date();
   const dateText = `${now.getFullYear()} 年 ${now.getMonth() + 1} 月 ${now.getDate()} 日 · 周${WEEKDAYS[now.getDay()]}`;
 
-  // 天气（IP 定位，失败时静默不显示）
+  // 天气（记住的城市 cookie > IP 定位，失败时静默不显示）
   const ip = (headers().get("x-forwarded-for") ?? "").split(",")[0].trim();
-  const weather = await getClothingByIp(ip).catch(() => null);
+  const cookieCity = cookies().get(CITY_COOKIE)?.value?.trim() || undefined;
+  const weather = await getClothingSmart(cookieCity, ip).catch(() => null);
 
   const principles = dietData.recommend.principles;
   const principle = principles[now.getDate() % principles.length];

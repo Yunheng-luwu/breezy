@@ -1,4 +1,4 @@
-import { headers } from "next/headers";
+import { headers, cookies } from "next/headers";
 import { Card, CardContent } from "@/components/ui/card";
 import { Breathing478, MoodPicker } from "@/components/mood-picker";
 import MoodFirstAid from "@/components/first-aid/first-aid";
@@ -6,7 +6,7 @@ import MoodGames from "@/components/games/mood-games";
 import { PageHero } from "@/components/page-hero";
 import { getSolarTerm } from "@/lib/data/solar-term";
 import { SEASON_MOOD, seasonOf, weatherMoodTip } from "@/lib/season";
-import { getClothingByIp } from "@/lib/weather";
+import { CITY_COOKIE, getClothingSmart } from "@/lib/weather";
 import { currentUserId, getRecentMood, getMoodStats } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
@@ -22,10 +22,11 @@ export default async function MoodPage() {
   // 右侧列表只取最近若干条（滚动展示），分布与次数则按全量统计
   const [moods, moodStats] = await Promise.all([getRecentMood(uid, 20), getMoodStats(uid)]);
 
-  // 天气 / 节气联动：按实况给今日舒压建议
+  // 天气 / 节气联动：按实况给今日舒压建议（记住的城市 cookie > IP 定位）
   const now = new Date();
   const ip = (headers().get("x-forwarded-for") ?? "").split(",")[0].trim();
-  const weather = await getClothingByIp(ip).catch(() => null);
+  const cookieCity = cookies().get(CITY_COOKIE)?.value?.trim() || undefined;
+  const weather = await getClothingSmart(cookieCity, ip).catch(() => null);
   const season = seasonOf(now);
   const term = getSolarTerm(now);
   const moodTip = weather
