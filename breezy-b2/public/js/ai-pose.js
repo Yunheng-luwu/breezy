@@ -288,6 +288,7 @@ let armedAt = 0;
 let scoreCb = null;
 let repCb = null;
 let statusCb = null;
+let guideEl = null;      // 未检出人体时的引导框
 
 // 托天动作状态机
 const tuotian = {
@@ -531,6 +532,30 @@ function drawSkeleton(poseLms, handLmsList, w, h) {
       });
     });
   }
+}
+
+// ===== 未检出人体时的引导框（用 DOM 叠加，避免画布镜像导致文字反向）=====
+let noPoseSince = 0;
+function updateNoPoseGuide(show) {
+  const host = canvasEl && canvasEl.parentElement;
+  if (!host) return;
+  if (!show) {
+    if (guideEl) guideEl.style.display = 'none';
+    return;
+  }
+  if (!guideEl) {
+    guideEl = document.createElement('div');
+    guideEl.style.cssText =
+      'position:absolute;left:0;top:0;right:0;bottom:0;z-index:2;pointer-events:none;' +
+      'display:flex;align-items:center;justify-content:center;';
+    guideEl.innerHTML =
+      '<div style="width:44%;height:80%;border:2px dashed rgba(62,230,168,.75);border-radius:12px;' +
+      'display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;">' +
+      '<span style="font:12px/1.4 system-ui,-apple-system,sans-serif;color:#e8fff6;background:rgba(0,0,0,.6);' +
+      'padding:4px 8px;border-radius:6px;text-align:center;">未检出人体<br>请后退，让头到脚都在框内</span></div>';
+    host.appendChild(guideEl);
+  }
+  guideEl.style.display = 'flex';
 }
 
 // ===== 托天理三焦：逐帧评估 =====
@@ -1273,6 +1298,30 @@ function loop() {
   diag.lastPts = poseLms ? poseLms.length : 0;
   diag.canvasSize = canvasEl.width + 'x' + canvasEl.height;
 
+  // 自适应：部分集显/驱动下 GPU 推理不抛错但一直返回空结果，
+  // 表现为摄像头正常、状态有更新却永远检不出人。连续 40 帧零检出则自动重建 CPU 实例重试一次。
+  if (!poseLms && !diag.switching && diag.delegate !== 'CPU' && diag.frames >= 40 && diag.detOK === 0) {
+    diag.switching = true;
+    createLandmarkers(statusCb, 'CPU')
+      .then(() => {
+        diag.frames = 0; diag.detOK = 0; diag.switching = false; inferFailCount = 0;
+        statusCb && statusCb('已切换为 CPU 推理，请站到画面中全身入镜');
+      })
+      .catch((err) => {
+        diag.switching = false;
+        diag.inferErr = 'CPU 重建失败: ' + ((err && err.message) ? err.message : String(err));
+      });
+  }
+
+  // 未检出人体超过 2 秒 → 显示引导框（证明画布在更新，并告诉用户该站多远）
+  if (poseLms) {
+    noPoseSince = 0;
+    updateNoPoseGuide(false);
+  } else {
+    if (!noPoseSince) noPoseSince = performance.now();
+    updateNoPoseGuide(performance.now() - noPoseSince > 2000);
+  }
+
   // 换式静默期：刚切到新动作时姿态仍在上一式收势位，直接评测会白送一次计次
   if (performance.now() < armedAt) {
     if (statusCb) statusCb('请回到起始位置，调整呼吸…');
@@ -1324,8 +1373,10 @@ window.AIPose = {
     inferFailCount = 0;
     diag.frames = 0; diag.detOK = 0; diag.inferErr = ''; diag.handErr = '';
     diag.switching = false;
+    noPoseSince = 0;
+    updateNoPoseGuide(false);
     try {
-      await createLandmarkers(statusCb);
+      await createLandmarkers(statusCb, (opts && opts.forceDelegate) || undefined);
     } catch (e) {
       console.error('AI 模型加载失败：', e);
       statusCb && statusCb('AI 模型加载失败：' + ((e && e.message) ? e.message : '网络异常') + '，请重试');
@@ -1342,8 +1393,25 @@ window.AIPose = {
     running = false;
     if (rafId) cancelAnimationFrame(rafId);
     rafId = null;
+    noPoseSince = 0;
+    updateNoPoseGuide(false);
     if (ctx && canvasEl) ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
     if (debugEl) { debugEl.remove(); debugEl = null; }
+  },
+  // 供页面轮询的自适应诊断（分辨率/推理后端/累计帧数/检出数）
+  diag() {
+    return {
+      running,
+      delegate: diag.delegate,
+      frames: diag.frames,
+      detOK: diag.detOK,
+      pts: diag.lastPts || 0,
+      video: videoEl ? (videoEl.videoWidth + 'x' + videoEl.videoHeight) : '-',
+      canvas: diag.canvasSize || '-',
+      inferErr: diag.inferErr,
+      handErr: diag.handErr,
+      drawErr: diag.drawErr || '',
+    };
   },
   setAction(name) {
     currentAction = name;

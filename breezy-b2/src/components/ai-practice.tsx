@@ -36,6 +36,18 @@ interface AIPoseEngine {
   ) => Promise<void>;
   stop: () => void;
   setAction: (name: string) => void;
+  diag?: () => {
+    running: boolean;
+    delegate: string;
+    frames: number;
+    detOK: number;
+    pts: number;
+    video: string;
+    canvas: string;
+    inferErr: string;
+    handErr: string;
+    drawErr: string;
+  };
 }
 
 declare global {
@@ -103,6 +115,7 @@ export function AiPracticeCore({ moves, defaultMove, routine = false }: AiPracti
   const repCountRef = useRef(0);
   const lastReportAt = useRef(0);
   const reportedRef = useRef(false);
+  const diagTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const resultsRef = useRef<Record<string, { score: number; reps: number }>>({});
   // 整套自动切式用：当前式名（onRep 闭包用，避免拿到旧值）、自动切换开关、切换锁
   const actionRef = useRef(action);
@@ -146,6 +159,10 @@ export function AiPracticeCore({ moves, defaultMove, routine = false }: AiPracti
 
   const stop = useCallback(() => {
     runToken.current += 1;
+    if (diagTimer.current) {
+      clearInterval(diagTimer.current);
+      diagTimer.current = null;
+    }
     window.AIPose?.stop();
     releaseCamera();
     setPhase("idle");
@@ -256,6 +273,19 @@ export function AiPracticeCore({ moves, defaultMove, routine = false }: AiPracti
       }
       setPhase("running");
       setStatus("AI 已就绪，请全身入镜");
+      // 自适应诊断：连续检不出人体时把引擎读数（后端/分辨率/帧数）同步到状态栏，
+      // 让用户能自行判断是站太近、光线不足，还是推理后端降级了
+      if (diagTimer.current) clearInterval(diagTimer.current);
+      diagTimer.current = setInterval(() => {
+        const d = window.AIPose?.diag?.();
+        if (!d || !d.running || d.frames < 45 || d.detOK > 0) return;
+        const err = d.inferErr || d.handErr || d.drawErr;
+        setStatus(
+          err
+            ? `推理异常（${d.delegate}）：${err.slice(0, 40)}`
+            : `未检出人体 · 帧${d.frames} · ${d.delegate}推理 · 画面${d.video}｜请后退让头到脚都入框`
+        );
+      }, 3000);
     } catch (err) {
       if (token !== runToken.current) return;
       const e = err as { name?: string; message?: string };
