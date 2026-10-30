@@ -1,4 +1,4 @@
-import { headers } from "next/headers";
+import { headers, cookies } from "next/headers";
 import { Card, CardContent } from "@/components/ui/card";
 import { AutoLocateButton, CitySwitch } from "@/components/city-switch";
 import { BodySenseControls, SenseTip, normalizeSense } from "@/components/body-sense";
@@ -8,8 +8,8 @@ import { SEASON_CLOTHING, seasonOf } from "@/lib/season";
 import { currentUserId, getHealthProfile, getSymptoms, getUser } from "@/lib/queries";
 import {
   buildSceneReminders,
-  getClothingByCity,
-  getClothingByIp,
+  getClothingSmart,
+  CITY_COOKIE,
   type ClothingData,
   type SceneUserCtx,
 } from "@/lib/weather";
@@ -32,19 +32,17 @@ export default async function ClothingPage({
   searchParams?: { [key: string]: string | string[] };
 }) {
   const raw = searchParams?.city;
-  const city = (Array.isArray(raw) ? raw[0] : raw)?.trim() || undefined;
+  // URL 参数 > 定位 cookie > IP 定位
+  const urlCity = (Array.isArray(raw) ? raw[0] : raw)?.trim() || undefined;
+  const cookieCity = cookies().get(CITY_COOKIE)?.value?.trim() || undefined;
+  const city = urlCity ?? cookieCity;
 
   const forwarded = headers().get("x-forwarded-for") ?? "";
   const ip = forwarded.split(",")[0].trim();
 
   let data: ClothingData | null = null;
   try {
-    // 手动指定城市优先；城市查不到/接口失败时回退 IP 定位
-    if (city) {
-      data = (await getClothingByCity(city)) ?? (await getClothingByIp(ip));
-    } else {
-      data = await getClothingByIp(ip);
-    }
+    data = await getClothingSmart(city, ip);
   } catch {
     data = null;
   }

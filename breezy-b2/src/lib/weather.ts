@@ -379,3 +379,21 @@ export function getClientIp(req: Request): string {
   const ip = (fwd ? fwd.split(",")[0].trim() : "") || req.headers.get("x-real-ip") || "";
   return ip.replace(/^::ffff:/, "");
 }
+
+/** 记住用户定位/手动选择的城市（客户端写 cookie，30 天） */
+export const CITY_COOKIE = "sx_city";
+
+/**
+ * 统一城市解析入口：显式城市（URL 参数或 cookie）优先，查不到/未指定时回退 IP 定位。
+ * 解决「GPS 定位结果只在 URL 参数里，下次无参访问退回 IP 定位失败 → 默认杭州」的问题。
+ */
+export async function getClothingSmart(
+  city: string | undefined,
+  ip: string,
+): Promise<ClothingData | null> {
+  const name = String(city ?? "").trim();
+  if (name) {
+    return (await getClothingByCity(name)) ?? (await getClothingByIp(ip));
+  }
+  return getClothingByIp(ip);
+}

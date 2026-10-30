@@ -7,13 +7,15 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { query } from "@/lib/db";
-import { getClothingByIp } from "@/lib/weather";
+import { getClothingSmart } from "@/lib/weather";
 import { dietData, exerciseData } from "@/lib/content-data";
 import * as kb from "@/lib/knowledge";
 
 export interface ToolContext {
   userId: number;
   clientIp: string;
+  /** 用户在穿衣页定位/手动选择记住的城市（cookie），优先于 IP 定位 */
+  city?: string;
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -219,7 +221,7 @@ export function buildTools(ctx: ToolContext, cards: AgentCard[]) {
         "获取用户所在城市的实时天气与穿衣、重点保暖部位建议。用户问出门穿什么、天气、降温保暖时调用。",
       inputSchema: z.object({}),
       execute: async () => {
-        const data = await getClothingByIp(ctx.clientIp);
+        const data = await getClothingSmart(ctx.city, ctx.clientIp);
         if (!data) {
           return "暂时获取不到实时天气（定位或天气服务不可用），请稍后重试，或在穿衣页手动选择城市后再问。";
         }

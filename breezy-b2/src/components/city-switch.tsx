@@ -3,6 +3,7 @@
 /**
  * 穿衣页城市切换：展开输入框跳转 /clothing?city=xxx
  * 「自动定位」：优先浏览器 GPS 精确定位（高德逆地理转城市），失败/拒授权回退 IP 定位
+ * 定位/手动选择的城市写入 cookie（30 天），之后各页面无需 URL 参数也能记住
  */
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -10,17 +11,33 @@ import { LocateFixed } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+const COOKIE_KEY = "sx_city";
+const COOKIE_DAYS = 30;
+
+function saveCityCookie(city: string) {
+  document.cookie = `${COOKIE_KEY}=${encodeURIComponent(city)}; max-age=${COOKIE_DAYS * 86400}; path=/; samesite=lax`;
+}
+
+function clearCityCookie() {
+  document.cookie = `${COOKIE_KEY}=; max-age=0; path=/; samesite=lax`;
+}
+
 /**
  * 右上角「自动定位」按钮：
- * - 点击 → 浏览器 GPS 定位 → /api/geo/reverse 转城市 → 跳 ?city=（最准）
- * - 用户拒绝授权/浏览器不支持 → 回退 IP 定位（清掉手动城市回 /clothing）
+ * - 点击 → 浏览器 GPS 定位 → /api/geo/reverse 转城市 → 记 cookie 并跳 ?city=（最准）
+ * - 用户拒绝授权/浏览器不支持 → 回退 IP 定位（清 cookie、清 URL 参数回 /clothing）
  */
 export function AutoLocateButton({ manualCity }: { manualCity?: string }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [phase, setPhase] = useState<"idle" | "gps" | "denied">("idle");
 
-  const locateByIp = () => start(() => router.push("/clothing"));
+  const locateByIp = () =>
+    start(() => {
+      clearCityCookie();
+      router.push("/clothing");
+      router.refresh();
+    });
 
   const locate = () => {
     if (!("geolocation" in navigator)) {
@@ -38,6 +55,7 @@ export function AutoLocateButton({ manualCity }: { manualCity?: string }) {
             );
             const json = (await res.json()) as { city?: string };
             if (json.city) {
+              saveCityCookie(json.city);
               setPhase("idle");
               router.push(`/clothing?city=${encodeURIComponent(json.city)}`);
               return;
@@ -46,7 +64,9 @@ export function AutoLocateButton({ manualCity }: { manualCity?: string }) {
             /* 逆地理失败走 IP 兜底 */
           }
           setPhase("idle");
+          clearCityCookie();
           router.push("/clothing");
+          router.refresh();
         });
       },
       () => {
@@ -89,6 +109,7 @@ export function CitySwitch({ manualCity }: { manualCity?: string }) {
   const submit = () => {
     const city = value.trim();
     if (!city) return;
+    saveCityCookie(city);
     setOpen(false);
     setValue("");
     router.push(`/clothing?city=${encodeURIComponent(city)}`);

@@ -207,7 +207,13 @@ export async function POST(req: Request) {
   const systemContent = agentCtx ? `${SYSTEM_PROMPT}\n\n${agentCtx}` : SYSTEM_PROMPT;
 
   const cards: AgentCard[] = [];
-  const tools = buildTools({ userId: user.id, clientIp: getClientIp(req) }, cards);
+  // 穿衣页定位/手动选择的城市（cookie），让 AI 查天气与页面保持一致
+  const cityCookie = /(?:^|;\s*)sx_city=([^;]+)/.exec(req.headers.get("cookie") ?? "")?.[1];
+  const rememberedCity = cityCookie ? decodeURIComponent(cityCookie) : undefined;
+  const tools = buildTools(
+    { userId: user.id, clientIp: getClientIp(req), city: rememberedCity },
+    cards,
+  );
   let reply = "";
 
   const stream = createUIMessageStream({

@@ -1,4 +1,4 @@
-import { headers } from "next/headers";
+import { headers, cookies } from "next/headers";
 import { DietBoard, DietItemGrid } from "@/components/diet-board";
 import { AtlasLauncher } from "@/components/herb-atlas";
 import { PageHero } from "@/components/page-hero";
@@ -9,7 +9,7 @@ import { herbs } from "@/lib/data/herbs";
 import { getSolarTerm, getTermFood } from "@/lib/data/solar-term";
 import { buildDietFocus } from "@/lib/diet-focus";
 import { SEASON_DIET, seasonOf, tempDietTip } from "@/lib/season";
-import { getClothingByIp } from "@/lib/weather";
+import { CITY_COOKIE, getClothingSmart } from "@/lib/weather";
 import {
   currentUserId,
   getFavorites,
@@ -41,9 +41,10 @@ export default async function DietPage() {
 
   const soups = dietData.soups ?? [];
 
-  // 天气 / 节气联动：按实况温度与当季给饮食侧重
+  // 天气 / 节气联动：按实况温度与当季给饮食侧重（记住的城市 cookie > IP 定位）
   const ip = (headers().get("x-forwarded-for") ?? "").split(",")[0].trim();
-  const weather = await getClothingByIp(ip).catch(() => null);
+  const cookieCity = cookies().get(CITY_COOKIE)?.value?.trim() || undefined;
+  const weather = await getClothingSmart(cookieCity, ip).catch(() => null);
   const season = seasonOf(now);
   const term = getSolarTerm(now);
   const tempTip = weather ? tempDietTip(weather.temp) : "";
