@@ -175,8 +175,10 @@ export function AiPracticeCore({ moves, defaultMove, routine = false }: AiPracti
     setPhase("loading");
     setStatus("正在请求摄像头权限…");
     try {
+      // 对齐冻结版：优先前置摄像头、理想 1280×720。低分辨率（如 640×480）
+      // 会让 MediaPipe 输入帧像素只剩 1/4，半身或稍远时容易检不出人。
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 640, height: 480 },
+        video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: false,
       });
       if (token !== runToken.current) {
@@ -184,6 +186,16 @@ export function AiPracticeCore({ moves, defaultMove, routine = false }: AiPracti
         return;
       }
       streamRef.current = stream;
+      // 暗光下尝试连续自动曝光（不强制亮度，避免部分摄像头偏色）
+      const track = stream.getVideoTracks()[0];
+      const caps = (track?.getCapabilities?.() ?? {}) as { exposureMode?: string[] };
+      if (Array.isArray(caps.exposureMode) && caps.exposureMode.includes("continuous")) {
+        track
+          .applyConstraints({
+            advanced: [{ exposureMode: "continuous" }],
+          } as unknown as MediaTrackConstraints)
+          .catch(() => undefined);
+      }
       const video = videoRef.current;
       if (!video) throw new Error("摄像头组件未就绪，请稍后重试");
       video.srcObject = stream;
