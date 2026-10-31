@@ -566,6 +566,8 @@ let badgeAt = 0;
 // 常驻读数角标：帧数/检出帧数/最近关键点数/推理后端。引擎自己绘制，不依赖页面代码，
 // 用于在任意前端版本上判断「循环有没有跑、模型有没有看到人」。
 function updateBadge() {
+  // 只在使用测量模式（?posebug=1）时显示，正常演示/评审界面不出现技术读数
+  if (!POSE_DEBUG) return;
   const host = canvasEl && canvasEl.parentElement;
   if (!host) return;
   if (!badgeEl) {

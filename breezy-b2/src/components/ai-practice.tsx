@@ -59,7 +59,12 @@ declare global {
 type Phase = "idle" | "loading" | "running" | "error";
 
 // 带版本串：引擎改动后强制浏览器重新拉取，避免旧缓存导致自适应逻辑不生效
-const AI_SCRIPT_SRC = "/js/ai-pose.js?v=20261031b";
+const AI_SCRIPT_SRC = "/js/ai-pose.js?v=20261031c";
+
+// 测量模式：URL 带 ?posebug=1 时才在界面上暴露识别读数，正常演示不显示
+const POSE_DEBUG =
+  typeof window !== "undefined" &&
+  new URLSearchParams(window.location.search).get("posebug") === "1";
 
 let scriptPromise: Promise<void> | null = null;
 
@@ -279,7 +284,7 @@ export function AiPracticeCore({ moves, defaultMove, routine = false }: AiPracti
       // 自适应诊断：连续检不出人体时把引擎读数（后端/分辨率/帧数）同步到状态栏，
       // 让用户能自行判断是站太近、光线不足，还是推理后端降级了
       if (diagTimer.current) clearInterval(diagTimer.current);
-      diagTimer.current = setInterval(() => {
+      if (POSE_DEBUG) diagTimer.current = setInterval(() => {
         const d = window.AIPose?.diag?.();
         if (!d || !d.running) return;
         // 常显读数：帧数 / 检出帧数 / 最近一帧关键点数 / 后端 / 画面分辨率
@@ -534,7 +539,7 @@ export function AiPracticeCore({ moves, defaultMove, routine = false }: AiPracti
 
           <p className="text-xs text-muted-foreground">
             {phase === "running"
-              ? liveDiag || "站远一点，让全身进入画面"
+              ? (POSE_DEBUG && liveDiag) || "站远一点，让全身进入画面"
               : "建议光线充足、背景简洁"}
           </p>
         </div>
