@@ -2,9 +2,15 @@
 
 > 顺气舒心，慢养日常 —— 面向年轻人的中医「轻养生」Web 应用
 
-在线演示（B2 版，Next.js 14 重写）：<http://b2.songxu-breezy.xin>　体验账号：`xiaosong` / `songxu2026`
+## 评审入口
 
-隐私说明：<http://b2.songxu-breezy.xin/privacy>
+| 项目 | 地址 / 账号 |
+|---|---|
+| 在线演示（B2 版，Next.js 14 重写） | <http://b2.songxu-breezy.xin> |
+| 演示账号 | `xiaosong` / `songxu2026` |
+| 隐私说明 | <http://b2.songxu-breezy.xin/privacy> |
+| 源码仓库 | <https://github.com/Yunheng-luwu/breezy> |
+| 参赛源码目录 | `breezy-b2/`（Next.js 14 重写版）；`public/` 与 `server/` 为早期冻结版，仅作对照 |
 
 松序把疏肝解郁、节气饮食、穴位保健、功法带练这些传统养生方法，拆解成每天可以真正做一遍的小事：今天该喝什么茶、按哪个穴、穿多厚、几点睡、跟练一遍八段锦。核心是用**端侧 AI 判断你有没有做对**，把「看视频自己练」变成「有人盯着你练」。
 
@@ -164,17 +170,21 @@ Breezith/
 └─ package.json
 ```
 
+> 以上为早期冻结版（B1）的目录。本次参赛的 Next.js 14 重写版位于 `breezy-b2/`，结构与技术栈不同，说明见 [breezy-b2/README.md](breezy-b2/README.md)。
+
 ---
 
 ## 六、快速开始
 
+> 以下步骤对应早期冻结版（B1）。参赛版 `breezy-b2/` 的运行方式见 [breezy-b2/README.md](breezy-b2/README.md)（`npm install` → `npm run models` → 配置 `.env.local` → `npm run dev`）。
+
 ### 演示账号（评审用）
 
-在线演示地址：<https://songxu-breezy.xin>
+在线演示地址：<http://b2.songxu-breezy.xin>
 
 | 账号 | 密码 | 说明 |
 |---|---|---|
-| `reviewer` | `songxu2026` | 普通用户，可直接登录体验全部功能 |
+| `xiaosong` | `songxu2026` | 普通用户，可直接登录体验全部功能 |
 
 该账号仅供评审使用，不含管理权限。
 
