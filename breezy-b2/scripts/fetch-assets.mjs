@@ -2,15 +2,15 @@
  * 演示素材自检 / 拉取脚本（npm run models）
  *
  * 仓库不纳入两类大文件：
- *   1. MediaPipe 姿态识别模型（约 27MB，public/ai-models/）
+ *   1. MediaPipe 姿态识别模型 + wasm 运行时（约 36MB，public/ai-models/）
  *   2. 八段锦示范视频（约 83MB，public/anims/）
  *
  * 本脚本会：
- *   - 从官方地址下载两个 .task 模型（体积与运行所需一致，可重复执行，已存在则跳过）
- *   - 校验 wasm / bundle 与示范视频是否就位，缺失时打印放置说明
+ *   - 从官方地址下载两个 .task 模型与三个 wasm 运行时文件（可重复执行，已存在则跳过）
+ *   - 校验示范视频是否就位，缺失时打印放置说明
  *
- * wasm 运行时（vision_bundle.mjs、vision_wasm_internal.js/.wasm）与视频不做自动下载：
- * 前者与项目内置的调用方式强绑定，后者是自制素材，均随《演示素材包》一并提供。
+ * wasm 运行时必须三者版本一致（bundle / glue / wasm 同属 @mediapipe/tasks-vision 0.10.14），
+ * 混装不同版本会导致 MediaPipe 初始化失败、姿态骨架不显示，因此这里固定版本并校验体积。
  */
 import { createWriteStream } from "node:fs";
 import { mkdir, stat } from "node:fs/promises";
@@ -35,10 +35,23 @@ const MODELS = [
 ];
 
 /** 随素材包提供的文件（不自动下载，仅校验） */
-const BUNDLED = [
-  "public/ai-models/vision_bundle.mjs",
-  "public/ai-models/wasm/vision_wasm_internal.js",
-  "public/ai-models/wasm/vision_wasm_internal.wasm",
+const TV_VERSION = "0.10.14";
+const RUNTIME = [
+  {
+    file: "public/ai-models/vision_bundle.mjs",
+    size: 136870,
+    url: `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${TV_VERSION}/vision_bundle.mjs`,
+  },
+  {
+    file: "public/ai-models/wasm/vision_wasm_internal.js",
+    size: 209826,
+    url: `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${TV_VERSION}/wasm/vision_wasm_internal.js`,
+  },
+  {
+    file: "public/ai-models/wasm/vision_wasm_internal.wasm",
+    size: 9423986,
+    url: `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${TV_VERSION}/wasm/vision_wasm_internal.wasm`,
+  },
 ];
 
 /** 八段锦十式示范视频（预备式 + 八式 + 收式） */
@@ -85,14 +98,18 @@ async function main() {
     console.log("完成");
   }
 
-  const missingBundled = [];
-  for (const f of BUNDLED) if (!(await fileSize(f))) missingBundled.push(f);
-
   console.log("== 校验 wasm 运行时 ==");
-  if (missingBundled.length === 0) {
-    console.log("  已就位（vision_bundle.mjs + wasm）");
-  } else {
-    for (const f of missingBundled) console.log(`  缺失 ${f}`);
+  for (const m of RUNTIME) {
+    const have = await fileSize(m.file);
+    if (have === m.size) {
+      console.log(`  已存在 ${m.file}`);
+      continue;
+    }
+    process.stdout.write(`  下载 ${m.file} ... `);
+    await download(m);
+    const after = await fileSize(m.file);
+    if (after !== m.size) throw new Error(`${m.file} 体积异常：期望 ${m.size}，实际 ${after}`);
+    console.log("完成");
   }
 
   const missingVideos = [];
@@ -105,9 +122,9 @@ async function main() {
     for (const f of missingVideos) console.log(`  缺失 ${f}`);
   }
 
-  if (missingBundled.length || missingVideos.length) {
-    console.log("\n以上缺失文件随《演示素材包》提供，解压后按目录覆盖到 public/ 即可。");
-    console.log("wasm 运行时与视频不随仓库分发，也不会自动下载。");
+  if (missingVideos.length) {
+    console.log("\n以上视频随《演示素材包》提供，解压后按目录覆盖到 public/ 即可。");
+    console.log("示范视频体积较大（约 83MB），不随仓库分发，也不会自动下载。");
     process.exitCode = 1;
     return;
   }

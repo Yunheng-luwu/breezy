@@ -78,7 +78,7 @@ mysql -u root -p < schema/songxu_b2.sql
 cp .env.example .env.local
 # 编辑 .env.local：填入 DEEPSEEK_API_KEY、AMAP_KEY、数据库账号密码
 
-# 4. 拉取 AI 模型并自检素材（模型约 17MB，从官方地址下载）
+# 4. 拉取 AI 模型与 wasm 运行时并自检素材（约 26MB，从官方地址下载）
 npm run models
 
 # 5. 启动开发服务器
@@ -111,14 +111,16 @@ npm start
 
 ### 演示素材（不入库，需单独放置）
 
-以下两类大文件未纳入版本库，`npm run models` 会做校验并提示缺失项：
+以下大文件未纳入版本库，`npm run models` 会自动下载并提示缺失项：
 
 | 目录 | 内容 | 体积 | 获取方式 |
 |------|------|------|----------|
 | `public/ai-models/` | MediaPipe 姿态/手部模型（`.task`） | 约 17MB | `npm run models` 自动下载 |
-| `public/ai-models/` | `vision_bundle.mjs` + `wasm/` 运行时 | 约 9.3MB | 随《演示素材包》提供 |
+| `public/ai-models/` | `vision_bundle.mjs` + `wasm/` 运行时（0.10.14） | 约 9.3MB | `npm run models` 自动下载 |
 | `public/anims/` | 八段锦十式示范视频（10 个 mp4） | 约 83MB | 随《演示素材包》提供 |
 | `public/uploads/` | 用户头像等运行时上传文件 | — | 运行后自动生成 |
+
+> wasm 运行时三个文件（`vision_bundle.mjs`、`wasm/vision_wasm_internal.js`、`wasm/vision_wasm_internal.wasm`）必须为同一版本，脚本固定为 `@mediapipe/tasks-vision@0.10.14` 并校验字节数，避免混装导致姿态识别无法初始化。
 
 缺失时的表现：`public/anims/` 缺失会导致功法带练视频 404；`public/ai-models/` 缺失会导致 AI 跟练无法加载识别引擎。
 
