@@ -496,26 +496,38 @@ function drawSkeleton(poseLms, handLmsList, w, h) {
     ctx.strokeStyle = SKEL_COLOR;
     ctx.shadowColor = 'rgba(62,230,168,.6)';
     ctx.shadowBlur = 8;
+    // 只要检测到人就把骨架画出来：可见度门槛分两档。
+    // 先按 0.15 画（滤掉明显遮挡的部分）；若连一段都画不出来（半身入镜/暗光，
+    // 关键点可见度普遍偏低），再放宽到 0.02 兜底，保证「检出即见骨架」。
+    const segsOf = (minVis) => {
+      const segs = [];
+      tv.PoseLandmarker.POSE_CONNECTIONS.forEach((c) => {
+        // 兼容 tasks-vision 两种连接格式：数组 [a,b] 或对象 {start,end}
+        const a = Array.isArray(c) ? c[0] : c.start;
+        const b = Array.isArray(c) ? c[1] : c.end;
+        const pa = poseLms[a], pb = poseLms[b];
+        if (!pa || !pb) return;
+        if ((pa.visibility !== undefined && pa.visibility < minVis) ||
+            (pb.visibility !== undefined && pb.visibility < minVis)) return;
+        segs.push([pa, pb]);
+      });
+      return segs;
+    };
+    let segs = segsOf(0.15);
+    if (!segs.length) segs = segsOf(0.02);
     ctx.beginPath();
-    tv.PoseLandmarker.POSE_CONNECTIONS.forEach((c) => {
-      // 兼容 tasks-vision 两种连接格式：数组 [a,b] 或对象 {start,end}
-      const a = Array.isArray(c) ? c[0] : c.start;
-      const b = Array.isArray(c) ? c[1] : c.end;
-      const pa = poseLms[a], pb = poseLms[b];
-      if (!pa || !pb) return;
-      // 低可见度（遮挡）的连线不画
-      if ((pa.visibility !== undefined && pa.visibility < 0.4) ||
-          (pb.visibility !== undefined && pb.visibility < 0.4)) return;
+    segs.forEach(([pa, pb]) => {
       ctx.moveTo(pa.x * w, pa.y * h);
       ctx.lineTo(pb.x * w, pb.y * h);
     });
     ctx.stroke();
-    // 关节点（可见度门槛放宽到 0.2，暗光下也能看到点）
+    // 关节点：有骨架就至少把点画全，暗光下也能看清姿态
     ctx.shadowBlur = 0;
     ctx.fillStyle = JOINT_COLOR;
     const r = Math.max(2.5, w * 0.005);
+    const minPtVis = segs.length ? 0.05 : 0.02;
     poseLms.forEach(p => {
-      if (!p || (p.visibility !== undefined && p.visibility < 0.2)) return;
+      if (!p || (p.visibility !== undefined && p.visibility < minPtVis)) return;
       ctx.beginPath();
       ctx.arc(p.x * w, p.y * h, r, 0, Math.PI * 2);
       ctx.fill();
