@@ -304,6 +304,12 @@ export function AiPracticeCore({ moves, defaultMove, routine = false }: AiPracti
         setError("请允许摄像头权限后重试");
       } else if (e.name === "NotFoundError") {
         setError("未检测到摄像头，请检查设备");
+      } else if (/bindAttribLocation|webgl|wasm|GL_/i.test(e.message || "")) {
+        // WebGL 上下文创建失败的典型报错（wasm 内部 _glBindAttribLocation 为 undefined）
+        console.error("AI 模型加载失败：", e);
+        setError(
+          "当前浏览器无法启用 WebGL2，AI 姿态识别依赖它。请在浏览器设置中开启「使用硬件加速」并重启浏览器；若仍失败，请用最新版 Chrome / Edge，或在 chrome://gpu 查看 WebGL2 是否被禁用。"
+        );
       } else {
         setError(e.message || "开启失败，请检查设备与权限");
       }
