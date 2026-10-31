@@ -431,7 +431,7 @@ async function createLandmarkers(onStatus, forceDelegate) {
     ? `正在切换到 ${forceDelegate} 推理模式…`
     : '正在加载 AI 模型（首次约 26MB）…');
   if (!tv) {
-    tv = await import('../ai-models/vision_bundle.mjs?v=20261005-2');
+    tv = await import('../ai-models/vision_bundle.mjs?v=20261031');
   }
   const fileset = await tv.FilesetResolver.forVisionTasks(AI_WASM_PATH);
 
