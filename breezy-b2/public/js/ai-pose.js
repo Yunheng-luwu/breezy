@@ -280,6 +280,8 @@ let ctx = null;
 let rafId = null;
 let running = false;
 let lastVideoTime = -1;
+let lastFrameAt = 0;     // 最近一次成功处理帧的时间（看门狗用）
+let watchdogId = null;
 let currentAction = '两手托天理三焦';
 // 换式冷却：刚开始新动作时，身体还停留在上一式的收势姿态，直接评测会把过渡动作误判成一次有效计次。
 // 冷却期内只画骨架、不评测，给人时间回到起始位。
@@ -536,6 +538,24 @@ function drawSkeleton(poseLms, handLmsList, w, h) {
 
 // ===== 未检出人体时的引导框（用 DOM 叠加，避免画布镜像导致文字反向）=====
 let noPoseSince = 0;
+let badgeEl = null;
+let badgeAt = 0;
+// 常驻读数角标：帧数/检出帧数/最近关键点数/推理后端。引擎自己绘制，不依赖页面代码，
+// 用于在任意前端版本上判断「循环有没有跑、模型有没有看到人」。
+function updateBadge() {
+  const host = canvasEl && canvasEl.parentElement;
+  if (!host) return;
+  if (!badgeEl) {
+    badgeEl = document.createElement('div');
+    badgeEl.style.cssText =
+      'position:absolute;right:6px;bottom:6px;z-index:3;pointer-events:none;' +
+      'font:11px/1.35 ui-monospace,SFMono-Regular,Menlo,monospace;color:#d8ffe9;' +
+      'background:rgba(0,0,0,.65);padding:2px 6px;border-radius:4px;';
+    host.appendChild(badgeEl);
+  }
+  badgeEl.textContent =
+    `帧${diag.frames} 检出${diag.detOK} 点${diag.lastPts || 0} ${diag.delegate}`;
+}
 function updateNoPoseGuide(show) {
   const host = canvasEl && canvasEl.parentElement;
   if (!host) return;
@@ -1236,10 +1256,15 @@ function maxOf(a, b) {
 function loop() {
   if (!running) return;
   rafId = requestAnimationFrame(loop);
-  if (!videoEl || videoEl.readyState < 2 || !videoEl.videoWidth) return;
+  if (!videoEl) return;
+  // 视频被暂停（切换标签、系统休眠、浏览器节流）后会一直卡在同一帧，
+  // currentTime 不再变化 → 下面直接 return，表现为「画面在、但永远没有骨架」。这里自动恢复。
+  if (videoEl.paused && videoEl.srcObject) videoEl.play().catch(() => {});
+  if (videoEl.readyState < 2 || !videoEl.videoWidth) return;
   if (videoEl.currentTime === lastVideoTime) return;
   lastVideoTime = videoEl.currentTime;
-  const ts = performance.now();
+  lastFrameAt = performance.now();
+  const ts = lastFrameAt;
 
   // 画布分辨率跟随视频（CSS 用 object-fit:cover 与视频保持一致的裁切）
   if (canvasEl.width !== videoEl.videoWidth) {
@@ -1297,6 +1322,10 @@ function loop() {
   }
   diag.lastPts = poseLms ? poseLms.length : 0;
   diag.canvasSize = canvasEl.width + 'x' + canvasEl.height;
+  if (performance.now() - badgeAt > 500) {
+    badgeAt = performance.now();
+    updateBadge();
+  }
 
   // 自适应：部分集显/驱动下 GPU 推理不抛错但一直返回空结果，
   // 表现为摄像头正常、状态有更新却永远检不出人。连续 40 帧零检出则自动重建 CPU 实例重试一次。
@@ -1385,16 +1414,32 @@ window.AIPose = {
     if (!running) {
       running = true;
       lastVideoTime = -1;
+      lastFrameAt = performance.now();
       statusCb && statusCb('AI 已就绪，请全身入镜');
       loop();
+      // 看门狗：循环静默（3 秒没有任何新帧）时重启循环并尝试恢复视频播放，
+      // 覆盖「摄像头画面在但永远画不出骨架」这类卡死
+      if (watchdogId) clearInterval(watchdogId);
+      watchdogId = setInterval(() => {
+        if (!running) return;
+        if (performance.now() - lastFrameAt > 3000) {
+          if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+          lastVideoTime = -1;
+          if (videoEl && videoEl.paused && videoEl.srcObject) videoEl.play().catch(() => {});
+          loop();
+        }
+      }, 2000);
     }
   },
   stop() {
     running = false;
     if (rafId) cancelAnimationFrame(rafId);
     rafId = null;
+    if (watchdogId) { clearInterval(watchdogId); watchdogId = null; }
+    lastFrameAt = 0;
     noPoseSince = 0;
     updateNoPoseGuide(false);
+    if (badgeEl) { badgeEl.remove(); badgeEl = null; }
     if (ctx && canvasEl) ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
     if (debugEl) { debugEl.remove(); debugEl = null; }
   },
