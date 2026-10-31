@@ -113,7 +113,7 @@ export function AssessmentPrompt({
       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
         {isAssess
           ? "16 题、约 2 分钟。做完后，AI 能结合你的情绪状态给出更贴合的饮食、作息和调理建议。"
-          : "官方标准问卷，60 题、约 5 分钟。AI 会结合体质调整饮食和调养建议的侧重。已经知道自己体质的话，到档案里直接选就行。"}
+          : "官方标准问卷，27 条、约 4 分钟。AI 会结合体质调整饮食和调养建议的侧重。已经知道自己体质的话，到档案里直接选就行。"}
       </p>
       <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
         不做也能正常使用，只是建议会更通用，饮食、穿衣等个性化程度会低一些。
