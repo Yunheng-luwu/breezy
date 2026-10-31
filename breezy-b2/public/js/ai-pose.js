@@ -435,24 +435,35 @@ async function createLandmarkers(onStatus, forceDelegate) {
   }
   const fileset = await tv.FilesetResolver.forVisionTasks(AI_WASM_PATH);
 
-  const tryCreate = (delegate) => Promise.all([
-    tv.PoseLandmarker.createFromOptions(fileset, {
-      baseOptions: { modelAssetPath: POSE_MODEL_URL + '?v=1', delegate },
-      runningMode: 'VIDEO',
-      numPoses: 1,
-      minPoseDetectionConfidence: 0.3,
-      minPosePresenceConfidence: 0.3,
-      minTrackingConfidence: 0.3,
-    }),
-    tv.HandLandmarker.createFromOptions(fileset, {
-      baseOptions: { modelAssetPath: HAND_MODEL_URL + '?v=1', delegate },
-      runningMode: 'VIDEO',
-      numHands: 2,
-      minHandDetectionConfidence: 0.3,
-      minHandPresenceConfidence: 0.3,
-      minTrackingConfidence: 0.3,
-    }),
-  ]);
+  // 串行创建：两个 Landmarker 共用同一份 wasm 模块，并发初始化时 GL 上下文尚未就绪，
+  // 会抛出 _glBindAttribLocation 未定义（bindAttribLocation of undefined）。
+  // 半途失败要把已建好的实例关掉，否则每次失败都会漏一个 WebGL 上下文，
+  // 累积到浏览器上限后连正常创建都会失败。
+  const tryCreate = async (delegate) => {
+    let pose = null;
+    try {
+      pose = await tv.PoseLandmarker.createFromOptions(fileset, {
+        baseOptions: { modelAssetPath: POSE_MODEL_URL + '?v=1', delegate },
+        runningMode: 'VIDEO',
+        numPoses: 1,
+        minPoseDetectionConfidence: 0.3,
+        minPosePresenceConfidence: 0.3,
+        minTrackingConfidence: 0.3,
+      });
+      const hand = await tv.HandLandmarker.createFromOptions(fileset, {
+        baseOptions: { modelAssetPath: HAND_MODEL_URL + '?v=1', delegate },
+        runningMode: 'VIDEO',
+        numHands: 2,
+        minHandDetectionConfidence: 0.3,
+        minHandPresenceConfidence: 0.3,
+        minTrackingConfidence: 0.3,
+      });
+      return [pose, hand];
+    } catch (e) {
+      if (pose) { try { pose.close(); } catch (err) {} }
+      throw e;
+    }
+  };
 
   // 指定 CPU 时只试 CPU；否则 GPU 重试 2 次后回退 CPU
   const delegates = forceDelegate ? [forceDelegate] : ['GPU', 'GPU', 'CPU'];
