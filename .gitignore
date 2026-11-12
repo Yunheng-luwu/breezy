@@ -18,6 +18,10 @@ build/
 # 日志
 *.log
 
+# 部署脚本（含服务器凭据）与部署产物（大文件）
+breezy-b2/deploy.py
+breezy-b2/breezith-b2.tar.gz
+
 # 用户上传文件（运行时数据，不入库）
 public/uploads/
 
