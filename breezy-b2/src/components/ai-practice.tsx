@@ -136,6 +136,8 @@ export function AiPracticeCore({ moves, defaultMove, routine = false }: AiPracti
   const advancingRef = useRef(false);
   // 语音复述：远处跟练时听提示（默认开启）
   const [voiceOn, setVoiceOn] = useState(true);
+  const voiceOnRef = useRef(voiceOn);
+  voiceOnRef.current = voiceOn;
 
   /** fire-and-forget 上报成绩（bestScore>0 且 repCount>0，间隔 ≥3s 节流） */
   const reportScore = useCallback((action: string) => {
@@ -284,7 +286,7 @@ export function AiPracticeCore({ moves, defaultMove, routine = false }: AiPracti
       }
       setPhase("running");
       setStatus("AI 已就绪，请全身入镜");
-      engine.setVoiceEnabled?.(voiceOn);
+      engine.setVoiceEnabled?.(voiceOnRef.current);
       // 自适应诊断：连续检不出人体时把引擎读数（后端/分辨率/帧数）同步到状态栏，
       // 让用户能自行判断是站太近、光线不足，还是推理后端降级了
       if (diagTimer.current) clearInterval(diagTimer.current);
