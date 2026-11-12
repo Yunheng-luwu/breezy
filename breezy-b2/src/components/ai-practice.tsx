@@ -36,6 +36,7 @@ interface AIPoseEngine {
   ) => Promise<void>;
   stop: () => void;
   setAction: (name: string) => void;
+  setVoiceEnabled?: (v: boolean) => void;
   diag?: () => {
     running: boolean;
     delegate: string;
@@ -59,7 +60,7 @@ declare global {
 type Phase = "idle" | "loading" | "running" | "error";
 
 // 带版本串：引擎改动后强制浏览器重新拉取，避免旧缓存导致自适应逻辑不生效
-const AI_SCRIPT_SRC = "/js/ai-pose.js?v=20261031c";
+const AI_SCRIPT_SRC = "/js/ai-pose.js?v=20261101";
 
 // 测量模式：URL 带 ?posebug=1 时才在界面上暴露识别读数，正常演示不显示
 const POSE_DEBUG =
@@ -133,6 +134,8 @@ export function AiPracticeCore({ moves, defaultMove, routine = false }: AiPracti
   const autoAdvanceRef = useRef(autoAdvance);
   autoAdvanceRef.current = autoAdvance;
   const advancingRef = useRef(false);
+  // 语音复述：远处跟练时听提示（默认开启）
+  const [voiceOn, setVoiceOn] = useState(true);
 
   /** fire-and-forget 上报成绩（bestScore>0 且 repCount>0，间隔 ≥3s 节流） */
   const reportScore = useCallback((action: string) => {
@@ -281,6 +284,7 @@ export function AiPracticeCore({ moves, defaultMove, routine = false }: AiPracti
       }
       setPhase("running");
       setStatus("AI 已就绪，请全身入镜");
+      engine.setVoiceEnabled?.(voiceOn);
       // 自适应诊断：连续检不出人体时把引擎读数（后端/分辨率/帧数）同步到状态栏，
       // 让用户能自行判断是站太近、光线不足，还是推理后端降级了
       if (diagTimer.current) clearInterval(diagTimer.current);
@@ -524,6 +528,24 @@ export function AiPracticeCore({ moves, defaultMove, routine = false }: AiPracti
               开启摄像头
             </button>
           )}
+
+          <button
+            type="button"
+            onClick={() => {
+              const next = !voiceOn;
+              setVoiceOn(next);
+              window.AIPose?.setVoiceEnabled?.(next);
+            }}
+            className={cn(
+              "rounded-lg border px-3 py-2 text-sm transition",
+              voiceOn
+                ? "border-jade/50 bg-jade/10 text-jade hover:bg-jade/20"
+                : "border-muted-foreground/30 text-muted-foreground hover:bg-muted",
+            )}
+            title="远处跟练时收听动作提示"
+          >
+            {voiceOn ? "🔊 语音开" : "🔇 语音关"}
+          </button>
 
           {routine && (
             <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground">
