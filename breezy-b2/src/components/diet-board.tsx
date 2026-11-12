@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import { Modal } from "@/components/ui/modal";
 import { FavButton } from "@/components/favorite-button";
+import { RecipeVideoPlayer } from "@/components/recipe-video";
+import { videoOfRecipe } from "@/lib/data/recipe-videos";
 import type { FoodInfo } from "@/lib/data/food-lib";
 import type { TermInfo, TermFood } from "@/lib/data/solar-term";
 import { cn } from "@/lib/utils";
@@ -90,13 +92,20 @@ export function DietItemGrid({
             <p className="mt-2 line-clamp-2 text-xs text-primary/80">
               {item.ingredients?.split(/[、，,]/).slice(0, 3).join("、")}
             </p>
-            <div className="mt-3" onClick={(e) => e.stopPropagation()}>
-              <FavButton
-                type="diet"
-                name={item.name}
-                meta={item.effect ?? ""}
-                active={favSet.has(item.name)}
-              />
+            <div className="mt-3 flex items-center justify-between">
+              {videoOfRecipe(item.name) && (
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                  ▶ 看做法视频
+                </span>
+              )}
+              <div onClick={(e) => e.stopPropagation()}>
+                <FavButton
+                  type="diet"
+                  name={item.name}
+                  meta={item.effect ?? ""}
+                  active={favSet.has(item.name)}
+                />
+              </div>
             </div>
           </div>
         ))}
@@ -105,6 +114,9 @@ export function DietItemGrid({
       <Modal open={!!detail} onClose={() => setDetail(null)} title={detail?.name ?? ""}>
         {detail && (
           <div className="space-y-3 text-sm">
+            {videoOfRecipe(detail.name) && (
+              <RecipeVideoPlayer video={videoOfRecipe(detail.name)!} />
+            )}
             {[
               ["功效", detail.effect],
               ["材料", detail.ingredients],

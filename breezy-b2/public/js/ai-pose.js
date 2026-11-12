@@ -292,6 +292,81 @@ let repCb = null;
 let statusCb = null;
 let guideEl = null;      // 未检出人体时的引导框
 
+// ===== 语音播报：远处跟练时听提示（Web Speech API，中文）=====
+const Speech = {
+  enabled: true,
+  queue: [],
+  speaking: false,
+  curPriority: 'low',
+  lastHintText: '',
+  lastHintAt: 0,
+  HINT_THROTTLE_MS: 6000,   // 同一提示至少间隔 6 秒，避免每帧刷屏
+  init() {
+    if (!('speechSynthesis' in window)) { this.enabled = false; return; }
+    // 部分浏览器语音列表异步加载，监听一次即可
+    try {
+      window.speechSynthesis.getVoices();
+      window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+    } catch (e) { /* noop */ }
+  },
+  setEnabled(v) {
+    this.enabled = !!v;
+    if (!v) this.cancel();
+  },
+  cancel() {
+    this.queue.length = 0;
+    this.speaking = false;
+    this.curPriority = 'low';
+    try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) { /* noop */ }
+  },
+  pickVoice() {
+    try {
+      const voices = window.speechSynthesis.getVoices() || [];
+      return voices.find((v) => v.lang && /^zh/i.test(v.lang)) || null;
+    } catch (e) { return null; }
+  },
+  next() {
+    if (!this.queue.length) { this.speaking = false; return; }
+    const item = this.queue.shift();
+    this.speaking = true;
+    this.curPriority = item.priority;
+    const u = new SpeechSynthesisUtterance(item.text);
+    u.lang = 'zh-CN';
+    const v = this.pickVoice();
+    if (v) u.voice = v;
+    u.rate = 1.05;
+    u.pitch = 1;
+    u.onend = () => { if (this.queue.length) this.next(); else this.speaking = false; };
+    u.onerror = () => { if (this.queue.length) this.next(); else this.speaking = false; };
+    try { window.speechSynthesis.speak(u); } catch (e) { this.speaking = false; }
+  },
+  speak(text, priority) {
+    if (!this.enabled || !text) return;
+    priority = priority === 'high' ? 'high' : 'low';
+    // 高优先级：清掉队列里排队的低优先级提示，并打断正在播的低优先级
+    if (priority === 'high') {
+      this.queue = this.queue.filter((q) => q.priority === 'high');
+      if (this.speaking && this.curPriority === 'low') {
+        try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) { /* noop */ }
+        this.speaking = false;
+      }
+    }
+    this.queue.push({ text, priority });
+    if (!this.speaking) this.next();
+  },
+  // 低优先级实时提示：内容变了且距上次足够久才播，避免噪音
+  hint(text) {
+    if (!text) return;
+    const now = performance.now();
+    if (text === this.lastHintText) return;
+    if (now - this.lastHintAt < this.HINT_THROTTLE_MS) return;
+    this.lastHintText = text;
+    this.lastHintAt = now;
+    this.speak(text, 'low');
+  },
+};
+Speech.init();
+
 // 托天动作状态机
 const tuotian = {
   phase: 'prep',      // 'prep'=预备式门禁中，'go'=可以开始计次
@@ -1413,8 +1488,30 @@ window.AIPose = {
     canvasEl = canvas;
     ctx = canvas.getContext('2d');
     scoreCb = opts && opts.onScore;
-    repCb = opts && opts.onRep;
-    statusCb = opts && opts.onStatus;
+    const _repCb = opts && opts.onRep;
+    const _statusCb = opts && opts.onStatus;
+    // 语音：计次与换式为高优先级，状态提示走低频提示通道
+    repCb = (n, target, problems) => {
+      _repCb && _repCb(n, target, problems);
+      if (n > 0 && currentAction !== '预备式' && currentAction !== '收式') {
+        Speech.speak(n + '次', 'high');
+      }
+    };
+    statusCb = (text) => {
+      _statusCb && _statusCb(text);
+      if (!text) return;
+      // 高优先级：就绪、失败、换式冷却引导
+      if (
+        text.indexOf('AI 已就绪') >= 0 ||
+        text.indexOf('加载失败') >= 0 ||
+        text.indexOf('CPU') >= 0 ||
+        text.indexOf('请回到起始位置') >= 0
+      ) {
+        Speech.speak(text, 'high');
+      } else {
+        Speech.hint(text);
+      }
+    };
     currentAction = (opts && opts.action) || '两手托天理三焦';
     armedAt = performance.now() + (opts && opts.armDelay != null ? opts.armDelay : ACTION_ARM_DELAY_MS);
     tuotian.phase = 'prep'; tuotian.prepOkStart = 0;
@@ -1458,6 +1555,7 @@ window.AIPose = {
   },
   stop() {
     running = false;
+    Speech.cancel();
     if (rafId) cancelAnimationFrame(rafId);
     rafId = null;
     if (watchdogId) { clearInterval(watchdogId); watchdogId = null; }
@@ -1493,7 +1591,13 @@ window.AIPose = {
     staticSamples.length = 0; staticLastSampleAt = 0;
     genericT0 = 0;
     bjClear();
+    Speech.lastHintText = '';   // 换式后重置提示去重，新动作的提示能立即播
     if (scoreCb) scoreCb(100);
     if (repCb) repCb(0, ACTION_TARGET_REPS[name] || 6, []);
+    Speech.speak('接下来：' + name + '，请回到起始位置', 'high');
+  },
+  // 语音开关（页面 UI 控制）
+  setVoiceEnabled(v) {
+    Speech.setEnabled(v);
   },
 };

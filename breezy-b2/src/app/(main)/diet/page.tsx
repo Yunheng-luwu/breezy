@@ -2,6 +2,7 @@ import { headers, cookies } from "next/headers";
 import { DietBoard, DietItemGrid } from "@/components/diet-board";
 import { AtlasLauncher } from "@/components/herb-atlas";
 import { PageHero } from "@/components/page-hero";
+import { RecipeVideoSection } from "@/components/recipe-video-section";
 import { dietData as contentDiet } from "@/lib/content-data";
 import { dietData } from "@/lib/data/diet";
 import { foodLib } from "@/lib/data/food-lib";
@@ -101,6 +102,9 @@ export default async function DietPage() {
         <p className="mt-1 text-xs text-muted-foreground">依据：{focus.basis.join(" · ")}</p>
         <p className="mt-1 text-sm text-muted-foreground">{tempTip || SEASON_DIET[season]}</p>
       </div>
+
+      {/* 养生食谱视频专区 */}
+      <RecipeVideoSection />
 
       <DietBoard
         principles={recommend.principles}
