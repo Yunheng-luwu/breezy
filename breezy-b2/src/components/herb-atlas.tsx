@@ -32,14 +32,17 @@ export interface AtlasFood {
 const TABS = [
   { key: "herb", label: "中药" },
   { key: "soup", label: "药膳" },
+  { key: "tea", label: "茶饮" },
   { key: "dish", label: "食材" },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
 
+// 茶饮：foodLib 前 8 项为花草茶/谷物茶，属于冲泡饮品，不归入食材
+const TEA_RANGE = { from: 0, to: 8 };
+
 // 食材分组：顺序与 foodLib 键顺序严格一致（图片按索引对应）
 const FOOD_GROUPS = [
-  { title: "🍵 茶饮", from: 0, to: 8 },
   { title: "🍚 主食粥饭", from: 8, to: 16 },
   { title: "🥬 蔬菜", from: 16, to: 23 },
   { title: "🍎 水果", from: 23, to: 31 },
@@ -110,6 +113,10 @@ function AtlasPanel({
   const [tab, setTab] = useState<TabKey>("herb");
   const [detail, setDetail] = useState<Detail | null>(null);
   const foodNames = useMemo(() => Object.keys(foodLib), [foodLib]);
+  const teaNames = useMemo(
+    () => foodNames.slice(TEA_RANGE.from, TEA_RANGE.to),
+    [foodNames],
+  );
 
   const cards = (items: React.ReactNode[]) => (
     <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
@@ -143,6 +150,24 @@ function AtlasPanel({
       </div>
     </button>
   );
+
+  /** 食材/茶饮共用的卡片渲染（图片下标与 foodLib 全局顺序一致） */
+  const foodCards = (names: string[]) =>
+    cards(
+      names.map((name) => {
+        const f = foodLib[name];
+        const j = foodNames.indexOf(name);
+        return card(name, foodImg(j), f.emoji, name, f.tag, () =>
+          setDetail({
+            kind: "food",
+            data: f,
+            name,
+            img: foodImg(j),
+            tag: f.tag,
+          }),
+        );
+      }),
+    );
 
   return (
     <div className="space-y-4">
@@ -212,6 +237,20 @@ function AtlasPanel({
           )
         ))}
 
+      {tab === "tea" &&
+        (teaNames.length ? (
+          <div className="space-y-1">
+            <p className="mb-2 mt-1 text-xs text-muted-foreground">
+              花草茶与谷物茶，日常代茶饮，适量为宜
+            </p>
+            {foodCards(teaNames)}
+          </div>
+        ) : (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            茶饮数据暂时不可用，请稍后再试。
+          </p>
+        ))}
+
       {tab === "dish" && (
         <div className="space-y-1">
           {FOOD_GROUPS.map((g) => {
@@ -225,21 +264,7 @@ function AtlasPanel({
                     {names.length} 项
                   </span>
                 </p>
-                {cards(
-                  names.map((name) => {
-                    const f = foodLib[name];
-                    const j = foodNames.indexOf(name);
-                    return card(name, foodImg(j), f.emoji, name, f.tag, () =>
-                      setDetail({
-                        kind: "food",
-                        data: f,
-                        name,
-                        img: foodImg(j),
-                        tag: f.tag,
-                      }),
-                    );
-                  }),
-                )}
+                {foodCards(names)}
               </div>
             );
           })}

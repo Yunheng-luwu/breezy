@@ -2,6 +2,7 @@ import { AcupointGrid } from "@/components/acupoint-grid";
 import { CareTabs } from "@/components/care-tabs";
 import { FootbathSection, type Footbath } from "@/components/footbath-section";
 import { PageHero } from "@/components/page-hero";
+import { bannerSets } from "@/lib/data/banners";
 import { acupoints } from "@/lib/data/acupoints";
 import { dietData } from "@/lib/data/diet";
 import { currentUserId, getFavorites } from "@/lib/queries";
@@ -10,7 +11,11 @@ export const dynamic = "force-dynamic";
 
 const footbaths = (dietData.footbaths ?? []) as Footbath[];
 
-export default async function CarePage() {
+export default async function CarePage({
+  searchParams,
+}: {
+  searchParams?: { acupoint?: string };
+}) {
   const userId = await currentUserId();
   const favorites = await getFavorites(userId);
   const acuFavs = favorites
@@ -23,14 +28,20 @@ export default async function CarePage() {
   return (
     <div className="space-y-10">
       <PageHero
-        img="/img/banners/care.jpg"
+        imgs={bannerSets.care}
         title="居家保健"
         subtitle="穴位疏通 · 泡脚助眠 · 草本调理"
       />
 
       {/* 穴位疏通 / 泡脚助眠（页签切换，对齐冻结版布局） */}
       <CareTabs
-        acupoint={<AcupointGrid acupoints={acupoints} favorites={acuFavs} />}
+        acupoint={
+          <AcupointGrid
+            acupoints={acupoints}
+            favorites={acuFavs}
+            initialAcupoint={searchParams?.acupoint}
+          />
+        }
         footbath={<FootbathSection footbaths={footbaths} favorites={bathFavs} />}
       />
     </div>

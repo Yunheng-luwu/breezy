@@ -2,6 +2,8 @@ import { headers, cookies } from "next/headers";
 import { DietBoard, DietItemGrid } from "@/components/diet-board";
 import { AtlasLauncher } from "@/components/herb-atlas";
 import { PageHero } from "@/components/page-hero";
+import { bannerSets } from "@/lib/data/banners";
+import { RecipeVideoSection } from "@/components/recipe-video-section";
 import { dietData as contentDiet } from "@/lib/content-data";
 import { dietData } from "@/lib/data/diet";
 import { foodLib } from "@/lib/data/food-lib";
@@ -78,7 +80,7 @@ export default async function DietPage() {
   return (
     <div className="space-y-8">
       <PageHero
-        img="/img/banners/diet.jpg"
+        imgs={bannerSets.diet}
         title="饮食推荐"
         subtitle="药食同源 · 顺时而食 · 疏肝养胃"
       />
@@ -101,6 +103,9 @@ export default async function DietPage() {
         <p className="mt-1 text-xs text-muted-foreground">依据：{focus.basis.join(" · ")}</p>
         <p className="mt-1 text-sm text-muted-foreground">{tempTip || SEASON_DIET[season]}</p>
       </div>
+
+      {/* 养生食谱视频专区 */}
+      <RecipeVideoSection />
 
       <DietBoard
         principles={recommend.principles}

@@ -1,12 +1,25 @@
 /**
  * 时令/天气联动文案（全站共用同一套规则）
- * 气温按 7 档划分，季节按月份划分，天气按实况关键词判断，
+ * 气温按 7 档划分，季节按节气划分（四立为季首），天气按实况关键词判断，
  * 各板块（首页调养 / 穿衣 / 饮食 / 情绪）都从这里取提示，避免各写各的。
  */
+import { getSolarTerm } from "@/lib/data/solar-term";
 
 export type Season = "春" | "夏" | "秋" | "冬";
 
+/** 24 节气 → 四季：立春/立夏/立秋/立冬 分别是四季起点 */
+const TERM_SEASON: Record<string, Season> = {
+  立春: "春", 雨水: "春", 惊蛰: "春", 春分: "春", 清明: "春", 谷雨: "春",
+  立夏: "夏", 小满: "夏", 芒种: "夏", 夏至: "夏", 小暑: "夏", 大暑: "夏",
+  立秋: "秋", 处暑: "秋", 白露: "秋", 秋分: "秋", 寒露: "秋", 霜降: "秋",
+  立冬: "冬", 小雪: "冬", 大雪: "冬", 冬至: "冬", 小寒: "冬", 大寒: "冬",
+};
+
 export function seasonOf(now = new Date()): Season {
+  // 以节气为准：立冬后即入冬，不再按自然月粗分
+  const byTerm = TERM_SEASON[getSolarTerm(now)];
+  if (byTerm) return byTerm;
+
   const m = now.getMonth() + 1;
   if (m >= 3 && m <= 5) return "春";
   if (m >= 6 && m <= 8) return "夏";

@@ -77,7 +77,6 @@ export const practiceStretchData = [
   { name: "侧腰拉伸", duration: "2分钟", desc: "左右各15次，疏通两侧胆经" },
   { name: "扩胸展肩", duration: "2分钟", desc: "双手背后交握上提，宽胸理气" },
   { name: "旋腰转脊", duration: "3分钟", desc: "缓慢左右转腰各10圈，放松腰背" },
-  { name: "深呼吸478", duration: "1.5分钟", desc: "吸4秒屏7秒呼8秒，4轮安神" },
 ];
 
 export const practiceOfficeData = [

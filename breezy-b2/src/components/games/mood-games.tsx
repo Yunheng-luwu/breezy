@@ -73,22 +73,7 @@ export default function MoodGames() {
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">玩一分钟，给情绪找个出口。没有计时，没有输赢。</p>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {GAMES.map((g) => (
-          <button
-            key={g.key}
-            type="button"
-            onClick={() => setOpen(g.key)}
-            className="rounded-lg border bg-card/80 p-4 text-center transition-colors hover:border-primary"
-          >
-            <span className="text-3xl">{g.emoji}</span>
-            <p className="mt-2 text-sm font-medium text-ink">{g.name}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{g.desc}</p>
-          </button>
-        ))}
-      </div>
-
-      <div className="mt-2 rounded-xl border border-jade/25 bg-jade/5 p-4 sm:p-5">
+      <div className="rounded-xl border border-jade/25 bg-jade/5 p-4 sm:p-5">
         <div className="mb-3 flex items-end justify-between gap-3">
           <div>
             <p className="font-brush text-lg font-bold text-ink">AI 陪玩</p>
@@ -120,6 +105,21 @@ export default function MoodGames() {
             </Link>
           ))}
         </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {GAMES.map((g) => (
+          <button
+            key={g.key}
+            type="button"
+            onClick={() => setOpen(g.key)}
+            className="rounded-lg border bg-card/80 p-4 text-center transition-colors hover:border-primary"
+          >
+            <span className="text-3xl">{g.emoji}</span>
+            <p className="mt-2 text-sm font-medium text-ink">{g.name}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{g.desc}</p>
+          </button>
+        ))}
       </div>
 
       {current && (

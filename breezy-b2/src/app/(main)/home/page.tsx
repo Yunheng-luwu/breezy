@@ -3,6 +3,7 @@ import { headers, cookies } from "next/headers";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { HerbAtlas } from "@/components/herb-atlas";
 import { PageHero } from "@/components/page-hero";
+import { bannerSets } from "@/lib/data/banners";
 import { HomeTodoPanel } from "@/components/home-todo-panel";
 import {
   currentUserId,
@@ -113,7 +114,7 @@ export default async function HomePage() {
   return (
     <div className="space-y-8">
       <PageHero
-        img="/img/banners/home.jpg"
+        imgs={bannerSets.home}
         title="顺气舒心 · 慢养日常"
         subtitle="基于中医疏肝解郁理论 · 茶饮 · 穴位 · 功法 · 作息，四位一体轻养生"
         seal="松序"
@@ -205,10 +206,10 @@ export default async function HomePage() {
           </div>
           <Card className="relative border-primary/20 bg-card/80">
             <Link
-              href="/care"
+              href={`/care?acupoint=${encodeURIComponent(dailyPoint.name)}`}
               className="absolute right-4 top-4 text-sm text-primary hover:underline"
             >
-              查看全部 →
+              查看详情 →
             </Link>
             <CardHeader className="pb-2">
               <div className="flex items-center gap-3">

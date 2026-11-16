@@ -23,7 +23,7 @@ export const runtime = "nodejs";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Payload = Record<string, any>;
 
-const TODO_TYPES = new Set(["med", "ai", "sleep", "diet"]);
+const TODO_TYPES = new Set(["med", "ai", "sleep", "diet", "other"]);
 const SEVERITIES = new Set(["轻度", "中度", "重度"]);
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;

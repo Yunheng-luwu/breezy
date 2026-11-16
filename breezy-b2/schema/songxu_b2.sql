@@ -102,7 +102,7 @@ CREATE TABLE IF NOT EXISTS todos (
   user_id     BIGINT UNSIGNED NOT NULL,
   content     VARCHAR(255) NOT NULL,
   todo_time   VARCHAR(10) NOT NULL DEFAULT '' COMMENT '提醒时刻 HH:mm',
-  type        VARCHAR(10) NOT NULL DEFAULT 'ai' COMMENT 'med/ai/sleep/diet',
+  type        VARCHAR(10) NOT NULL DEFAULT 'ai' COMMENT 'med/ai/sleep/diet/other',
   is_done     TINYINT(1) NOT NULL DEFAULT 0,
   todo_date   DATE NOT NULL,
   created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
