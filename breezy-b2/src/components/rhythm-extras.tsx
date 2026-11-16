@@ -77,41 +77,42 @@ export function RhythmTimeline({ goals }: { goals: RhythmGoal[] }) {
 
   return (
     <>
-      <div className="grid grid-cols-4 gap-2 rounded-xl border bg-card p-5">
-        {goals.map((g) => (
-          <div key={g.key} className="text-center">
-            <div className="text-2xl">{g.emoji}</div>
-            <p className="mt-1 font-brush text-xl text-ink">{g.time || "--:--"}</p>
-            <p className="text-xs text-muted-foreground">{g.label}</p>
-            <div className="mt-2 flex justify-center gap-2 text-xs">
-              <button
-                type="button"
-                disabled={pending || g.done}
-                onClick={() => start(() => punchRhythmAction(g.punchField, g.time))}
-                className={cn(
-                  "rounded-full border px-2.5 py-0.5",
-                  g.done
-                    ? "border-jade/40 bg-jade/10 text-jade"
-                    : "border-primary/40 text-primary hover:bg-primary/5",
-                )}
-              >
-                {g.done ? "已打卡" : "打卡"}
-              </button>
-              <button
-                type="button"
-                onClick={() => openEdit(g)}
-                className="rounded-full border border-border px-2.5 py-0.5 text-muted-foreground hover:border-primary/50"
-              >
-                调整
-              </button>
+      <div className="rounded-xl border bg-card p-5">
+        <div className="grid grid-cols-3 gap-2">
+          {goals.map((g) => (
+            <div key={g.key} className="text-center">
+              <div className="text-2xl">{g.emoji}</div>
+              <p className="mt-1 font-brush text-xl text-ink">{g.time || "--:--"}</p>
+              <p className="text-xs text-muted-foreground">{g.label}</p>
+              <div className="mt-2 flex justify-center gap-2 text-xs">
+                <button
+                  type="button"
+                  disabled={pending || g.done}
+                  onClick={() => start(() => punchRhythmAction(g.punchField, g.time))}
+                  className={cn(
+                    "rounded-full border px-2.5 py-0.5",
+                    g.done
+                      ? "border-jade/40 bg-jade/10 text-jade"
+                      : "border-primary/40 text-primary hover:bg-primary/5",
+                  )}
+                >
+                  {g.done ? "已打卡" : "打卡"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openEdit(g)}
+                  className="rounded-full border border-border px-2.5 py-0.5 text-muted-foreground hover:border-primary/50"
+                >
+                  调整
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
-        <div className="text-center opacity-60">
-          <div className="text-2xl">🌿</div>
-          <p className="mt-1 font-brush text-xl text-ink">01:00</p>
-          <p className="text-xs text-muted-foreground">肝经当令</p>
+          ))}
         </div>
+        <p className="mt-4 text-center text-xs text-muted-foreground">
+          🌿 01:00–03:00 为肝经当令，此时熟睡最养肝，建议{" "}
+          {goals.find((g) => g.key === "bedTime")?.time || "23:00"} 前入睡
+        </p>
       </div>
 
       <Modal open={!!edit} onClose={() => setEdit(null)} title={edit ? `调整${edit.label}时间` : ""}>
@@ -262,7 +263,7 @@ function planHref(title: string): string | undefined {
   if (/穴位|太冲/.test(title)) return "/care";
   if (/泡脚/.test(title)) return "/care";
   if (/八段锦|拉伸|运动|活动|散步/.test(title)) return "/practice?tab=stretch";
-  if (/呼吸/.test(title)) return "/practice?tab=stretch&move=%E6%B7%B1%E5%91%BC%E5%90%B8478";
+  if (/呼吸/.test(title)) return "/mood#breathing-478";
   if (/粥|早餐|午餐|咖啡|茶|饮食/.test(title)) return "/diet";
   return undefined;
 }
@@ -535,7 +536,7 @@ const FOLLOW_HREF: Record<string, string> = {
   侧腰拉伸: `/practice?tab=stretch&move=${encodeURIComponent("侧腰拉伸")}`,
   扩胸运动: `/practice?tab=stretch&move=${encodeURIComponent("扩胸展肩")}`,
   梳头功: `/practice?tab=office&move=${encodeURIComponent("梳头功")}`,
-  深呼吸478: `/practice?tab=stretch&move=${encodeURIComponent("深呼吸478")}`,
+  深呼吸478: "/mood#breathing-478",
 };
 
 interface ExerciseItem {

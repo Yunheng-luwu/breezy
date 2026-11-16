@@ -4,6 +4,7 @@ import { Breathing478, MoodPicker } from "@/components/mood-picker";
 import MoodFirstAid from "@/components/first-aid/first-aid";
 import MoodGames from "@/components/games/mood-games";
 import { PageHero } from "@/components/page-hero";
+import { bannerSets } from "@/lib/data/banners";
 import { getSolarTerm } from "@/lib/data/solar-term";
 import { SEASON_MOOD, seasonOf, weatherMoodTip } from "@/lib/season";
 import { CITY_COOKIE, getClothingSmart } from "@/lib/weather";
@@ -40,7 +41,7 @@ export default async function MoodPage() {
   return (
     <div className="space-y-8">
       <PageHero
-        img="/img/banners/mood.jpg"
+        imgs={bannerSets.mood}
         title="情绪解压"
         subtitle="不求开心，先降一档 · 给情绪找个出口"
       />
@@ -122,7 +123,7 @@ export default async function MoodPage() {
       </section>
 
       {/* 478 呼吸 */}
-      <section>
+      <section id="breathing-478" className="scroll-mt-24">
         <h2 className="mb-4 font-brush text-2xl font-bold text-ink">478 呼吸</h2>
         <Card className="border-jade/20 bg-card/80">
           <CardContent className="pt-6">

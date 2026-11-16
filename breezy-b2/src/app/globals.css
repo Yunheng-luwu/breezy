@@ -142,3 +142,33 @@ html {
 .animate-calm-breathe {
   animation: calm-breathe 7s ease-in-out infinite;
 }
+
+/* 登录页背景：缓慢推拉 + 雾气漂移（尊重系统「减少动态效果」） */
+@keyframes login-pan {
+  0% { transform: scale(1.06) translate3d(0, 0, 0); }
+  50% { transform: scale(1.12) translate3d(-1.2%, -0.8%, 0); }
+  100% { transform: scale(1.06) translate3d(1.2%, 0.8%, 0); }
+}
+
+@keyframes login-mist {
+  0% { transform: translate3d(-8%, 0, 0); opacity: 0.22; }
+  50% { transform: translate3d(8%, -3%, 0); opacity: 0.42; }
+  100% { transform: translate3d(-8%, 0, 0); opacity: 0.22; }
+}
+
+.login-bg-pan {
+  animation: login-pan 24s ease-in-out infinite;
+  will-change: transform;
+}
+
+.login-bg-mist {
+  animation: login-mist 18s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-bg-pan,
+  .login-bg-mist {
+    animation: none;
+  }
+}
