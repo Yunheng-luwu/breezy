@@ -119,7 +119,6 @@ export default async function ProfilePage() {
         level={user?.level ?? null}
         todos={dashboard.todos}
         favList={dashboard.favList}
-        chatSessions={dashboard.chatSessions}
         moods={dashboard.moods}
       />
 

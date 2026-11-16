@@ -5,6 +5,7 @@ import { HerbAtlas } from "@/components/herb-atlas";
 import { PageHero } from "@/components/page-hero";
 import { bannerSets } from "@/lib/data/banners";
 import { HomeTodoPanel } from "@/components/home-todo-panel";
+import { StatsPanel } from "@/components/stats-panel";
 import {
   currentUserId,
   getDashboard,
@@ -42,7 +43,7 @@ export default async function HomePage() {
     isLoggedIn(),
   ]);
 
-  const { user, todos, sleep, moods, chatCount } = dashboard;
+  const { user, todos, sleep, moods, favList } = dashboard;
   const now = new Date();
   const dateText = `${now.getFullYear()} 年 ${now.getMonth() + 1} 月 ${now.getDate()} 日 · 周${WEEKDAYS[now.getDay()]}`;
 
@@ -55,8 +56,6 @@ export default async function HomePage() {
   const principle = principles[now.getDate() % principles.length];
   const acupoint = listAcupoints("stress")[0];
   const soups = dietLib.soups ?? [];
-
-  const doneCount = todos.filter((t) => t.done).length;
 
   // 每日一穴：按当天在一年中的序号轮换
   const dayOfYear = Math.floor(
@@ -102,13 +101,6 @@ export default async function HomePage() {
       source: weatherSleep ? "天气联动" : "生活节律",
       content: weatherSleep ? `${sleepAdvice}${weatherSleep}` : sleepAdvice,
     },
-  ];
-
-  const stats = [
-    { label: "情绪自评", value: user?.score ?? "--", hint: user?.level ?? "待自评", emoji: "🌿" },
-    { label: "今日待办", value: `${doneCount}/${todos.length}`, hint: "已完成", emoji: "✅" },
-    { label: "情绪打卡", value: moods.length, hint: "最近记录", emoji: "💭" },
-    { label: "AI 对话", value: chatCount, hint: "累计消息", emoji: "💬" },
   ];
 
   return (
@@ -277,29 +269,15 @@ export default async function HomePage() {
         </section>
       </div>
 
-      {/* 我的状态 */}
-      <section>
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-brush text-2xl font-bold text-ink">我的状态</h2>
-          <Link href="/profile" className="text-sm text-primary hover:underline">
-            查看档案 →
-          </Link>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {stats.map((s) => (
-            <Card key={s.label}>
-              <CardContent className="pt-6 text-center">
-                <span className="text-2xl">{s.emoji}</span>
-                <p className="mt-2 text-3xl font-bold text-ink">{s.value}</p>
-                <p className="text-xs text-muted-foreground">{s.label}</p>
-                <span className="mt-1 inline-block rounded-full bg-accent px-2 py-0.5 text-xs text-accent-foreground">
-                  {s.hint}
-                </span>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </section>
+      {/* 我的状态（只读，管理在个人中心） */}
+      <StatsPanel
+        mode="preview"
+        score={user?.score ?? null}
+        level={user?.level ?? null}
+        todos={todos}
+        favList={favList}
+        moods={moods}
+      />
     </div>
   );
 }

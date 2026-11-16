@@ -350,21 +350,8 @@ export async function getDashboard(userId: number) {
     getSleepCheckin(userId),
     getRecentMood(userId, 10),
   ]);
-  const chatCount = await queryOne<{ n: number }>(
-    "SELECT COUNT(*) AS n FROM chat_messages WHERE session_id IN (SELECT id FROM chat_sessions WHERE user_id = ?)",
-    [userId],
-  );
   const favList = await getFavorites(userId);
   const favCount = favList.length;
-  const chatSessions = await query<{
-    id: number;
-    title: string;
-    time: string;
-  }>(
-    `SELECT s.id, s.title, DATE_FORMAT(s.updated_at, '%m-%d %H:%i') AS time
-       FROM chat_sessions s WHERE s.user_id = ? ORDER BY s.updated_at DESC LIMIT 10`,
-    [userId],
-  );
   return {
     user,
     todos,
@@ -372,9 +359,7 @@ export async function getDashboard(userId: number) {
     medicines,
     sleep,
     moods,
-    chatCount: chatCount?.n ?? 0,
     favCount,
     favList,
-    chatSessions,
   };
 }
