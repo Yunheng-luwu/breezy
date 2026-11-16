@@ -69,10 +69,10 @@ export default async function RecordPage() {
   const moodToday = moods.some((m) => m.time.startsWith(todayStamp()));
 
   const stats = [
-    { label: "症状记录", icon: "🩺", value: `${symptoms.length} 条` },
-    { label: "用药提醒", icon: "💊", value: `${medicines.length} 种` },
-    { label: "今日作息", icon: "🌙", value: sleep ? "已打卡" : "未打卡" },
-    { label: "今日情绪", icon: "💭", value: moodToday ? "已打卡" : "未打卡" },
+    { label: "症状记录", icon: "🩺", value: `${symptoms.length} 条`, target: "symptom" as const },
+    { label: "用药提醒", icon: "💊", value: `${medicines.length} 种`, target: "medicine" as const },
+    { label: "今日作息", icon: "🌙", value: sleep ? "已打卡" : "未打卡", target: "sleep" as const },
+    { label: "今日情绪", icon: "💭", value: moodToday ? "已打卡" : "未打卡", target: "mood" as const },
   ];
 
   const symptomTab = (
@@ -232,19 +232,8 @@ export default async function RecordPage() {
         subtitle="症状追踪 · 用药提醒 · 慢病调理"
       />
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {stats.map((s) => (
-          <Card key={s.label}>
-            <CardContent className="pt-6 text-center">
-              <span className="text-3xl">{s.icon}</span>
-              <p className="mt-2 text-sm font-medium">{s.label}</p>
-              <p className="text-xs text-muted-foreground">{s.value}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
       <RecordTabs
+        stats={stats}
         symptom={symptomTab}
         medicine={medicineTab}
         chronic={<ChronicPanel weeks={weeks} />}
@@ -297,7 +286,7 @@ export default async function RecordPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card id="record-mood" className="scroll-mt-24">
             <CardContent className="pt-6">
               <p className="mb-3 text-sm font-medium">情绪打卡 · 最近记录</p>
               <MoodPicker />

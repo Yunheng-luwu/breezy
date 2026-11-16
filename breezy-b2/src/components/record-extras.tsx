@@ -15,23 +15,58 @@ import { cn } from "@/lib/utils";
 
 /* ============ 页签：症状记录 / 用药提醒 / 慢病调理 ============ */
 
+type OverviewTarget = "symptom" | "medicine" | "sleep" | "mood";
+
 export function RecordTabs({
+  stats,
   symptom,
   medicine,
   chronic,
 }: {
+  stats: { label: string; icon: string; value: string; target: OverviewTarget }[];
   symptom: ReactNode;
   medicine: ReactNode;
   chronic: ReactNode;
 }) {
+  const router = useRouter();
   const [tab, setTab] = useState<"symptom" | "medicine" | "chronic">("symptom");
   const tabs = [
     ["symptom", "症状记录"],
     ["medicine", "用药提醒"],
     ["chronic", "慢病调理"],
   ] as const;
+
+  /** 概览卡点击：页签内切换，或跳到对应区块/打卡页 */
+  function go(target: OverviewTarget) {
+    if (target === "sleep") {
+      router.push("/rhythm");
+      return;
+    }
+    if (target === "mood") {
+      document
+        .getElementById("record-mood")
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    setTab(target);
+  }
+
   return (
     <div className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {stats.map((s) => (
+          <button
+            key={s.label}
+            type="button"
+            onClick={() => go(s.target)}
+            className="rounded-xl border bg-card px-4 py-6 text-center transition-all hover:border-primary hover:shadow-sm"
+          >
+            <span className="text-3xl">{s.icon}</span>
+            <p className="mt-2 text-sm font-medium">{s.label}</p>
+            <p className="text-xs text-muted-foreground">{s.value}</p>
+          </button>
+        ))}
+      </div>
       <div className="flex gap-2">
         {tabs.map(([key, label]) => (
           <button

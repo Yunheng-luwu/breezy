@@ -1,11 +1,11 @@
 "use client";
 
 /**
- * 个人中心顶部"我的状态"四张卡：点击展开详情面板，并支持直接管理
- * 情绪自评 → 近 10 次情绪打卡，可删除单条
- * 今日打卡 → 今日待办，可勾选/取消、可删除
+ * "我的状态"四张卡：今日调养页（preview）只读展示，个人中心（manage）可展开管理
+ * 情绪自评 → 分数与等级
+ * 今日待办 → 今日待办，可勾选/取消、可删除
+ * 情绪打卡 → 近 10 次情绪打卡，可删除单条
  * 收藏数  → 收藏列表，可取消收藏
- * AI 对话数 → 最近会话，可打开、可删除
  */
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -17,7 +17,8 @@ interface StatItem {
   label: string;
   icon: string;
   value: string;
-  key: "mood" | "todo" | "fav" | "chat";
+  hint: string;
+  key: "score" | "todo" | "mood" | "fav";
 }
 
 interface TodoRow {
@@ -30,11 +31,6 @@ interface FavRow {
   favType: string;
   targetName: string;
 }
-interface ChatRow {
-  id: number;
-  title: string;
-  time: string;
-}
 interface MoodRow {
   id: number;
   mood: string;
@@ -46,15 +42,16 @@ export function StatsPanel({
   level,
   todos,
   favList,
-  chatSessions,
   moods,
+  mode = "manage",
 }: {
   score: number | null;
   level: string | null;
   todos: TodoRow[];
   favList: FavRow[];
-  chatSessions: ChatRow[];
   moods: MoodRow[];
+  /** preview：只读展示，卡片点击跳个人中心；manage：可展开管理 */
+  mode?: "preview" | "manage";
 }) {
   const router = useRouter();
   const [open, setOpen] = useState<StatItem["key"] | null>(null);
@@ -64,18 +61,26 @@ export function StatsPanel({
   const stats: StatItem[] = [
     {
       label: "情绪自评",
-      icon: "🌡️",
+      icon: "🌿",
       value: score != null ? String(score) : "--",
-      key: "mood",
+      hint: level ?? "待自评",
+      key: "score",
     },
     {
-      label: "今日打卡",
+      label: "今日待办",
       icon: "✅",
       value: `${doneTodos}/${todos.length}`,
+      hint: todos.length === 0 ? "去安排" : doneTodos === todos.length ? "已完成" : "进行中",
       key: "todo",
     },
-    { label: "收藏数", icon: "⭐", value: String(favList.length), key: "fav" },
-    { label: "AI 对话数", icon: "💬", value: String(chatSessions.length), key: "chat" },
+    {
+      label: "情绪打卡",
+      icon: "💭",
+      value: String(moods.length),
+      hint: "近 10 次",
+      key: "mood",
+    },
+    { label: "收藏数", icon: "⭐", value: String(favList.length), hint: "我的收藏", key: "fav" },
   ];
 
   /** 统一写库：成功后让服务端组件重新取数，列表自动刷新 */
@@ -106,37 +111,14 @@ export function StatsPanel({
     }
   }
 
-  async function deleteSession(id: number) {
-    if (busy) return;
-    if (!window.confirm("删除该会话及全部对话记录？")) return;
-    setBusy(true);
-    try {
-      const res = await fetch("/api/chat-sessions", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
-      });
-      const data = (await res.json()) as { ok?: boolean; message?: string };
-      if (!data.ok) {
-        window.alert(data.message ?? "删除失败");
-        return;
-      }
-      router.refresh();
-    } catch {
-      window.alert("网络异常，请稍后再试");
-    } finally {
-      setBusy(false);
-    }
-  }
-
   const body = open && (
     <div className="mt-4 rounded-xl border bg-card p-4 text-sm">
       <div className="mb-3 flex items-center justify-between">
         <h4 className="font-semibold text-ink">
-          {open === "mood" && `情绪自评：${score != null ? score + " 分" : "未测评"}${level ? " · " + level : ""}`}
+          {open === "score" && `情绪自评：${score != null ? score + " 分" : "未测评"}${level ? " · " + level : ""}`}
           {open === "todo" && `今日待办 · 已完成 ${doneTodos}/${todos.length}`}
+          {open === "mood" && `情绪打卡 · 最近 ${moods.length} 次`}
           {open === "fav" && `我的收藏 · 共 ${favList.length} 条`}
-          {open === "chat" && `AI 对话 · 最近 ${chatSessions.length} 个会话`}
         </h4>
         <button
           type="button"
@@ -147,6 +129,21 @@ export function StatsPanel({
           <X className="h-4 w-4" />
         </button>
       </div>
+
+      {open === "score" && (
+        <div className="space-y-2">
+          <p className="text-sm text-ink">
+            {score != null ? `当前 ${score} 分` : "还没有做过情绪自评"}
+            {level ? ` · ${level}` : ""}
+          </p>
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            PHQ-9 / GAD-7 自评量表结果，仅供调养参考，不构成诊断。
+          </p>
+          <Link href="/profile#assessment" className="text-xs text-primary underline">
+            {score != null ? "重新测评 →" : "去做情绪自评 →"}
+          </Link>
+        </div>
+      )}
 
       {open === "mood" && (
         <div className="space-y-2">
@@ -259,65 +256,58 @@ export function StatsPanel({
         </div>
       )}
 
-      {open === "chat" && (
-        <div className="space-y-2">
-          {chatSessions.length === 0 ? (
-            <p className="py-4 text-center text-xs text-muted-foreground">
-              还没有对话 · 去<Link href="/assistant" className="text-primary underline">AI 助手</Link>聊聊
-            </p>
-          ) : (
-            chatSessions.map((s) => (
-              <div
-                key={s.id}
-                className="flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 transition hover:border-primary/50 hover:bg-primary/5"
-              >
-                <Link href={`/assistant?session=${s.id}`} className="flex flex-1 items-center gap-2">
-                  <span className="flex-1 truncate text-sm text-ink">{s.title}</span>
-                  <span className="text-xs text-muted-foreground">{s.time}</span>
-                </Link>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => deleteSession(s.id)}
-                  aria-label="删除会话"
-                  className="rounded p-1 text-muted-foreground/60 transition hover:bg-primary/10 hover:text-primary disabled:opacity-40"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            ))
-          )}
-        </div>
-      )}
     </div>
+  );
+
+  const cardInner = (s: StatItem) => (
+    <>
+      <span className="text-2xl">{s.icon}</span>
+      <p className="mt-2 text-3xl font-bold text-ink">{s.value}</p>
+      <p className="text-xs text-muted-foreground">{s.label}</p>
+      <span className="mt-1 inline-block rounded-full bg-accent px-2 py-0.5 text-xs text-accent-foreground">
+        {s.hint}
+      </span>
+    </>
   );
 
   return (
     <section>
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-semibold">我的状态</h2>
-        {open && (
-          <span className="text-xs text-muted-foreground">点击下方条目可管理</span>
+        <h2 className="font-brush text-2xl font-bold text-ink">我的状态</h2>
+        {mode === "preview" ? (
+          <Link href="/profile" className="text-sm text-primary hover:underline">
+            查看档案 →
+          </Link>
+        ) : (
+          open && <span className="text-xs text-muted-foreground">点击下方条目可管理</span>
         )}
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map((s) => (
-          <button
-            key={s.key}
-            type="button"
-            onClick={() => setOpen(open === s.key ? null : s.key)}
-            className={cn(
-              "rounded-xl border bg-card p-5 text-center transition-all hover:border-primary hover:shadow-sm",
-              open === s.key && "border-primary ring-1 ring-primary/30",
-            )}
-          >
-            <span className="text-2xl">{s.icon}</span>
-            <p className="mt-2 text-3xl font-bold text-ink">{s.value}</p>
-            <p className="text-xs text-muted-foreground">{s.label}</p>
-          </button>
-        ))}
+        {stats.map((s) =>
+          mode === "preview" ? (
+            <Link
+              key={s.key}
+              href="/profile"
+              className="rounded-xl border bg-card p-5 text-center transition-all hover:border-primary hover:shadow-sm"
+            >
+              {cardInner(s)}
+            </Link>
+          ) : (
+            <button
+              key={s.key}
+              type="button"
+              onClick={() => setOpen(open === s.key ? null : s.key)}
+              className={cn(
+                "rounded-xl border bg-card p-5 text-center transition-all hover:border-primary hover:shadow-sm",
+                open === s.key && "border-primary ring-1 ring-primary/30",
+              )}
+            >
+              {cardInner(s)}
+            </button>
+          ),
+        )}
       </div>
-      {body}
+      {mode === "manage" && body}
     </section>
   );
 }
