@@ -5,13 +5,57 @@
  * - 横滑卡片：封面 emoji + 菜名 + 分类 + 适合体质 + 时长
  * - 点击卡片弹出视频播放器（详情与做法仍在原食谱弹窗）
  */
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Modal } from "@/components/ui/modal";
 import { RecipeVideoPlayer } from "@/components/recipe-video";
 import { RECIPE_VIDEOS, type RecipeVideo } from "@/lib/data/recipe-videos";
+import { cn } from "@/lib/utils";
 
 export function RecipeVideoSection() {
   const [active, setActive] = useState<RecipeVideo | null>(null);
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const drag = useRef({ active: false, startX: 0, startLeft: 0, moved: false });
+  const [dragging, setDragging] = useState(false);
+
+  // 鼠标按住拖动横滑（触屏走原生滑动，不拦截）
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== "mouse") return;
+    const el = scrollerRef.current;
+    if (!el) return;
+    drag.current = {
+      active: true,
+      startX: e.clientX,
+      startLeft: el.scrollLeft,
+      moved: false,
+    };
+    setDragging(true);
+    el.setPointerCapture(e.pointerId);
+  };
+
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!drag.current.active) return;
+    const el = scrollerRef.current;
+    if (!el) return;
+    const dx = e.clientX - drag.current.startX;
+    if (Math.abs(dx) > 4) drag.current.moved = true;
+    el.scrollLeft = drag.current.startLeft - dx;
+  };
+
+  const endDrag = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!drag.current.active) return;
+    drag.current.active = false;
+    setDragging(false);
+    const el = scrollerRef.current;
+    if (el?.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
+  };
+
+  // 拖动结束时抑制一次点击，避免误开视频
+  const onClickCapture = (e: React.MouseEvent) => {
+    if (!drag.current.moved) return;
+    drag.current.moved = false;
+    e.preventDefault();
+    e.stopPropagation();
+  };
 
   if (!RECIPE_VIDEOS.length) return null;
 
@@ -29,7 +73,20 @@ export function RecipeVideoSection() {
         </span>
       </div>
 
-      <div className="-mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-2">
+      <div
+        ref={scrollerRef}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        onClickCapture={onClickCapture}
+        style={{ scrollSnapType: dragging ? "none" : undefined }}
+        className={cn(
+          "-mx-1 flex select-none gap-3 overflow-x-auto px-1 pb-2",
+          !dragging && "snap-x snap-mandatory",
+          dragging ? "cursor-grabbing" : "cursor-grab",
+        )}
+      >
         {RECIPE_VIDEOS.map((v) => (
           <div
             key={v.name}

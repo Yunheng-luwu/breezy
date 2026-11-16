@@ -59,13 +59,13 @@ function ExerciseGrid({
 }) {
   return (
     <div>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="flex flex-wrap justify-center gap-3">
         {items.map((item) => (
           <Card
             key={item.name}
             id={`move-${item.name}`}
             className={cn(
-              "h-full scroll-mt-24 transition-colors hover:border-primary",
+              "h-full w-full scroll-mt-24 transition-colors hover:border-primary sm:w-[calc(50%-0.375rem)]",
               highlight === item.name && "border-primary bg-primary/5 ring-2 ring-primary/25",
             )}
           >
@@ -170,12 +170,12 @@ export default function PracticeTabs({
       </div>
 
       {tab === "baduanjin" && (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <div className="flex flex-wrap justify-center gap-3">
           {baduanjin.map((move, i) => (
             <Link
               key={move.name}
               href={`/practice/baduanjin?move=${encodeURIComponent(move.name)}`}
-              className="group block"
+              className="group block w-full sm:w-[calc(50%-0.375rem)]"
             >
               <Card className="h-full transition-colors group-hover:border-primary">
                 <CardContent className="pt-5 text-center">

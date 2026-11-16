@@ -1,5 +1,6 @@
 import PracticeTabs from "@/components/practice-tabs";
 import { PageHero } from "@/components/page-hero";
+import { bannerSets, bannerFocus } from "@/lib/data/banners";
 import { getPracticeMoves } from "@/lib/knowledge";
 import { practiceStretchData, practiceOfficeData } from "@/lib/content-data";
 
@@ -13,7 +14,8 @@ export default function PracticePage({
   return (
     <div className="space-y-6">
       <PageHero
-        img="/img/banners/practice.jpg"
+        imgs={bannerSets.practice}
+        focus={bannerFocus}
         title="功法带练"
         subtitle="八段锦 · 疏肝拉伸 · 动静相宜"
       />

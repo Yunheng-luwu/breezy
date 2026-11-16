@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Modal } from "@/components/ui/modal";
 import { FavButton } from "@/components/favorite-button";
 import { quickAddTodoAction } from "@/lib/actions";
@@ -21,15 +21,30 @@ const CATEGORIES = [
 export function AcupointGrid({
   acupoints,
   favorites,
+  initialAcupoint,
 }: {
   acupoints: Acupoint[];
   favorites: string[];
+  /** 深链指定穴位：进入页面后自动切到对应分组并打开详情 */
+  initialAcupoint?: string;
 }) {
   const [cat, setCat] = useState("stress");
   const [detail, setDetail] = useState<Acupoint | null>(null);
   const [added, setAdded] = useState(false);
   const [pending, start] = useTransition();
   const favSet = new Set(favorites);
+
+  useEffect(() => {
+    if (!initialAcupoint) return;
+    const point = acupoints.find((p) => p.name === initialAcupoint);
+    if (!point) return;
+    const group = (point.categories ?? []).find((k) =>
+      CATEGORIES.some((c) => c.key === k),
+    );
+    if (group) setCat(group);
+    setDetail(point);
+    setAdded(false);
+  }, [initialAcupoint, acupoints]);
 
   const list = acupoints.filter((p) => (p.categories ?? []).includes(cat));
 
@@ -78,7 +93,10 @@ export function AcupointGrid({
                 setAdded(false);
               }
             }}
-            className="group flex h-full cursor-pointer flex-col overflow-hidden rounded-xl border bg-card text-center transition-colors hover:border-primary"
+            className={cn(
+              "group flex h-full cursor-pointer flex-col overflow-hidden rounded-xl border bg-card text-center transition-colors hover:border-primary",
+              p.name === initialAcupoint && "border-primary ring-1 ring-primary/30",
+            )}
           >
             {/* 图区：保留冻结版的「图上文下」结构，配色收敛到站内淡雅风格 */}
             <div className="flex h-16 items-center justify-center border-b border-border/60 bg-secondary/35 text-2xl">

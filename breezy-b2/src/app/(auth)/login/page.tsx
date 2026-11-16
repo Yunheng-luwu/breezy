@@ -3,6 +3,7 @@ import { Sprout } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { LoginMist } from "@/components/login-mist";
 import { loginAction } from "@/lib/auth-actions";
 
 export const metadata = { title: "登录 · 松序 Breezy" };
@@ -13,8 +14,33 @@ export default function LoginPage({
   searchParams: { error?: string; notice?: string };
 }) {
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-md">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4">
+      {/* 背景层：缓慢推拉的水墨山水 + 漂移雾气 */}
+      <div className="absolute inset-0">
+        <div
+          className="login-bg-pan absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: "url('/img/login-bg.jpg')" }}
+        />
+        <div
+          className="login-bg-mist pointer-events-none absolute left-[-10%] top-[18%] h-[55vh] w-[75vw] rounded-full blur-3xl"
+          style={{
+            background:
+              "radial-gradient(closest-side, rgba(255,255,255,0.7), rgba(255,255,255,0))",
+          }}
+        />
+        <div
+          className="login-bg-mist pointer-events-none absolute right-[-15%] bottom-[10%] h-[45vh] w-[60vw] rounded-full blur-3xl [animation-direction:reverse] [animation-duration:34s]"
+          style={{
+            background:
+              "radial-gradient(closest-side, rgba(210,228,214,0.55), rgba(210,228,214,0))",
+          }}
+        />
+        {/* 浅色水彩背景上压一层薄雾，保证表单与文字可读 */}
+        <div className="pointer-events-none absolute inset-0 bg-background/30" />
+        {/* 跟随鼠标的雾气光斑 */}
+        <LoginMist />
+      </div>
+      <div className="relative w-full max-w-md">
         <div className="mb-6 text-center">
           <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
             <Sprout className="h-7 w-7" />

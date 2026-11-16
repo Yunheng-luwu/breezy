@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 import { execute, queryOne } from "@/lib/db";
 import { currentUserId } from "@/lib/queries";
 
-const TODO_TYPES = new Set(["med", "ai", "sleep", "diet"]);
+const TODO_TYPES = new Set(["med", "ai", "sleep", "diet", "other"]);
 const SEVERITIES = new Set(["轻度", "中度", "重度"]);
 
 function str(fd: FormData, key: string, max = 200): string {

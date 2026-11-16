@@ -21,7 +21,7 @@ export interface ToolContext {
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export type AgentCard = { type: string; [k: string]: any };
 
-const TODO_TYPES = ["med", "ai", "sleep", "diet"] as const;
+const TODO_TYPES = ["med", "ai", "sleep", "diet", "other"] as const;
 const SEVERITIES = ["轻度", "中度", "重度"] as const;
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;

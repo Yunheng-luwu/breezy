@@ -2,6 +2,7 @@ import { headers, cookies } from "next/headers";
 import { DietBoard, DietItemGrid } from "@/components/diet-board";
 import { AtlasLauncher } from "@/components/herb-atlas";
 import { PageHero } from "@/components/page-hero";
+import { bannerSets } from "@/lib/data/banners";
 import { RecipeVideoSection } from "@/components/recipe-video-section";
 import { dietData as contentDiet } from "@/lib/content-data";
 import { dietData } from "@/lib/data/diet";
@@ -79,7 +80,7 @@ export default async function DietPage() {
   return (
     <div className="space-y-8">
       <PageHero
-        img="/img/banners/diet.jpg"
+        imgs={bannerSets.diet}
         title="饮食推荐"
         subtitle="药食同源 · 顺时而食 · 疏肝养胃"
       />

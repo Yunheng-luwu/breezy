@@ -9,6 +9,7 @@ import {
 } from "@/components/record-extras";
 import { MoodPicker } from "@/components/mood-picker";
 import { PageHero } from "@/components/page-hero";
+import { bannerSets } from "@/lib/data/banners";
 import {
   addMedicineAction,
   deleteMedicineAction,
@@ -226,7 +227,7 @@ export default async function RecordPage() {
   return (
     <div className="space-y-8">
       <PageHero
-        img="/img/banners/record.jpg"
+        imgs={bannerSets.record}
         title="健康记录"
         subtitle="症状追踪 · 用药提醒 · 慢病调理"
       />
