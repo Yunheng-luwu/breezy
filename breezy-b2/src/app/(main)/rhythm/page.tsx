@@ -10,6 +10,7 @@ import {
   SleepTrendCard,
 } from "@/components/rhythm-extras";
 import { PageHero } from "@/components/page-hero";
+import { bannerSets } from "@/lib/data/banners";
 import { addTodoAction, saveSleepAction } from "@/lib/actions";
 import { exerciseData } from "@/lib/content-data";
 import {
@@ -27,6 +28,7 @@ const TYPE_LABELS: Record<string, string> = {
   ai: "关怀",
   sleep: "睡眠",
   diet: "饮食",
+  other: "其他",
 };
 
 const WEEK_CN = ["日", "一", "二", "三", "四", "五", "六"];
@@ -215,6 +217,7 @@ export default async function RhythmPage() {
                     <option value="med">用药</option>
                     <option value="sleep">睡眠</option>
                     <option value="diet">饮食</option>
+                    <option value="other">其他</option>
                   </select>
                 </label>
                 <Button
@@ -235,7 +238,7 @@ export default async function RhythmPage() {
   return (
     <div className="space-y-8">
       <PageHero
-        img="/img/banners/rhythm.jpg"
+        imgs={bannerSets.rhythm}
         title="生活节律"
         subtitle="顺时起居 · 轻动疏肝"
       />

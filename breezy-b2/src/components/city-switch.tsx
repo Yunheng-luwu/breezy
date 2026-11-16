@@ -5,21 +5,27 @@
  * 「自动定位」：优先浏览器 GPS 精确定位（高德逆地理转城市），失败/拒授权回退 IP 定位
  * 定位/手动选择的城市写入 cookie（30 天），之后各页面无需 URL 参数也能记住
  */
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { LocateFixed } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 const COOKIE_KEY = "sx_city";
+/** 标记城市是否由用户手动选择（自动定位写入的 cookie 不带此标记） */
+const MANUAL_KEY = "sx_city_manual";
 const COOKIE_DAYS = 30;
 
-function saveCityCookie(city: string) {
+function saveCityCookie(city: string, manual: boolean) {
   document.cookie = `${COOKIE_KEY}=${encodeURIComponent(city)}; max-age=${COOKIE_DAYS * 86400}; path=/; samesite=lax`;
+  document.cookie = manual
+    ? `${MANUAL_KEY}=1; max-age=${COOKIE_DAYS * 86400}; path=/; samesite=lax`
+    : `${MANUAL_KEY}=; max-age=0; path=/; samesite=lax`;
 }
 
 function clearCityCookie() {
   document.cookie = `${COOKIE_KEY}=; max-age=0; path=/; samesite=lax`;
+  document.cookie = `${MANUAL_KEY}=; max-age=0; path=/; samesite=lax`;
 }
 
 /**
@@ -28,76 +34,57 @@ function clearCityCookie() {
  * - 用户拒绝授权/浏览器不支持 → 回退 IP 定位（清 cookie、清 URL 参数回 /clothing）
  */
 export function AutoLocateButton({ manualCity }: { manualCity?: string }) {
-  const router = useRouter();
-  const [pending, start] = useTransition();
-  const [phase, setPhase] = useState<"idle" | "gps" | "denied">("idle");
+  const [phase, setPhase] = useState<"idle" | "gps">("idle");
 
-  const locateByIp = () =>
-    start(() => {
-      clearCityCookie();
-      router.push("/clothing");
-      router.refresh();
-    });
+  // 用整页跳转而不是 router.push：定位结果写在 cookie 里，
+  // 必须让服务端重新渲染，绕开客户端路由缓存（否则看起来“点了没反应”）
+  const goAuto = () => {
+    clearCityCookie();
+    window.location.assign("/clothing");
+  };
 
   const locate = () => {
     if (!("geolocation" in navigator)) {
-      locateByIp();
+      goAuto();
       return;
     }
     setPhase("gps");
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords;
-        start(async () => {
-          try {
-            const res = await fetch(
-              `/api/geo/reverse?lat=${latitude}&lng=${longitude}`,
-            );
-            const json = (await res.json()) as { city?: string };
+        fetch(`/api/geo/reverse?lat=${latitude}&lng=${longitude}`)
+          .then((res) => res.json() as Promise<{ city?: string }>)
+          .then((json) => {
             if (json.city) {
-              saveCityCookie(json.city);
-              setPhase("idle");
-              router.push(`/clothing?city=${encodeURIComponent(json.city)}`);
+              // 自动定位结果写入 cookie，但不算“手动选择”：跳回不带 city 参数的页面
+              saveCityCookie(json.city, false);
+              window.location.assign("/clothing");
               return;
             }
-          } catch {
-            /* 逆地理失败走 IP 兜底 */
-          }
-          setPhase("idle");
-          clearCityCookie();
-          router.push("/clothing");
-          router.refresh();
-        });
+            goAuto();
+          })
+          .catch(() => goAuto());
       },
       () => {
-        // 用户拒绝或超时：回退 IP 定位，并短暂提示
-        setPhase("denied");
-        locateByIp();
-        setTimeout(() => setPhase("idle"), 4000);
+        // 用户拒绝或超时：直接回退自动定位
+        goAuto();
       },
       { timeout: 8000, maximumAge: 300000 },
     );
   };
 
-  const busy = pending || phase === "gps";
+  const busy = phase === "gps";
   return (
-    <span className="inline-flex flex-col items-end gap-0.5">
-      <button
-        type="button"
-        onClick={locate}
-        disabled={busy}
-        title="点击重新定位：优先浏览器精确定位，拒绝后按网络 IP 定位"
-        className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-card px-3 py-1 text-xs text-primary transition-colors hover:bg-primary/10 disabled:opacity-60"
-      >
-        <LocateFixed className="h-3.5 w-3.5" />
-        {busy ? "定位中…" : manualCity ? "恢复自动定位" : "重新定位"}
-      </button>
-      {phase === "denied" && (
-        <span className="text-[10px] text-muted-foreground">
-          未授权精确定位，已按网络 IP 粗略定位
-        </span>
-      )}
-    </span>
+    <button
+      type="button"
+      onClick={locate}
+      disabled={busy}
+      title="点击重新定位"
+      className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-card px-3 py-1 text-xs text-primary transition-colors hover:bg-primary/10 disabled:opacity-60"
+    >
+      <LocateFixed className="h-3.5 w-3.5" />
+      {busy ? "定位中…" : manualCity ? "恢复自动定位" : "重新定位"}
+    </button>
   );
 }
 
@@ -109,7 +96,7 @@ export function CitySwitch({ manualCity }: { manualCity?: string }) {
   const submit = () => {
     const city = value.trim();
     if (!city) return;
-    saveCityCookie(city);
+    saveCityCookie(city, true);
     setOpen(false);
     setValue("");
     router.push(`/clothing?city=${encodeURIComponent(city)}`);

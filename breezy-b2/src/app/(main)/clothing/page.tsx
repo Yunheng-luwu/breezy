@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { AutoLocateButton, CitySwitch } from "@/components/city-switch";
 import { BodySenseControls, SenseTip, normalizeSense } from "@/components/body-sense";
 import { PageHero } from "@/components/page-hero";
+import { bannerSets } from "@/lib/data/banners";
 import { getSolarTerm } from "@/lib/data/solar-term";
 import { SEASON_CLOTHING, seasonOf } from "@/lib/season";
 import { currentUserId, getHealthProfile, getSymptoms, getUser } from "@/lib/queries";
@@ -36,6 +37,9 @@ export default async function ClothingPage({
   const urlCity = (Array.isArray(raw) ? raw[0] : raw)?.trim() || undefined;
   const cookieCity = cookies().get(CITY_COOKIE)?.value?.trim() || undefined;
   const city = urlCity ?? cookieCity;
+  // 只有 URL 显式指定或带手动标记，才算“已手动选择”；自动定位的 cookie 不算
+  const manualFlag = cookies().get("sx_city_manual")?.value === "1";
+  const manualCity = urlCity ?? (manualFlag ? cookieCity : undefined);
 
   const forwarded = headers().get("x-forwarded-for") ?? "";
   const ip = forwarded.split(",")[0].trim();
@@ -79,7 +83,7 @@ export default async function ClothingPage({
   return (
     <div className="space-y-6">
       <PageHero
-        img="/img/banners/clothing.jpg"
+        imgs={bannerSets.clothing}
         title="穿衣建议"
         subtitle="因时穿衣 · 护好颈背 · 寒不伤肝"
       />
@@ -93,14 +97,9 @@ export default async function ClothingPage({
               <p className="text-sm text-muted-foreground">
                 {data.city}
                 {data.weatherText ? ` · ${data.weatherText}` : ""}
-                {!city && (
-                  <span className="ml-1 text-[11px] text-muted-foreground/70">
-                    （按网络 IP 粗略定位，可能不准）
-                  </span>
-                )}
               </p>
               <div className="mt-1">
-                <CitySwitch manualCity={city} />
+                <CitySwitch manualCity={manualCity} />
               </div>
               <p className="mt-1 flex items-baseline gap-2">
                 <span className="text-4xl leading-none">{data.weather}</span>
@@ -111,7 +110,7 @@ export default async function ClothingPage({
               </p>
             </div>
             <div className="flex flex-col items-end gap-2">
-              <AutoLocateButton manualCity={city} />
+              <AutoLocateButton manualCity={manualCity} />
               <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted-foreground">
                 <span>最高 {data.high}°</span>
                 <span>最低 {data.low}°</span>
@@ -167,7 +166,7 @@ export default async function ClothingPage({
               <p className="text-sm text-muted-foreground">
                 暂时获取不到实时天气，无法给出具体穿衣建议。
               </p>
-              <AutoLocateButton manualCity={city} />
+              <AutoLocateButton manualCity={manualCity} />
             </div>
             <div className="mt-3">
               <CitySwitch manualCity={city} />
