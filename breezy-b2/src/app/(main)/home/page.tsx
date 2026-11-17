@@ -26,6 +26,23 @@ export const dynamic = "force-dynamic";
 
 const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"];
 
+/** 今日饮食原则：优先跟随实况天气，天气温和时再按日期轮换 */
+function pickPrinciple(
+  w: { weather?: string | null; temp?: number | null; humidity?: number | null } | null,
+  principles: string[],
+  now: Date,
+): string {
+  const fallback = principles[now.getDate() % principles.length];
+  if (!w || w.temp == null) return fallback;
+  if (/雨|雪|雷|雾|霾/.test(w.weather ?? "") || (w.humidity ?? 0) >= 85) {
+    return "今日阴雨湿重，宜喝陈皮红枣茶，忌冰饮";
+  }
+  if (w.temp <= 5) return "天寒宜温补：羊肉、山药、黑豆，热汤热粥为主，忌生冷";
+  if (w.temp >= 30) return "天热宜清润：绿豆汤、雪梨、莲藕，少食辛辣油炸";
+  if (w.temp <= 12) return "气温偏低，早餐一碗热粥配片生姜，暖胃驱寒";
+  return fallback;
+}
+
 const ENTRIES = [
   { href: "/assistant", label: "AI 对话", emoji: "💬" },
   { href: "/practice", label: "八段锦", emoji: "🧘" },
@@ -53,7 +70,7 @@ export default async function HomePage() {
   const weather = await getClothingSmart(cookieCity, ip).catch(() => null);
 
   const principles = dietData.recommend.principles;
-  const principle = principles[now.getDate() % principles.length];
+  const principle = pickPrinciple(weather, principles, now);
   const acupoint = listAcupoints("stress")[0];
   const soups = dietLib.soups ?? [];
 
@@ -109,7 +126,6 @@ export default async function HomePage() {
         imgs={bannerSets.home}
         title="顺气舒心 · 慢养日常"
         subtitle="基于中医疏肝解郁理论 · 茶饮 · 穴位 · 功法 · 作息，四位一体轻养生"
-        seal="松序"
       />
 
       {/* 顶部欢迎区 */}
@@ -134,7 +150,7 @@ export default async function HomePage() {
               href={`/assistant?q=${encodeURIComponent("请根据我的健康档案和今日状态，定制一套调理方案（作息 / 饮食 / 穴位）")}`}
               className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground transition-colors hover:bg-primary/90"
             >
-              AI定制
+              AI养生定制
             </Link>
             <div className="text-right">
               <p className="text-xs text-muted-foreground">情绪自评</p>
@@ -237,14 +253,14 @@ export default async function HomePage() {
 
       <div className="grid gap-8 md:grid-cols-2">
         {/* 今日节律 */}
-        <section>
+        <section className="flex h-full flex-col">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="font-brush text-2xl font-bold text-ink">今日调理待办</h2>
             <Link href="/rhythm" className="text-sm text-primary hover:underline">
               详情 →
             </Link>
           </div>
-          <Card>
+          <Card className="flex-1">
             <CardContent className="px-6 pb-6 pt-0">
               <HomeTodoPanel todos={todos} />
             </CardContent>

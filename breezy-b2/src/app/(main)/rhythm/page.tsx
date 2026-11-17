@@ -161,7 +161,7 @@ export default async function RhythmPage() {
       <SleepTrendCard week={fullWeek} />
 
       {/* 今日待办（查看 + 添加，同卡片承接） */}
-      <section>
+      <section id="todo" className="scroll-mt-24">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-brush text-2xl font-bold text-ink">今日待办</h2>
           <span className="text-xs text-muted-foreground">

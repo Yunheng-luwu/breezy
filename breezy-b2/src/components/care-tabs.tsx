@@ -9,18 +9,21 @@ import { cn } from "@/lib/utils";
 export function CareTabs({
   acupoint,
   footbath,
+  initialTab = "footbath",
 }: {
   acupoint: ReactNode;
   footbath: ReactNode;
+  /** 带 ?acupoint= 深链进入时默认切到穴位疏通 */
+  initialTab?: "acupoint" | "footbath";
 }) {
-  const [tab, setTab] = useState<"acupoint" | "footbath">("acupoint");
+  const [tab, setTab] = useState<"acupoint" | "footbath">(initialTab);
   return (
     <div className="space-y-5">
       <div className="flex gap-2">
         {(
           [
-            ["acupoint", "穴位疏通"],
             ["footbath", "泡脚助眠"],
+            ["acupoint", "穴位疏通"],
           ] as const
         ).map(([key, label]) => (
           <button
