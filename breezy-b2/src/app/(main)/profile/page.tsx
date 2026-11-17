@@ -4,6 +4,7 @@ import { Assessment } from "@/components/assessment";
 import { ConstitutionTest } from "@/components/constitution-test";
 import { PageHero } from "@/components/page-hero";
 import { StatsPanel } from "@/components/stats-panel";
+import { IdentityAvatar } from "@/components/identity-avatar";
 import {
   ChangePasswordForm,
   FavoriteList,
@@ -46,7 +47,11 @@ const CONSTITUTION_OPTIONS = [
   "特禀质",
 ];
 
-export default async function ProfilePage() {
+export default async function ProfilePage({
+  searchParams,
+}: {
+  searchParams?: { edit?: string };
+}) {
   const uid = await currentUserId();
   const [loggedIn, user, profile, favorites, dashboard, chronic] = await Promise.all([
     isLoggedIn(),
@@ -68,18 +73,12 @@ export default async function ProfilePage() {
       {/* 用户信息头 */}
       <Card>
         <CardContent className="flex flex-wrap items-center gap-6 pt-6">
-          <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-primary text-4xl text-primary-foreground">
-            {user?.avatar?.startsWith("/uploads/") ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={user.avatar}
-                alt="头像"
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              user?.avatar || "🌿"
-            )}
-          </div>
+          <IdentityAvatar
+            avatar={user?.avatar}
+            name={user?.name ?? "松友"}
+            interactive={loggedIn}
+          />
+
           <div className="flex-1">
             <h1 className="font-brush text-2xl font-bold text-ink">
               {user?.name ?? "松友"}
@@ -92,6 +91,7 @@ export default async function ProfilePage() {
             <ProfileIdentityEditor
               initialName={user?.name ?? ""}
               initialAvatar={user?.avatar ?? "🌿"}
+              defaultOpen={searchParams?.edit === "identity"}
             />
           )}
         </CardContent>

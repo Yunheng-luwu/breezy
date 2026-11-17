@@ -143,32 +143,146 @@ html {
   animation: calm-breathe 7s ease-in-out infinite;
 }
 
-/* 登录页背景：缓慢推拉 + 雾气漂移（尊重系统「减少动态效果」） */
-@keyframes login-pan {
-  0% { transform: scale(1.06) translate3d(0, 0, 0); }
-  50% { transform: scale(1.12) translate3d(-1.2%, -0.8%, 0); }
-  100% { transform: scale(1.06) translate3d(1.2%, 0.8%, 0); }
+/* ===== 登录页入场动画：印章落卷 ===== */
+@keyframes lgInkBloom {
+  0% { opacity: 0; filter: blur(14px); }
+  100% { opacity: 1; filter: blur(0); }
+}
+@keyframes lgZoomPush {
+  from { transform: scale(1.1); }
+  to { transform: scale(1.02); }
+}
+.login-stage-bg {
+  opacity: 0;
+  filter: blur(14px);
+  transform: scale(1.1);
+  animation:
+    lgInkBloom 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.05s forwards,
+    lgZoomPush 2.3s cubic-bezier(0.22, 1, 0.36, 1) 0.05s forwards;
 }
 
-@keyframes login-mist {
-  0% { transform: translate3d(-8%, 0, 0); opacity: 0.22; }
-  50% { transform: translate3d(8%, -3%, 0); opacity: 0.42; }
-  100% { transform: translate3d(-8%, 0, 0); opacity: 0.22; }
+@keyframes lgMistIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes lgMistDrift {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(36px, -22px, 0); }
+}
+.login-mist { opacity: 0; }
+.login-mist-a {
+  animation:
+    lgMistIn 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.3s forwards,
+    lgMistDrift 30s ease-in-out 0.8s infinite alternate;
+}
+.login-mist-b {
+  animation:
+    lgMistIn 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.45s forwards,
+    lgMistDrift 30s ease-in-out 0.8s infinite alternate-reverse;
 }
 
-.login-bg-pan {
-  animation: login-pan 24s ease-in-out infinite;
-  will-change: transform;
+@keyframes lgLeafFall {
+  0% { opacity: 0; transform: translate(0, 0) rotate(0); }
+  12% { opacity: 0.85; }
+  50% { transform: translate(26px, 380px) rotate(220deg); }
+  100% { opacity: 0; transform: translate(48px, 760px) rotate(440deg); }
+}
+.login-leaf { top: -40px; opacity: 0; }
+.login-leaf-1 { animation: lgLeafFall 2.9s ease-in 0.5s forwards; }
+.login-leaf-2 { animation: lgLeafFall 3.3s ease-in 0.9s forwards; }
+
+@keyframes lgSealStamp {
+  0% { opacity: 0; transform: scale(1.25); }
+  60% { opacity: 1; }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes lgLogoBreathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.025); }
+}
+.login-logo {
+  opacity: 0;
+  transform: scale(1.25);
+  animation:
+    lgSealStamp 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) 0.8s forwards,
+    lgLogoBreathe 6s ease-in-out 1.5s infinite;
 }
 
-.login-bg-mist {
-  animation: login-mist 18s ease-in-out infinite;
-  will-change: transform, opacity;
+@keyframes lgPageShake {
+  0%, 100% { transform: translate(0, 0); }
+  30% { transform: translate(-1px, 1px); }
+  60% { transform: translate(1px, -1px); }
+}
+.login-content { animation: lgPageShake 0.18s ease-out 1.22s; }
+
+@keyframes lgBrushReveal {
+  0% { opacity: 0; clip-path: inset(0 100% 0 0); }
+  15% { opacity: 1; }
+  100% { opacity: 1; clip-path: inset(0 0 0 0); }
+}
+.login-title {
+  opacity: 0;
+  clip-path: inset(0 100% 0 0);
+  animation: lgBrushReveal 0.6s cubic-bezier(0.22, 1, 0.36, 1) 1.3s forwards;
+}
+
+@keyframes lgRiseFade {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.login-slogan {
+  opacity: 0;
+  transform: translateY(10px);
+  animation: lgRiseFade 0.3s cubic-bezier(0.22, 1, 0.36, 1) 1.6s forwards;
+}
+
+@keyframes lgCardRise {
+  from { opacity: 0; transform: translateY(28px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes lgCardMaterial {
+  0% {
+    background-color: rgba(251, 250, 249, 0.55);
+    backdrop-filter: blur(14px);
+    border-color: rgba(222, 217, 211, 0.6);
+    box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+  }
+  100% {
+    background-color: #fbfaf9;
+    backdrop-filter: blur(0);
+    border-color: #ded9d3;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  }
+}
+.login-card {
+  opacity: 0;
+  transform: translateY(28px);
+  animation:
+    lgCardRise 0.55s cubic-bezier(0.22, 1, 0.36, 1) 1.7s forwards,
+    lgCardMaterial 0.55s cubic-bezier(0.22, 1, 0.36, 1) 1.7s forwards;
+}
+
+@keyframes lgItemIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.login-item {
+  opacity: 0;
+  transform: translateY(8px);
+  animation: lgItemIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .login-bg-pan,
-  .login-bg-mist {
+  .login-stage-bg,
+  .login-mist,
+  .login-leaf,
+  .login-logo,
+  .login-content,
+  .login-title,
+  .login-slogan,
+  .login-card,
+  .login-item {
     animation: none;
+    opacity: 1;
+    transform: none;
+    filter: none;
+    clip-path: none;
   }
 }

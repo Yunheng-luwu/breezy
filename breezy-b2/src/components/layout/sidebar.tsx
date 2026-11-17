@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Home, Sparkles, Utensils, Shirt, Moon, Dumbbell,
   Heart, ClipboardList, User, Leaf,
+  Pencil, Eye, X,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -37,6 +39,9 @@ export default function Sidebar({
   user?: { name: string; avatar: string } | null;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [avatarMenu, setAvatarMenu] = useState(false);
+  const [avatarView, setAvatarView] = useState(false);
 
   const renderAvatar = (a?: string | null, size = "h-8 w-8") => {
     if (!a)
@@ -97,24 +102,64 @@ export default function Sidebar({
         })}
       </nav>
 
-      {/* Footer：头像 + 跳转个人中心 */}
-      <div className="border-t p-3">
+      {/* Footer：点头像可查看 / 更换，右侧跳个人中心 */}
+      <div className="relative border-t p-3">
         {user ? (
-          <Link
-            href="/profile"
-            title="点击去个人中心编辑资料"
-            className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-accent hover:text-accent-foreground"
-          >
-            {renderAvatar(user.avatar)}
-            <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-3 rounded-lg p-2">
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setAvatarMenu((v) => !v)}
+                title="点击查看或更换头像"
+                aria-label="头像"
+                aria-expanded={avatarMenu}
+                className="block rounded-full transition hover:ring-2 hover:ring-primary/40 hover:ring-offset-2"
+              >
+                {renderAvatar(user.avatar)}
+              </button>
+              {avatarMenu && (
+                <>
+                  {/* 点空白处收起 */}
+                  <button
+                    type="button"
+                    aria-label="关闭菜单"
+                    onClick={() => setAvatarMenu(false)}
+                    className="fixed inset-0 z-40 cursor-default"
+                  />
+                  <div className="absolute bottom-full left-0 z-50 mb-2 w-36 overflow-hidden rounded-xl border bg-card py-1 shadow-lg">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAvatarMenu(false);
+                        router.push("/profile?edit=identity");
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-ink transition-colors hover:bg-accent"
+                    >
+                      <Pencil className="h-3.5 w-3.5 text-primary" /> 更换头像
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAvatarMenu(false);
+                        setAvatarView(true);
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-ink transition-colors hover:bg-accent"
+                    >
+                      <Eye className="h-3.5 w-3.5 text-primary" /> 查看头像
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+            <Link href="/profile" className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-ink">
                 {user.name || "松友"}
               </p>
               <p className="truncate text-[11px] text-muted-foreground">
-                点我编辑资料 →
+                点击左侧头像可更换 →
               </p>
-            </div>
-          </Link>
+            </Link>
+          </div>
         ) : (
           <p className="py-2 text-center text-xs text-muted-foreground">
             顺气舒心 · 慢养日常
@@ -126,6 +171,37 @@ export default function Sidebar({
         >
           隐私说明
         </Link>
+
+        {/* 查看头像：放大预览 */}
+        {avatarView && user && (
+          <div
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-6"
+            onClick={() => setAvatarView(false)}
+          >
+            <div className="relative" onClick={(e) => e.stopPropagation()}>
+              {user.avatar?.startsWith("/uploads/avatars/") ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={user.avatar}
+                  alt="头像"
+                  className="h-56 w-56 rounded-full object-cover shadow-2xl"
+                />
+              ) : (
+                <div className="flex h-56 w-56 items-center justify-center rounded-full bg-primary/15 text-8xl shadow-2xl">
+                  {user.avatar || "🌿"}
+                </div>
+              )}
+              <button
+                type="button"
+                aria-label="关闭"
+                onClick={() => setAvatarView(false)}
+                className="absolute -right-2 -top-2 rounded-full bg-card p-1.5 text-muted-foreground shadow"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </aside>
   );
