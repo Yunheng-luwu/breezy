@@ -16,6 +16,16 @@ import Link from "next/link";
 import { ChatSidebar } from "@/components/chat-sidebar";
 import { cn } from "@/lib/utils";
 
+/** 输入框上方的常驻快捷提示词（标签短、发送完整问句） */
+const QUICK_PROMPTS = [
+  { icon: "🍵", label: "今天吃什么", text: "今天吃什么比较养肝？" },
+  { icon: "🌙", label: "失眠怎么调", text: "我最近失眠多梦，怎么调理？" },
+  { icon: "🦶", label: "肩颈按哪里", text: "久坐肩颈僵硬，按哪个穴位比较合适？" },
+  { icon: "🧘", label: "八段锦怎么练", text: "八段锦该怎么练？" },
+  { icon: "📝", label: "加个待办", text: "帮我把「今晚10点泡脚」加进待办" },
+  { icon: "🌬️", label: "烦躁怎么缓", text: "最近容易烦躁、爱叹气，有什么立刻能做的缓解方法？" },
+];
+
 const SUGGESTIONS = [
   "最近总胸闷、爱叹气，怎么调理？",
   "今天吃什么比较养肝？",
@@ -321,20 +331,22 @@ export function Chat({ initialText }: { initialText?: string }) {
 
   return (
     <div className="flex h-full">
-      <ChatSidebar
-        currentId={sessionId}
-        onSelect={selectSession}
-        refreshKey={sessionsVersion}
-        mobileOpen={sidebarOpen}
-        onCloseMobile={() => setSidebarOpen(false)}
-        desktopOpen={desktopHistoryOpen}
-        onCloseDesktop={() => setDesktopHistoryOpen(false)}
-      />
-
       <div className="flex h-full min-w-0 flex-1 flex-col">
       {/* 顶部 */}
       <div className="flex items-center justify-between border-b px-4 py-3">
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <Sparkles className="h-4 w-4" />
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium">小松 · AI 健康助手</p>
+            <p className="truncate text-[11px] text-muted-foreground">
+              中医知识库 · 23 项工具 · 个性化调理
+            </p>
+          </div>
+        </div>
+        {/* 新对话与历史会话统一收在右侧 */}
+        <div className="flex shrink-0 items-center gap-1">
           <Button
             variant="ghost"
             size="icon"
@@ -356,19 +368,18 @@ export function Chat({ initialText }: { initialText?: string }) {
               <History className="h-4 w-4" />
             </Button>
           )}
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <Sparkles className="h-4 w-4" />
-          </span>
-          <div>
-            <p className="text-sm font-medium">小松 · AI 健康助手</p>
-            <p className="text-[11px] text-muted-foreground">
-              中医知识库 · 23 项工具 · 个性化调理
-            </p>
-          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={newChat}
+            className={cn(
+              "border-primary/40 bg-primary/5 text-primary hover:bg-primary/10 hover:text-primary",
+              (desktopHistoryOpen || sidebarOpen) && "hidden",
+            )}
+          >
+            <Plus className="mr-1 h-4 w-4" /> 新对话
+          </Button>
         </div>
-        <Button variant="ghost" size="sm" onClick={newChat}>
-          <Plus className="mr-1 h-4 w-4" /> 新对话
-        </Button>
       </div>
 
       {/* 消息列表 + 会话提问目录 */}
@@ -506,6 +517,22 @@ export function Chat({ initialText }: { initialText?: string }) {
 
       {/* 输入区 */}
       <form onSubmit={handleSubmit} className="border-t p-4">
+        {/* 快捷提示词：常驻在输入框上方，点击直接发送 */}
+        <div className="mb-3 flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
+          {QUICK_PROMPTS.map((p) => (
+            <button
+              key={p.label}
+              type="button"
+              disabled={isLoading}
+              onClick={() => submitText(p.text)}
+              title={p.text}
+              className="flex shrink-0 items-center gap-1.5 rounded-full border bg-card px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-foreground disabled:opacity-40"
+            >
+              <span>{p.icon}</span>
+              {p.label}
+            </button>
+          ))}
+        </div>
         <div className="flex items-end gap-2">
           <Textarea
             value={input}
@@ -535,6 +562,17 @@ export function Chat({ initialText }: { initialText?: string }) {
         </p>
       </form>
       </div>
+
+      {/* 历史会话（新对话 + 历史列表统一放在右侧） */}
+      <ChatSidebar
+        currentId={sessionId}
+        onSelect={selectSession}
+        refreshKey={sessionsVersion}
+        mobileOpen={sidebarOpen}
+        onCloseMobile={() => setSidebarOpen(false)}
+        desktopOpen={desktopHistoryOpen}
+        onCloseDesktop={() => setDesktopHistoryOpen(false)}
+      />
     </div>
   );
 }
