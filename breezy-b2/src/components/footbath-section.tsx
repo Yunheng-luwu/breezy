@@ -197,7 +197,7 @@ function FootbathCard({
         <p className="mt-1 text-xs text-jade">
           水温 {f.temp} · {f.duration}
         </p>
-        <div className="mt-3 flex items-center gap-2">
+        <div className="mt-auto flex items-center gap-2 pt-3">
           <span className="flex-1 rounded-md border border-primary/30 py-1.5 text-xs text-primary transition-colors group-hover:bg-primary/5">
             开始泡脚
           </span>

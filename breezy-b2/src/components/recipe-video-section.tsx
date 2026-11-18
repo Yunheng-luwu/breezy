@@ -18,6 +18,8 @@ export function RecipeVideoSection() {
   const [dragging, setDragging] = useState(false);
 
   // 鼠标按住拖动横滑（触屏走原生滑动，不拦截）
+  // 注意：这里不能用 setPointerCapture —— 捕获后点击事件会被重定向到容器，
+  // 卡片按钮的 onClick 永远不会触发，表现就是"点不开视频，只能拖动"。
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.pointerType !== "mouse") return;
     const el = scrollerRef.current;
@@ -28,8 +30,6 @@ export function RecipeVideoSection() {
       startLeft: el.scrollLeft,
       moved: false,
     };
-    setDragging(true);
-    el.setPointerCapture(e.pointerId);
   };
 
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -37,16 +37,18 @@ export function RecipeVideoSection() {
     const el = scrollerRef.current;
     if (!el) return;
     const dx = e.clientX - drag.current.startX;
-    if (Math.abs(dx) > 4) drag.current.moved = true;
-    el.scrollLeft = drag.current.startLeft - dx;
+    // 超过阈值才算拖动，避免手抖把点击吃掉
+    if (!drag.current.moved && Math.abs(dx) > 8) {
+      drag.current.moved = true;
+      setDragging(true);
+    }
+    if (drag.current.moved) el.scrollLeft = drag.current.startLeft - dx;
   };
 
-  const endDrag = (e: React.PointerEvent<HTMLDivElement>) => {
+  const endDrag = () => {
     if (!drag.current.active) return;
     drag.current.active = false;
     setDragging(false);
-    const el = scrollerRef.current;
-    if (el?.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
   };
 
   // 拖动结束时抑制一次点击，避免误开视频
@@ -80,6 +82,7 @@ export function RecipeVideoSection() {
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
         onClickCapture={onClickCapture}
+        onDragStart={(e) => e.preventDefault()}
         style={{ scrollSnapType: dragging ? "none" : undefined }}
         className={cn(
           "-mx-1 flex select-none gap-3 overflow-x-auto px-1 pb-2",
@@ -104,7 +107,8 @@ export function RecipeVideoSection() {
                   muted
                   playsInline
                   preload="auto"
-                  className="h-full w-full object-cover"
+                  draggable={false}
+                  className="pointer-events-none h-full w-full object-cover"
                 />
                 <span className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/20">
                   <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-primary opacity-0 shadow transition-opacity group-hover:opacity-100">
