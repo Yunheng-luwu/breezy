@@ -7,7 +7,7 @@
  * refreshKey 变化时重新拉取列表（新会话创建后由父组件递增）
  */
 import { useCallback, useEffect, useState } from "react";
-import { Settings2, X } from "lucide-react";
+import { Plus, Settings2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface ChatSessionItem {
@@ -119,8 +119,37 @@ export function ChatSidebar({
     onCloseMobile?.();
   };
 
+  /** 单条删除：删完刷新列表，删的是当前会话则回到新对话 */
+  const deleteOne = async (id: number) => {
+    if (deleting) return;
+    if (!window.confirm("删除这条对话？删除后不可恢复")) return;
+    setDeleting(true);
+    try {
+      await fetch("/api/chat-sessions", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      await load();
+      if (id === currentId) onSelect(null);
+    } catch {
+      /* 删除失败保持原状 */
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const body = (isMobile: boolean) => (
     <>
+      <div className="px-3 pt-3">
+        <button
+          type="button"
+          onClick={() => select(null)}
+          className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-primary/30 bg-primary/5 px-2.5 py-2 text-[13px] font-medium text-primary transition-colors hover:bg-primary/10"
+        >
+          <Plus className="h-4 w-4" /> 新对话
+        </button>
+      </div>
       <div className="flex items-center justify-between px-4 pb-1 pt-3">
         <p className="text-xs tracking-wider text-muted-foreground">历史会话</p>
         <div className="flex items-center gap-1">
@@ -202,20 +231,37 @@ export function ChatSidebar({
               <span className="truncate">{s.title || "新的对话"}</span>
             </div>
           ) : (
-            <button
+            <div
               key={s.id}
-              type="button"
-              onClick={() => select(s.id)}
-              title={s.title}
               className={cn(
-                "block w-full truncate rounded-lg px-2.5 py-2 text-left text-[13px] transition-colors",
-                s.id === currentId
-                  ? "bg-primary/15 font-medium text-ink"
-                  : "text-muted-foreground hover:bg-muted hover:text-ink",
+                "group flex items-center rounded-lg transition-colors",
+                s.id === currentId ? "bg-primary/15" : "hover:bg-muted",
               )}
             >
-              {s.title || "新的对话"}
-            </button>
+              <button
+                type="button"
+                onClick={() => select(s.id)}
+                title={s.title}
+                className={cn(
+                  "min-w-0 flex-1 truncate rounded-lg px-2.5 py-2 text-left text-[13px] transition-colors",
+                  s.id === currentId
+                    ? "font-medium text-ink"
+                    : "text-muted-foreground group-hover:text-ink",
+                )}
+              >
+                {s.title || "新的对话"}
+              </button>
+              <button
+                type="button"
+                onClick={() => deleteOne(s.id)}
+                disabled={deleting}
+                aria-label="删除该对话"
+                title="删除该对话"
+                className="mr-1 shrink-0 rounded-md p-1 text-muted-foreground/50 transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
           ),
         )}
       </div>
@@ -226,7 +272,7 @@ export function ChatSidebar({
     <>
       {/* 桌面端：可收起侧栏 */}
       {desktopOpen && (
-        <aside className="hidden h-full w-56 shrink-0 flex-col border-r bg-card/50 md:flex">
+        <aside className="hidden h-full w-56 shrink-0 flex-col border-l bg-card/50 md:flex">
           {body(false)}
         </aside>
       )}
@@ -239,7 +285,7 @@ export function ChatSidebar({
             onClick={onCloseMobile}
             className="absolute inset-0 h-full w-full bg-black/40"
           />
-          <aside className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col border-r bg-card shadow-xl">
+          <aside className="absolute inset-y-0 right-0 flex w-72 max-w-[85vw] flex-col border-l bg-card shadow-xl">
             {body(true)}
           </aside>
         </div>

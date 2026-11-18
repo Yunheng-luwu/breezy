@@ -30,11 +30,12 @@ export default async function CarePage({
       <PageHero
         imgs={bannerSets.care}
         title="居家保健"
-        subtitle="穴位疏通 · 泡脚助眠 · 草本调理"
+        subtitle="泡脚助眠 · 穴位疏通 · 草本调理"
       />
 
       {/* 穴位疏通 / 泡脚助眠（页签切换，对齐冻结版布局） */}
       <CareTabs
+        initialTab={searchParams?.acupoint ? "acupoint" : undefined}
         acupoint={
           <AcupointGrid
             acupoints={acupoints}

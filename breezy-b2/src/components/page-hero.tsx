@@ -20,7 +20,6 @@ export function PageHero({
   focus,
   title,
   subtitle,
-  seal,
 }: {
   /** 单张横幅（兼容旧用法） */
   img?: string;
@@ -30,8 +29,6 @@ export function PageHero({
   focus?: Record<string, string>;
   title: string;
   subtitle?: string;
-  /** 首页右上角印章字样 */
-  seal?: string;
 }) {
   const images = imgs && imgs.length ? imgs : img ? [img] : [];
   const n = images.length;
@@ -134,11 +131,6 @@ export function PageHero({
         />
       ))}
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#2b241d]/85 via-[#2b241d]/25 to-transparent" />
-      {seal && (
-        <span className="absolute right-6 top-5 flex h-11 w-11 items-center justify-center rounded-md border border-white/60 font-brush text-sm text-white/90">
-          {seal}
-        </span>
-      )}
       <div className="absolute inset-x-6 bottom-5 pr-16">
         <h1 className="font-brush text-3xl font-bold text-white drop-shadow-sm">
           {title}

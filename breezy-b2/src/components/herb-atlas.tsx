@@ -33,7 +33,7 @@ const TABS = [
   { key: "herb", label: "中药" },
   { key: "soup", label: "药膳" },
   { key: "tea", label: "茶饮" },
-  { key: "dish", label: "食材" },
+  { key: "dish", label: "膳食" },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];

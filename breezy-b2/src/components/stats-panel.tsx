@@ -18,6 +18,7 @@ interface StatItem {
   icon: string;
   value: string;
   hint: string;
+  href: string;
   key: "score" | "todo" | "mood" | "fav";
 }
 
@@ -64,6 +65,7 @@ export function StatsPanel({
       icon: "🌿",
       value: score != null ? String(score) : "--",
       hint: level ?? "待自评",
+      href: "/profile#assessment",
       key: "score",
     },
     {
@@ -71,6 +73,7 @@ export function StatsPanel({
       icon: "✅",
       value: `${doneTodos}/${todos.length}`,
       hint: todos.length === 0 ? "去安排" : doneTodos === todos.length ? "已完成" : "进行中",
+      href: "/rhythm#todo",
       key: "todo",
     },
     {
@@ -78,10 +81,34 @@ export function StatsPanel({
       icon: "💭",
       value: String(moods.length),
       hint: "近 10 次",
+      href: "/mood#mood-checkin",
       key: "mood",
     },
-    { label: "收藏数", icon: "⭐", value: String(favList.length), hint: "我的收藏", key: "fav" },
+    {
+      label: "收藏数",
+      icon: "⭐",
+      value: String(favList.length),
+      hint: "我的收藏",
+      href: "/profile",
+      key: "fav",
+    },
   ];
+
+  /** 点卡片直达对应页面：个人中心里情绪自评滚到测评区，收藏展开列表管理 */
+  function go(s: StatItem) {
+    if (s.key === "score") {
+      document
+        .getElementById("assessment")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    if (s.key === "fav") {
+      setOpen(open === "fav" ? null : "fav");
+      return;
+    }
+    // 整页跳转，保证带 #锚点 时能定位到对应区块
+    window.location.assign(s.href);
+  }
 
   /** 统一写库：成功后让服务端组件重新取数，列表自动刷新 */
   async function act(
@@ -115,8 +142,6 @@ export function StatsPanel({
     <div className="mt-4 rounded-xl border bg-card p-4 text-sm">
       <div className="mb-3 flex items-center justify-between">
         <h4 className="font-semibold text-ink">
-          {open === "score" && `情绪自评：${score != null ? score + " 分" : "未测评"}${level ? " · " + level : ""}`}
-          {open === "todo" && `今日待办 · 已完成 ${doneTodos}/${todos.length}`}
           {open === "mood" && `情绪打卡 · 最近 ${moods.length} 次`}
           {open === "fav" && `我的收藏 · 共 ${favList.length} 条`}
         </h4>
@@ -129,21 +154,6 @@ export function StatsPanel({
           <X className="h-4 w-4" />
         </button>
       </div>
-
-      {open === "score" && (
-        <div className="space-y-2">
-          <p className="text-sm text-ink">
-            {score != null ? `当前 ${score} 分` : "还没有做过情绪自评"}
-            {level ? ` · ${level}` : ""}
-          </p>
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            PHQ-9 / GAD-7 自评量表结果，仅供调养参考，不构成诊断。
-          </p>
-          <Link href="/profile#assessment" className="text-xs text-primary underline">
-            {score != null ? "重新测评 →" : "去做情绪自评 →"}
-          </Link>
-        </div>
-      )}
 
       {open === "mood" && (
         <div className="space-y-2">
@@ -165,58 +175,6 @@ export function StatsPanel({
                   disabled={busy}
                   onClick={() => act("delete_mood", { id: m.id }, "删除这条情绪记录？")}
                   aria-label="删除记录"
-                  className="rounded p-1 text-muted-foreground/60 transition hover:bg-primary/10 hover:text-primary disabled:opacity-40"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            ))
-          )}
-        </div>
-      )}
-
-      {open === "todo" && (
-        <div className="space-y-2">
-          {todos.length === 0 ? (
-            <p className="py-4 text-center text-xs text-muted-foreground">
-              今日还没有待办 · 去<Link href="/rhythm" className="text-primary underline">生活节律</Link>页安排
-            </p>
-          ) : (
-            todos.map((t) => (
-              <div
-                key={t.id}
-                className={cn(
-                  "flex items-center gap-2 rounded-lg border border-border px-3 py-1.5",
-                  t.done && "bg-muted/50",
-                )}
-              >
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => act("toggle_todo", { id: t.id, done: !t.done })}
-                  aria-label={t.done ? "取消完成" : "标记完成"}
-                  className={cn(
-                    "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[11px] transition disabled:opacity-40",
-                    t.done
-                      ? "border-green-600 bg-green-600 text-white"
-                      : "border-border text-transparent hover:border-primary",
-                  )}
-                >
-                  ✓
-                </button>
-                <span
-                  className={cn(
-                    "flex-1 truncate text-sm",
-                    t.done ? "text-muted-foreground line-through" : "text-ink",
-                  )}
-                >
-                  {t.text}
-                </span>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => act("delete_todo", { id: t.id }, `删除待办「${t.text}」？`)}
-                  aria-label="删除待办"
                   className="rounded p-1 text-muted-foreground/60 transition hover:bg-primary/10 hover:text-primary disabled:opacity-40"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -279,24 +237,24 @@ export function StatsPanel({
             查看档案 →
           </Link>
         ) : (
-          open && <span className="text-xs text-muted-foreground">点击下方条目可管理</span>
+          <span className="text-xs text-muted-foreground">点击卡片直达对应页面</span>
         )}
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((s) =>
           mode === "preview" ? (
-            <Link
+            <a
               key={s.key}
-              href="/profile"
+              href={s.href}
               className="rounded-xl border bg-card p-5 text-center transition-all hover:border-primary hover:shadow-sm"
             >
               {cardInner(s)}
-            </Link>
+            </a>
           ) : (
             <button
               key={s.key}
               type="button"
-              onClick={() => setOpen(open === s.key ? null : s.key)}
+              onClick={() => go(s)}
               className={cn(
                 "rounded-xl border bg-card p-5 text-center transition-all hover:border-primary hover:shadow-sm",
                 open === s.key && "border-primary ring-1 ring-primary/30",
@@ -307,6 +265,25 @@ export function StatsPanel({
           ),
         )}
       </div>
+      {mode === "manage" && (
+        <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
+          <span>管理：</span>
+          <button
+            type="button"
+            onClick={() => setOpen(open === "mood" ? null : "mood")}
+            className={cn("transition-colors hover:text-primary", open === "mood" && "text-primary")}
+          >
+            情绪记录
+          </button>
+          <button
+            type="button"
+            onClick={() => setOpen(open === "fav" ? null : "fav")}
+            className={cn("transition-colors hover:text-primary", open === "fav" && "text-primary")}
+          >
+            收藏
+          </button>
+        </div>
+      )}
       {mode === "manage" && body}
     </section>
   );

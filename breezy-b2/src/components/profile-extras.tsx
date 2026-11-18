@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { changePasswordAction, submitFeedbackAction } from "@/lib/auth-actions";
+import { IDENTITY_EDIT_EVENT } from "@/components/identity-avatar";
 import { cn } from "@/lib/utils";
 
 /* ============ 提醒设置（localStorage，本设备生效） ============ */
@@ -315,18 +316,33 @@ const isUploadedAvatar = (a: string) => a.startsWith("/uploads/avatars/");
 export function ProfileIdentityEditor({
   initialName,
   initialAvatar,
+  defaultOpen = false,
 }: {
   initialName: string;
   initialAvatar: string;
+  /** 从侧栏头像等入口带 ?edit=identity 进来时直接展开 */
+  defaultOpen?: boolean;
 }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const [name, setName] = useState(initialName);
   const [avatar, setAvatar] = useState(initialAvatar || "🌿");
   const [uploading, setUploading] = useState(false);
   const [uploadErr, setUploadErr] = useState("");
   const [pending, start] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // 点击头像（IdentityAvatar）时展开编辑器
+  useEffect(() => {
+    const openEditor = () => {
+      setName(initialName);
+      setAvatar(initialAvatar || "🌿");
+      setUploadErr("");
+      setOpen(true);
+    };
+    window.addEventListener(IDENTITY_EDIT_EVENT, openEditor);
+    return () => window.removeEventListener(IDENTITY_EDIT_EVENT, openEditor);
+  }, [initialName, initialAvatar]);
 
   const save = () => {
     const n = name.trim();
@@ -342,9 +358,12 @@ export function ProfileIdentityEditor({
     setUploadErr("");
     setUploading(true);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await fetch("/api/avatar", { method: "POST", body: fd });
+      // 直接发原始二进制，避免 multipart 解析受中文文件名影响
+      const res = await fetch("/api/avatar", {
+        method: "POST",
+        headers: { "Content-Type": file.type || "application/octet-stream" },
+        body: file,
+      });
       const json = (await res.json()) as { url?: string; error?: string };
       if (!res.ok || !json.url) {
         setUploadErr(json.error ?? "上传失败，请重试");
